@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Device {
+  id          String   @id
+  tokenHash   String
+  name        String?
+  platform    String?
+  status      String   @default("active")
+  dailyLimit  Int      @default(20)
+  createdAt   DateTime @default(now())
+  lastSeenAt  DateTime @updatedAt
+
+  downloads DownloadJob[]
+  files     FileAsset[]
+}
+
+model InviteCode {
+  id        String    @id @default(uuid())
+  code      String    @unique
+  maxUses   Int       @default(1)
+  usedCount Int       @default(0)
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+}
+
+model Link {
+  id          String   @id @default(uuid())
+  url         String
+  urlHash     String   @unique
+  platform    String?
+  title       String?
+  thumbnail   String?
+  durationSec Int?
+  extractor   String?
+  createdAt   DateTime @default(now())
+
+  downloads DownloadJob[]
+}
+
+model DownloadJob {
+  id          String   @id @default(uuid())
+  deviceId    String
+  linkId      String
+  status      String
+  format      String?
+  quality     String?
+  progress    Int      @default(0)
+  speedText   String?
+  etaText     String?
+  error       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  device Device      @relation(fields: [deviceId], references: [id])
+  link   Link        @relation(fields: [linkId], references: [id])
+  files  FileAsset[]
+  events EventLog[]
+
+  @@index([deviceId, status])
+  @@index([deviceId, createdAt])
+}
+
+model FileAsset {
+  id          String    @id @default(uuid())
+  deviceId    String
+  jobId       String
+  type        String
+  storageKey  String
+  filename    String
+  mimeType    String?
+  sizeBytes   BigInt?
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+
+  device Device      @relation(fields: [deviceId], references: [id])
+  job    DownloadJob @relation(fields: [jobId], references: [id])
+
+  @@index([jobId])
+}
+
+model EventLog {
+  id        String   @id @default(uuid())
+  jobId     String?
+  deviceId  String?
+  level     String
+  message   String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  job DownloadJob? @relation(fields: [jobId], references: [id])
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

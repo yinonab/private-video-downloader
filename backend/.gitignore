@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+storage/
+secrets/*.txt
+!secrets/cookies/.gitkeep
+.DS_Store

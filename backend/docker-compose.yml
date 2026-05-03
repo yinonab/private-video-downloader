@@ -1,0 +1,63 @@
+services:
+  api:
+    build: .
+    command: ["sh", "-c", "npx prisma migrate deploy && npm run start"]
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./storage:/app/storage
+      - ./secrets:/app/secrets
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/downloader
+      REDIS_URL: redis://redis:6379
+      STORAGE_DIR: /app/storage
+      COOKIES_FILE: /app/secrets/cookies/global.txt
+      ADMIN_TOKEN: change-me
+      DEVICE_TOKEN_SECRET: change-me-change-me-change-me
+      DOWNLOAD_CONCURRENCY: 3
+      DEFAULT_DAILY_LIMIT: 20
+      ANALYZE_DAILY_LIMIT: 200
+    depends_on:
+      - redis
+      - postgres
+
+  worker:
+    build: .
+    command: npm run worker
+    volumes:
+      - ./storage:/app/storage
+      - ./secrets:/app/secrets
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/downloader
+      REDIS_URL: redis://redis:6379
+      STORAGE_DIR: /app/storage
+      COOKIES_FILE: /app/secrets/cookies/global.txt
+      ADMIN_TOKEN: change-me
+      DEVICE_TOKEN_SECRET: change-me-change-me-change-me
+      DOWNLOAD_CONCURRENCY: 3
+      DEFAULT_DAILY_LIMIT: 20
+      ANALYZE_DAILY_LIMIT: 200
+    depends_on:
+      - redis
+      - postgres
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: downloader
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

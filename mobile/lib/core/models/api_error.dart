@@ -1,0 +1,90 @@
+import "package:dio/dio.dart";
+
+/// Normalized backend error plus Hebrew-friendly UX copy.
+class ApiError implements Exception {
+  ApiError({
+    required this.code,
+    required this.message,
+    this.details,
+    this.hebrewSummary,
+    this.httpStatus,
+  });
+
+  factory ApiError.fromUnknown(Object error) {
+    if (error is ApiError) return error;
+    if (error is DioException) return ApiError.fromDio(error);
+    return ApiError(code: "UNKNOWN", message: "$error", hebrewSummary: "אירעה שגיאה לא צפויה");
+  }
+
+  factory ApiError.fromDio(DioException e) {
+    final raw = _parseBody(e.response?.data);
+    final msg = raw.$2 ?? e.message ?? "$e";
+    final code = raw.$1;
+    final heb = raw.$3 ?? hebrewForCode(code, e.response?.statusCode);
+    return ApiError(code: code, message: msg, details: raw.$4, httpStatus: e.response?.statusCode, hebrewSummary: heb);
+  }
+
+  final String code;
+  final String message;
+  final String? details;
+  final String? hebrewSummary;
+  final int? httpStatus;
+
+  String get localized => hebrewSummary ?? message;
+
+  /// Returns (code, message, hebrew?, details?)
+  static (String, String, String?, String?) _parseBody(Object? body) {
+    if (body is Map) {
+      final err = body["error"];
+      if (err is Map) {
+        final map = Map<String, dynamic>.from(err);
+        final code = "${map["code"] ?? map["cod"] ?? "ERROR"}".trim().isEmpty ? "ERROR" : "${map["code"]}";
+        final message = "${map["message"] ?? ""}";
+        final details = map["details"] == null ? null : "${map["details"]}";
+        return (code, message.isEmpty ? "שגיאה" : message, hebrewForCode(code, null), details);
+      }
+    }
+    if (body is String && body.isNotEmpty) {
+      return ("ERROR", body, null, null);
+    }
+    return ("NETWORK", "network", null, null);
+  }
+
+  static String hebrewForCode(String code, int? http) {
+    switch (code) {
+      case "INVALID_URL":
+        return "הקישור לא תקין";
+      case "DEVICE_NOT_REGISTERED":
+        return "המכשיר לא רשום";
+      case "DEVICE_BLOCKED":
+        return "המכשיר חסום";
+      case "RATE_LIMITED":
+        return "הגעת למגבלה היומית";
+      case "INVITE_CODE_INVALID":
+      case "INVITE_CODE_EXPIRED":
+        return "קוד הזמנה לא תקף";
+      case "ANALYZE_FAILED":
+        return "לא ניתן לנתח את הקישור";
+      case "JOB_NOT_FOUND":
+        return "ההורדה לא נמצאה";
+      case "DOWNLOAD_FAILED":
+        return "ההורדה נכשלה — ניתן לנסות שוב";
+      case "CONFLICT":
+        return "הורדה אחרת כבר מתבצעת במכשיר";
+      case "FILE_NOT_FOUND":
+        return "הקובץ לא נמצא";
+      case "UNAUTHORIZED":
+        return "אין הרשאה לפעולה";
+      case "BAD_REQUEST":
+        return "בקשה לא תקינה";
+      case "NETWORK":
+        return http != null ? "שגיאת רשת (קוד $http)" : "שגיאת רשת";
+      default:
+        if (http != null) return "שגיאת שרת ($http)";
+        return "שגיאה";
+    }
+  }
+
+  @override
+  String toString() => code == "NETWORK" ? message : localized;
+}
