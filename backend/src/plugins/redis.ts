@@ -1,4 +1,5 @@
 import { FastifyPluginAsync } from "fastify";
+import fp from "fastify-plugin";
 import Redis from "ioredis";
 import { config } from "../config";
 
@@ -8,7 +9,7 @@ declare module "fastify" {
   }
 }
 
-const redisPlugin: FastifyPluginAsync = async (app) => {
+const redisPluginImpl: FastifyPluginAsync = async (app) => {
   const redis = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
   app.decorate("redis", redis);
   app.addHook("onClose", async () => {
@@ -16,4 +17,4 @@ const redisPlugin: FastifyPluginAsync = async (app) => {
   });
 };
 
-export default redisPlugin;
+export default fp(redisPluginImpl, { name: "redis" });

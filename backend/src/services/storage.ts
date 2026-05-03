@@ -25,10 +25,11 @@ export async function ensureDeviceDirs(deviceId: string): Promise<void> {
 }
 
 export function resolveAbsoluteFromStorageKey(storageKey: string): string {
-  const normalized = storageKey.replace(/\\/g, "/");
+  const normalized = storageKey.replace(/\\/g, "/").replace(/^\/+/, "");
   const base = path.resolve(config.storageDir);
   const resolved = path.resolve(base, normalized);
-  if (!resolved.startsWith(base + path.sep) && resolved !== base) {
+  const rel = path.relative(base, resolved);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
     throw new Error("Invalid storage key");
   }
   return resolved;

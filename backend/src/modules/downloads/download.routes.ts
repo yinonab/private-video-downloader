@@ -15,21 +15,127 @@ import {
 import { AppError, codes } from "../../types/errors";
 import type { FileAsset } from "@prisma/client";
 
+type ReadableMediaPick = {
+  asset: FileAsset;
+  absPath: string;
+  stat: fs.Stats;
+};
+
+/** Resolve DB file rows to a real non-empty file on disk (prefers video, then largest size). */
+async function pickReadableMediaFile(
+  request: FastifyRequest,
+  jobId: string,
+  deviceId: string,
+  files: FileAsset[]
+): Promise<ReadableMediaPick | null> {
+  const mediaAssets = files.filter((f) => f.type === "video" || f.type === "audio");
+  const picks: ReadableMediaPick[] = [];
+
+  for (const asset of mediaAssets) {
+    let absPath: string;
+    try {
+      absPath = resolveAbsoluteFromStorageKey(asset.storageKey);
+    } catch (err) {
+      request.log.warn(
+        { jobId, deviceId, dbStorageKey: asset.storageKey, err },
+        "download file: invalid storage key"
+      );
+      continue;
+    }
+
+    let st: fs.Stats;
+    try {
+      st = await fsp.stat(absPath);
+    } catch {
+      request.log.warn(
+        {
+          jobId,
+          deviceId,
+          dbStorageKey: asset.storageKey,
+          resolvedAbsolutePath: absPath,
+          exists: false,
+        },
+        "download file: stat failed (missing path)"
+      );
+      continue;
+    }
+
+    const exists = true;
+    request.log.info(
+      {
+        jobId,
+        deviceId,
+        dbStorageKey: asset.storageKey,
+        resolvedAbsolutePath: absPath,
+        exists,
+        statSize: st.size,
+        isFile: st.isFile(),
+        isDirectory: st.isDirectory(),
+        filename: asset.filename,
+        mimeType: asset.mimeType,
+        assetType: asset.type,
+        dbSizeBytes: asset.sizeBytes != null ? asset.sizeBytes.toString() : null,
+      },
+      "download file: resolved path stat"
+    );
+
+    if (!st.isFile()) {
+      request.log.warn(
+        { jobId, deviceId, resolvedAbsolutePath: absPath, statSize: st.size },
+        "download file: skip — not a regular file"
+      );
+      continue;
+    }
+
+    if (st.size <= 0) {
+      request.log.warn(
+        { jobId, deviceId, resolvedAbsolutePath: absPath, statSize: st.size },
+        "download file: skip — empty or zero-length file"
+      );
+      continue;
+    }
+
+    picks.push({ asset, absPath, stat: st });
+  }
+
+  if (!picks.length) return null;
+
+  picks.sort((a, b) => {
+    const vp = a.asset.type === "video" ? 1 : 0;
+    const vq = b.asset.type === "video" ? 1 : 0;
+    if (vp !== vq) return vq - vp;
+    return Number(b.stat.size - a.stat.size);
+  });
+
+  const chosen = picks[0]!;
+  request.log.info(
+    {
+      jobId,
+      deviceId,
+      chosenStorageKey: chosen.asset.storageKey,
+      chosenAbsolutePath: chosen.absPath,
+      chosenStatSize: chosen.stat.size,
+      chosenFilename: chosen.asset.filename,
+    },
+    "download file: chosen asset for streaming"
+  );
+
+  return chosen;
+}
+
 async function streamAssetFile(
   request: FastifyRequest,
   reply: FastifyReply,
   absPath: string,
+  stat: fs.Stats,
   filename: string,
   mimeType: string
 ): Promise<void> {
-  let stat;
-  try {
-    stat = await fsp.stat(absPath);
-  } catch {
-    throw new AppError(codes.FILE_NOT_FOUND, "File not found", 404);
+  const size = stat.size;
+  if (!stat.isFile() || size <= 0) {
+    throw new AppError(codes.FILE_NOT_FOUND, "Media file missing or empty on disk", 404);
   }
 
-  const size = stat.size;
   const range = request.headers.range;
 
   reply.header("Accept-Ranges", "bytes");
@@ -43,7 +149,7 @@ async function streamAssetFile(
     if (!match) {
       reply.code(416);
       reply.header("Content-Range", `bytes */${size}`);
-      reply.send();
+      await reply.send();
       return;
     }
     let start = match[1] ? Number(match[1]) : 0;
@@ -51,19 +157,19 @@ async function streamAssetFile(
     if (Number.isNaN(start) || Number.isNaN(end) || start > end || end >= size) {
       reply.code(416);
       reply.header("Content-Range", `bytes */${size}`);
-      reply.send();
+      await reply.send();
       return;
     }
     const chunkSize = end - start + 1;
     reply.code(206);
     reply.header("Content-Range", `bytes ${start}-${end}/${size}`);
-    reply.header("Content-Length", chunkSize);
-    reply.send(fs.createReadStream(absPath, { start, end }));
+    reply.header("Content-Length", String(chunkSize));
+    await reply.send(fs.createReadStream(absPath, { start, end }));
     return;
   }
 
-  reply.header("Content-Length", size);
-  reply.send(fs.createReadStream(absPath));
+  reply.header("Content-Length", String(size));
+  await reply.send(fs.createReadStream(absPath));
 }
 
 const downloadRoutes: FastifyPluginAsync = async (app) => {
@@ -138,19 +244,23 @@ const downloadRoutes: FastifyPluginAsync = async (app) => {
       throw new AppError(codes.BAD_REQUEST, "Download not completed", 400);
     }
 
-    const primary =
-      job.files.find((f: FileAsset) => f.type === "video") ?? job.files.find((f: FileAsset) => f.type === "audio");
-    if (!primary) {
-      throw new AppError(codes.FILE_NOT_FOUND, "No media file for job", 404);
+    const picked = await pickReadableMediaFile(request, jobId, ctx.id, job.files);
+    if (!picked) {
+      throw new AppError(
+        codes.FILE_NOT_FOUND,
+        "Media file missing or empty on disk",
+        404,
+        "No readable video/audio file with size > 0 for this job"
+      );
     }
 
-    const absPath = resolveAbsoluteFromStorageKey(primary.storageKey);
     await streamAssetFile(
       request,
       reply,
-      absPath,
-      primary.filename,
-      primary.mimeType ?? "application/octet-stream"
+      picked.absPath,
+      picked.stat,
+      picked.asset.filename,
+      picked.asset.mimeType ?? "application/octet-stream"
     );
   });
 };

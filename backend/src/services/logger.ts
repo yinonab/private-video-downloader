@@ -1,12 +1,17 @@
-import pino from "pino";
+import pino, { type LoggerOptions } from "pino";
 import { config } from "../config";
 
-export const logger = pino({
-  level: config.isDev ? "debug" : "info",
-  transport: config.isDev
+/** Fastify 5+ expects a logger options object here, not a Pino instance. */
+export const fastifyLoggerOptions: LoggerOptions = {
+  level: process.env.LOG_LEVEL ?? (config.isDev ? "debug" : "info"),
+  ...(config.isDev
     ? {
-        target: "pino-pretty",
-        options: { colorize: true },
+        transport: {
+          target: "pino-pretty",
+          options: { colorize: true },
+        },
       }
-    : undefined,
-});
+    : {}),
+};
+
+export const logger = pino(fastifyLoggerOptions);

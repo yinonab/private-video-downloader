@@ -1,3 +1,5 @@
+import "package:dio/dio.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 
 import "../../core/app_scope.dart";
@@ -65,16 +67,41 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     if (fmtList.isEmpty) return;
     final fmt = fmtList[_fmtIndex.clamp(0, fmtList.length - 1)];
     setState(() => _starting = true);
+    final scope = AppScope.read(context);
+    final svc = scope.downloadService;
+    final req = CreateDownloadRequest(url: d.url, format: fmt.value, quality: fmt.value);
+    final base = scope.session.serverUrl.trim().replaceAll(RegExp(r"/+$"), "");
+    debugPrint("### DOWNLOAD_DEBUG ### POST /downloads request url=$base/downloads body=${req.toJson()}");
     try {
-      final svc = AppScope.read(context).downloadService;
-      final req = CreateDownloadRequest(url: d.url, format: fmt.value, quality: fmt.value);
       final res = await svc.create(req);
+      debugPrint("### DOWNLOAD_DEBUG ### POST /downloads response selectedJobId=${res.jobId} status=${res.status} cached=${res.cached}");
       if (!mounted) return;
-      await Navigator.pushReplacement<void>(
+      await Navigator.pushReplacement(
         context,
-        MaterialPageRoute<void>(builder: (_) => DownloadStatusScreen(jobId: res.jobId)),
+        MaterialPageRoute(builder: (_) => DownloadStatusScreen(jobId: res.jobId)),
       );
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint("### DOWNLOAD_DEBUG ### catch analyze_screen._startDownload type=${e.runtimeType} message=$e");
+      if (e is DioException) {
+        debugPrint(
+          "### DOWNLOAD_DEBUG ### DioException dioType=${e.type} responseStatus=${e.response?.statusCode} "
+          "cancelTokenCancelled=${e.requestOptions.cancelToken?.isCancelled}",
+        );
+      }
+      if (e is ApiError) {
+        debugPrint(
+          "### DOWNLOAD_DEBUG ### ApiError code=${e.code} httpStatus=${e.httpStatus} localized=${e.localized}",
+        );
+        const unexpectedHebrew = "אירעה שגיאה לא צפויה";
+        if (e.localized == unexpectedHebrew ||
+            (e.hebrewSummary != null && e.hebrewSummary == unexpectedHebrew)) {
+          debugPrint(
+            "### DOWNLOAD_DEBUG ### causes-localized-unexpected-error "
+            "message=${e.message} details=${e.details}",
+          );
+        }
+      }
+      debugPrint("### DOWNLOAD_DEBUG ### stackTrace=\n$st");
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is ApiError ? e.localized : "$e")));
     } finally {

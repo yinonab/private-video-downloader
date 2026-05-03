@@ -1,6 +1,6 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
-import { logger } from "./services/logger";
+import { fastifyLoggerOptions } from "./services/logger";
 import { errorHandler } from "./middleware/errorHandler";
 import prismaPlugin from "./plugins/prisma";
 import redisPlugin from "./plugins/redis";
@@ -11,7 +11,7 @@ import downloadRoutes from "./modules/downloads/download.routes";
 import adminRoutes from "./modules/admin/admin.routes";
 
 export async function buildApp(): Promise<FastifyInstance> {
-  const app = Fastify({ logger });
+  const app = Fastify({ logger: fastifyLoggerOptions });
   app.setErrorHandler(errorHandler);
   await app.register(cors, { origin: true });
   await app.register(prismaPlugin);

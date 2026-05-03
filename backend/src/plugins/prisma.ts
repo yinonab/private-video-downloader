@@ -1,4 +1,5 @@
 import { FastifyPluginAsync } from "fastify";
+import fp from "fastify-plugin";
 import { PrismaClient } from "@prisma/client";
 
 declare module "fastify" {
@@ -7,7 +8,7 @@ declare module "fastify" {
   }
 }
 
-const prismaPlugin: FastifyPluginAsync = async (app) => {
+const prismaPluginImpl: FastifyPluginAsync = async (app) => {
   const prisma = new PrismaClient();
   await prisma.$connect();
   app.decorate("prisma", prisma);
@@ -16,4 +17,4 @@ const prismaPlugin: FastifyPluginAsync = async (app) => {
   });
 };
 
-export default prismaPlugin;
+export default fp(prismaPluginImpl, { name: "prisma" });

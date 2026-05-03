@@ -1,11 +1,10 @@
 import "package:flutter/widgets.dart";
-
-import "../network/api_client.dart";
-import "../storage/local_session.dart";
-import "../../services/analyze_service.dart";
-import "../../services/device_service.dart";
-import "../../services/download_service.dart";
-import "../../services/file_download_service.dart";
+import "package:private_video_downloader/core/network/api_client.dart";
+import "package:private_video_downloader/core/storage/local_session.dart";
+import "package:private_video_downloader/services/analyze_service.dart";
+import "package:private_video_downloader/services/device_service.dart";
+import "package:private_video_downloader/services/download_service.dart";
+import "package:private_video_downloader/services/file_download_service.dart";
 
 /// Application dependency container (InheritedWidget — no extra deps).
 final class AppScope extends InheritedWidget {

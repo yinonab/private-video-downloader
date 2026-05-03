@@ -1,4 +1,9 @@
+import "dart:developer" as dev;
+import "dart:io" show File, HttpHeaders;
+import "dart:typed_data";
+
 import "package:dio/dio.dart";
+import "package:flutter/foundation.dart";
 
 import "../models/analyze_models.dart";
 import "../models/api_error.dart";
@@ -12,12 +17,28 @@ String _trimJoin(String base, String suffixPath) {
   return "$b$s";
 }
 
+/// Result of streaming `GET /downloads/:jobId/file` to disk.
+final class JobFileDownloadResult {
+  const JobFileDownloadResult({
+    required this.statusCode,
+    required this.url,
+    this.contentLength,
+  });
+
+  final int statusCode;
+  final String url;
+
+  /// Value of `Content-Length` when the server sends it (chunked responses omit it).
+  final int? contentLength;
+}
+
 class ApiClient {
   ApiClient({required LocalSession session}) : _session = session {
     _dio = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 45),
         receiveTimeout: const Duration(seconds: 120),
+        sendTimeout: const Duration(seconds: 120),
         responseType: ResponseType.json,
       ),
     );
@@ -123,16 +144,117 @@ class ApiClient {
     );
   }
 
-  Future<void> downloadFileToDisk({
+  /// Absolute HTTP URL for streaming the finished media file (logging / diagnostics).
+  String downloadFileUrl(String jobId) => _trimJoin(_base, "/downloads/$jobId/file");
+
+  static int? _parseContentLength(Response<dynamic> response) {
+    final raw = response.headers.value(HttpHeaders.contentLengthHeader) ??
+        response.headers.value("content-length");
+    if (raw == null || raw.isEmpty) return null;
+    return int.tryParse(raw);
+  }
+
+  /// Downloads job media to [absolutePath] via `GET …/file` with [ResponseType.bytes], then writes to disk.
+  ///
+  /// Avoids [Dio.download] here: a shared [Dio] with [BaseOptions.responseType] = JSON can yield HTTP 200 but
+  /// 0 bytes written for binary endpoints on some platforms.
+  Future<JobFileDownloadResult> downloadJobFileToPath({
     required String jobId,
     required String absolutePath,
-    void Function(int received, int total)? onProgress,
+    void Function(int received, int total)? onReceiveProgress,
   }) async {
-    final url = _trimJoin(_base, "/downloads/$jobId/file");
+    final url = downloadFileUrl(jobId);
+    final tokenExists = _session.deviceToken.trim().isNotEmpty;
+    final bearer = tokenExists ? "Bearer ${_session.deviceToken.trim()}" : null;
+
+    dev.log("dio_download: start url=$url savePath=$absolutePath jobId=$jobId");
+    debugPrint(
+      "### DOWNLOAD_DEBUG ### downloadJobFileToPath jobId=$jobId baseUrl=$_base finalFileUrl=$url "
+      "tokenExists=$tokenExists tempPartPath=$absolutePath",
+    );
+
+    Uint8List decodeBody(List<int>? body) {
+      if (body == null) return Uint8List(0);
+      if (body is Uint8List) return body;
+      return Uint8List.fromList(body);
+    }
+
     try {
-      await _dio.download(url, absolutePath, onReceiveProgress: onProgress);
-    } on DioException catch (e) {
-      throw ApiError.fromDio(e);
+      debugPrint("### DOWNLOAD_DEBUG ### before GET bytes (manual save) url=$url");
+
+      final response = await _dio.get<List<int>>(
+        url,
+        options: Options(
+          responseType: ResponseType.bytes,
+          receiveTimeout: const Duration(hours: 6),
+          sendTimeout: const Duration(minutes: 30),
+          followRedirects: true,
+          validateStatus: (code) => code != null && code >= 200 && code < 300,
+          headers: bearer != null ? <String, dynamic>{HttpHeaders.authorizationHeader: bearer} : null,
+        ),
+        onReceiveProgress: onReceiveProgress == null
+            ? null
+            : (received, total) {
+                debugPrint("### DOWNLOAD_DEBUG ### GET bytes progress received=$received total=$total");
+                onReceiveProgress(received, total);
+              },
+      );
+
+      final statusCode = response.statusCode ?? 0;
+      final parsedCl = _parseContentLength(response);
+      final bytes = decodeBody(response.data);
+      final hdrMap = response.headers.map;
+      final ct = response.headers.value(HttpHeaders.contentTypeHeader);
+      final clHdrRaw = response.headers.value(HttpHeaders.contentLengthHeader);
+
+      debugPrint(
+        "### DOWNLOAD_DEBUG ### diagnostic GET bytes statusCode=$statusCode headers=$hdrMap "
+        "contentType=$ct contentLength=$clHdrRaw dataLength=${bytes.length}",
+      );
+      if (bytes.isEmpty) {
+        debugPrint("### DOWNLOAD_DEBUG ### firstBytes=(empty)");
+      } else {
+        final n = bytes.length < 16 ? bytes.length : 16;
+        debugPrint("### DOWNLOAD_DEBUG ### firstBytes=${bytes.sublist(0, n)}");
+      }
+
+      final out = File(absolutePath);
+      await out.parent.create(recursive: true);
+      await out.writeAsBytes(bytes, flush: true);
+
+      debugPrint(
+        "### DOWNLOAD_DEBUG ### wrote part file path=$absolutePath bytesWritten=${bytes.length} "
+        "(manual GET bytes, not Dio.download)",
+      );
+
+      final effectiveCl =
+          (parsedCl != null && parsedCl > 0) ? parsedCl : (bytes.isNotEmpty ? bytes.length : null);
+
+      dev.log(
+        "dio_download: complete status=$statusCode contentLengthHeader=$parsedCl bytesWritten=${bytes.length} url=$url",
+      );
+      debugPrint(
+        "### DOWNLOAD_DEBUG ### manual download completed statusCode=$statusCode "
+        "contentLengthHeader=$parsedCl bytesWritten=${bytes.length} url=$url",
+      );
+
+      return JobFileDownloadResult(
+        statusCode: statusCode,
+        url: url,
+        contentLength: effectiveCl,
+      );
+    } on DioException catch (e, st) {
+      debugPrint(
+        "### DOWNLOAD_DEBUG ### catch downloadJobFileToPath DioException type=${e.type} message=${e.message} "
+        "responseStatus=${e.response?.statusCode} cancelTokenCancelled=${e.requestOptions.cancelToken?.isCancelled}",
+      );
+      debugPrint("### DOWNLOAD_DEBUG ### stackTrace=\n$st");
+      throw ApiError(
+        code: "DEVICE_FILE_DOWNLOAD",
+        message: e.message ?? "${e.type}",
+        hebrewSummary: "הורדת הקובץ למכשיר נכשלה. נסה שוב.",
+        httpStatus: e.response?.statusCode,
+      );
     }
   }
 }

@@ -1,6 +1,4 @@
 import "package:flutter/material.dart";
-import "package:open_filex/open_filex.dart";
-import "package:share_plus/share_plus.dart";
 
 import "../../core/app_scope.dart";
 import "../../core/models/api_error.dart";
@@ -9,6 +7,7 @@ import "../../core/utils/url_utils.dart";
 import "../../core/widgets/empty_state.dart";
 import "../../core/widgets/error_view.dart";
 import "../../core/widgets/loading_view.dart";
+import "../../services/saved_media_actions.dart";
 import "../analyze/analyze_screen.dart";
 import "../download_status/download_status_screen.dart";
 import "../settings/settings_screen.dart";
@@ -134,23 +133,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openLocal(String jobId) async {
-    final p = await AppScope.read(context).session.localPathForJob(jobId);
-    if (p == null || p.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("הקובץ עדיין לא נשמר במכשיר")));
-      return;
-    }
-    await OpenFile.open(p);
+    await openSavedDownload(
+      context: context,
+      session: AppScope.read(context).session,
+      jobId: jobId,
+    );
   }
 
-  Future<void> _shareLocal(String jobId) async {
-    final p = await AppScope.read(context).session.localPathForJob(jobId);
-    if (p == null || p.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("יש להוריד את הקובץ תחילה")));
-      return;
-    }
-    await Share.shareXFiles([XFile(p)]);
+  Future<void> _shareLocal(String jobId, String title) async {
+    await shareSavedDownload(
+      context: context,
+      session: AppScope.read(context).session,
+      jobId: jobId,
+      title: title,
+    );
   }
-
   @override
   void initState() {
     super.initState();
@@ -232,7 +229,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onRetry: (job.status == "failed" || job.status == "canceled") ? () => _retry(job) : null,
                   onDelete: () => _confirmDelete(job),
                   onOpenLocal: exists ? () => _openLocal(job.id) : null,
-                  onShareLocal: exists ? () => _shareLocal(job.id) : null,
+                  onShareLocal: exists ? () => _shareLocal(job.id, job.title) : null,
                 );
               },
             ),

@@ -1,13 +1,16 @@
 import "dart:async";
+import "dart:io";
 
+import "package:dio/dio.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
-import "package:open_filex/open_filex.dart";
-import "package:share_plus/share_plus.dart";
 
 import "../../core/app_scope.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
 import "../../core/widgets/app_button.dart";
+import "../../services/file_download_service.dart";
+import "../../services/saved_media_actions.dart";
 
 class DownloadStatusScreen extends StatefulWidget {
   const DownloadStatusScreen({super.key, required this.jobId});
@@ -66,14 +69,20 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   Future<void> _downloadToDevice() async {
     final d = _detail;
     if (d == null || d.status != "done") return;
+    final scope = AppScope.read(context);
+    debugPrint(
+      "### DOWNLOAD_DEBUG ### pressed הורד למכשיר jobId=${widget.jobId} "
+      "baseUrl=${scope.session.serverUrl.trim()} finalFileUrl=${scope.api.downloadFileUrl(widget.jobId)} "
+      "tokenExists=${scope.session.deviceToken.trim().isNotEmpty}",
+    );
     setState(() {
       _fileBusy = true;
       _receiveBytes = 0;
       _totalBytes = 0;
     });
     try {
-      final files = AppScope.read(context).files;
-      await files.downloadJobMedia(
+      final files = scope.files;
+      final outcome = await files.downloadJobMedia(
         jobId: widget.jobId,
         detail: d,
         onProgress: (r, t) {
@@ -85,8 +94,32 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         },
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("הקובץ נשמר")));
-    } catch (e) {
+      debugPrint(
+        "### DOWNLOAD_DEBUG ### downloadToDevice success internalPath=${outcome.internalPath} "
+        "mediaStorePublished=${outcome.mediaStorePublished} publicUri=${outcome.publicUri}",
+      );
+      final msg = outcome.mediaStorePublished == true && outcome.publicUri != null
+          ? "הקובץ נשמר בתיקיית ההורדות"
+          : (Platform.isAndroid
+              ? "הקובץ נשמר באפליקציה, אך לא ניתן לשמור לתיקיית ההורדות"
+              : "הקובץ נשמר");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    } catch (e, st) {
+      debugPrint(
+        "### DOWNLOAD_DEBUG ### catch download_status_screen._downloadToDevice type=${e.runtimeType} message=$e",
+      );
+      if (e is DioException) {
+        debugPrint(
+          "### DOWNLOAD_DEBUG ### DioException dioType=${e.type} responseStatus=${e.response?.statusCode} "
+          "cancelTokenCancelled=${e.requestOptions.cancelToken?.isCancelled}",
+        );
+      }
+      if (e is ApiError) {
+        debugPrint(
+          "### DOWNLOAD_DEBUG ### ApiError code=${e.code} httpStatus=${e.httpStatus} localized=${e.localized}",
+        );
+      }
+      debugPrint("### DOWNLOAD_DEBUG ### stackTrace=\n$st");
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is ApiError ? e.localized : "$e")));
     } finally {
@@ -95,21 +128,20 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   }
 
   Future<void> _openLocal() async {
-    final p = await AppScope.read(context).session.localPathForJob(widget.jobId);
-    if (p == null || p.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("יש להוריד את הקובץ תחילה")));
-      return;
-    }
-    await OpenFile.open(p);
+    await openSavedDownload(
+      context: context,
+      session: AppScope.read(context).session,
+      jobId: widget.jobId,
+    );
   }
 
   Future<void> _shareLocal() async {
-    final p = await AppScope.read(context).session.localPathForJob(widget.jobId);
-    if (p == null || p.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("יש להוריד את הקובץ תחילה")));
-      return;
-    }
-    await Share.shareXFiles([XFile(p)]);
+    await shareSavedDownload(
+      context: context,
+      session: AppScope.read(context).session,
+      jobId: widget.jobId,
+      title: _detail?.title,
+    );
   }
 
   Future<void> _retry() async {
