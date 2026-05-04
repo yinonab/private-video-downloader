@@ -1,8 +1,8 @@
 import "package:dio/dio.dart";
-import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 
 import "../../core/app_scope.dart";
+import "../../core/config/build_flags.dart";
 import "../../core/models/analyze_models.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
@@ -34,6 +34,17 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _run());
   }
 
+  @override
+  void didUpdateWidget(covariant AnalyzeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialUrl != widget.initialUrl) {
+      shareDebugPrint("Analyze initialUrl replaced, re-running analyze");
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _run();
+      });
+    }
+  }
+
   Future<void> _run() async {
     final u = widget.initialUrl.trim();
     if (u.isEmpty) {
@@ -43,6 +54,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       });
       return;
     }
+    shareDebugPrint("auto analyze triggered url=$u");
     setState(() {
       _loading = true;
       _err = null;
@@ -51,7 +63,10 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       final svc = AppScope.read(context).analyzeService;
       final res = await svc.analyze(u);
       if (!mounted) return;
-      setState(() => _data = res);
+      setState(() {
+        _data = res;
+        _fmtIndex = res.pickDefaultFormatIndex();
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() => _err = e is ApiError ? e : ApiError.fromUnknown(e));
@@ -65,43 +80,49 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     if (d == null) return;
     final fmtList = d.availableFormats;
     if (fmtList.isEmpty) return;
-    final fmt = fmtList[_fmtIndex.clamp(0, fmtList.length - 1)];
+    final idx = FormatOption.clampSelectableIndex(fmtList, _fmtIndex);
+    final fmt = fmtList[idx];
+    if (!fmt.available) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("איכות זו אינה זמינה לסרטון הזה")),
+      );
+      return;
+    }
     setState(() => _starting = true);
     final scope = AppScope.read(context);
     final svc = scope.downloadService;
     final req = CreateDownloadRequest(url: d.url, format: fmt.value, quality: fmt.value);
     final base = scope.session.serverUrl.trim().replaceAll(RegExp(r"/+$"), "");
-    debugPrint("### DOWNLOAD_DEBUG ### POST /downloads request url=$base/downloads body=${req.toJson()}");
+    downloadDebugPrint("POST /downloads request url=$base/downloads body=${req.toJson()}");
     try {
       final res = await svc.create(req);
-      debugPrint("### DOWNLOAD_DEBUG ### POST /downloads response selectedJobId=${res.jobId} status=${res.status} cached=${res.cached}");
+      downloadDebugPrint(
+        "POST /downloads response selectedJobId=${res.jobId} status=${res.status} cached=${res.cached}",
+      );
       if (!mounted) return;
       await Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => DownloadStatusScreen(jobId: res.jobId)),
       );
     } catch (e, st) {
-      debugPrint("### DOWNLOAD_DEBUG ### catch analyze_screen._startDownload type=${e.runtimeType} message=$e");
+      downloadDebugPrint("catch analyze_screen._startDownload type=${e.runtimeType} message=$e");
       if (e is DioException) {
-        debugPrint(
-          "### DOWNLOAD_DEBUG ### DioException dioType=${e.type} responseStatus=${e.response?.statusCode} "
+        downloadDebugPrint(
+          "DioException dioType=${e.type} responseStatus=${e.response?.statusCode} "
           "cancelTokenCancelled=${e.requestOptions.cancelToken?.isCancelled}",
         );
       }
       if (e is ApiError) {
-        debugPrint(
-          "### DOWNLOAD_DEBUG ### ApiError code=${e.code} httpStatus=${e.httpStatus} localized=${e.localized}",
-        );
+        downloadDebugPrint("ApiError code=${e.code} httpStatus=${e.httpStatus} localized=${e.localized}");
         const unexpectedHebrew = "אירעה שגיאה לא צפויה";
-        if (e.localized == unexpectedHebrew ||
-            (e.hebrewSummary != null && e.hebrewSummary == unexpectedHebrew)) {
-          debugPrint(
-            "### DOWNLOAD_DEBUG ### causes-localized-unexpected-error "
-            "message=${e.message} details=${e.details}",
+        if (e.localized == unexpectedHebrew || e.hebrewSummary == unexpectedHebrew) {
+          downloadDebugPrint(
+            "causes-localized-unexpected-error message=${e.message} details=${e.details}",
           );
         }
       }
-      debugPrint("### DOWNLOAD_DEBUG ### stackTrace=\n$st");
+      downloadDebugStackTrace("analyze_screen._startDownload", st);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is ApiError ? e.localized : "$e")));
     } finally {
@@ -171,7 +192,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
             const SizedBox(height: 22),
             QualitySelector(
               formats: d.availableFormats,
-              selectedIndex: _fmtIndex.clamp(0, d.availableFormats.length - 1),
+              selectedIndex: FormatOption.clampSelectableIndex(d.availableFormats, _fmtIndex),
               onChanged: (i) => setState(() => _fmtIndex = i),
             ),
             const SizedBox(height: 26),

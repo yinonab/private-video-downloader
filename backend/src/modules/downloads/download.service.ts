@@ -20,12 +20,25 @@ export type QueuePayload = {
   format: DownloadFormatKind;
 };
 
-const ALLOWED = new Set<string>(["best", "1080p", "720p", "audio_mp3"]);
+const ALLOWED = new Set<string>(["best", "1080p", "720p", "480p", "audio_mp3"]);
+
+/** Strip bidi / invisible chars; lowercase (fixes rare client RTL/zero-width pollution). */
+export function sanitizeQualityToken(raw: string): string {
+  return raw
+    .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "")
+    .trim()
+    .toLowerCase();
+}
 
 export function resolveFormat(body: CreateDownloadBody): DownloadFormatKind {
-  const fmt = body.format.trim().toLowerCase();
+  let fmt = sanitizeQualityToken(body.format);
+  const qRaw = body.quality;
+  let q = qRaw != null && qRaw !== "" ? sanitizeQualityToken(qRaw) : "";
+  if (fmt === "audio") fmt = "audio_mp3";
+  if (q === "audio") q = "audio_mp3";
+  if (!fmt && q) fmt = q;
   if (!ALLOWED.has(fmt)) {
-    throw new AppError(codes.BAD_REQUEST, "Unsupported format", 400);
+    throw new AppError(codes.UNSUPPORTED_QUALITY, "Unsupported format", 400);
   }
   return fmt as DownloadFormatKind;
 }
@@ -54,7 +67,32 @@ export async function createDownload(opts: {
   await assertUrlSafeForFetch(normalized);
 
   const urlHash = hashUrl(normalized);
-  const kind = resolveFormat(opts.body);
+  let kind: DownloadFormatKind;
+  try {
+    kind = resolveFormat(opts.body);
+  } catch (e) {
+    logger.warn(
+      {
+        downloadFormatNormalize: true,
+        accepted: false,
+        formatReceived: opts.body.format,
+        qualityReceived: opts.body.quality,
+        err: e instanceof Error ? e.message : String(e),
+      },
+      "POST /downloads format rejected"
+    );
+    throw e;
+  }
+  logger.info(
+    {
+      downloadFormatNormalize: true,
+      accepted: true,
+      normalizedFormat: kind,
+      formatReceived: opts.body.format,
+      qualityReceived: opts.body.quality,
+    },
+    "POST /downloads format accepted"
+  );
   const pair = storagePair(kind);
 
   const concurrent = await opts.prisma.downloadJob.count({
@@ -252,9 +290,9 @@ export async function retryDownload(opts: {
     throw new AppError(codes.BAD_REQUEST, "Only failed or canceled jobs can be retried", 400);
   }
 
-  const fmt = job.format ?? "best";
+  const fmt = sanitizeQualityToken(job.format ?? "best");
   if (!ALLOWED.has(fmt)) {
-    throw new AppError(codes.BAD_REQUEST, "Stored format is invalid", 400);
+    throw new AppError(codes.UNSUPPORTED_QUALITY, "Stored format is invalid", 400);
   }
   const kind = fmt as DownloadFormatKind;
 

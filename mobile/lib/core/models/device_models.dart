@@ -1,17 +1,22 @@
 class RegisterDeviceRequest {
-  RegisterDeviceRequest({required this.deviceId, this.deviceName, required this.platform, required this.inviteCode});
+  RegisterDeviceRequest({
+    required this.deviceId,
+    this.deviceName,
+    required this.platform,
+    this.inviteCode,
+  });
 
   Map<String, dynamic> toJson() => {
         "deviceId": deviceId,
         if (deviceName != null && deviceName!.trim().isNotEmpty) "deviceName": deviceName!.trim(),
         "platform": platform,
-        "inviteCode": inviteCode.trim(),
+        if (inviteCode != null && inviteCode!.trim().isNotEmpty) "inviteCode": inviteCode!.trim(),
       };
 
   final String deviceId;
   final String? deviceName;
   final String platform;
-  final String inviteCode;
+  final String? inviteCode;
 }
 
 class RegisterDeviceResponse {

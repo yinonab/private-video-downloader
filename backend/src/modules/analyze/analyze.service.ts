@@ -1,14 +1,16 @@
 import { PrismaClient } from "@prisma/client";
+import { computeAvailableQualities } from "../../services/availableQualities";
 import { fetchMetadataJson } from "../../services/ytdlp";
 import { assertUrlSafeForFetch, normalizeUrl } from "../../services/urlSafety";
 import { extractorToPlatform } from "../../services/platform";
 import { AppError, codes } from "../../types/errors";
 import { hashUrl } from "../../services/hashing";
 
-const AVAILABLE_FORMATS = [
+const AVAILABLE_FORMATS_LEGACY = [
   { label: "Best MP4", value: "best", type: "video" },
   { label: "1080p MP4", value: "1080p", type: "video" },
   { label: "720p MP4", value: "720p", type: "video" },
+  { label: "480p MP4", value: "480p", type: "video" },
   { label: "Audio MP3", value: "audio_mp3", type: "audio" },
 ] as const;
 
@@ -33,6 +35,18 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
 
   const platform = extractorToPlatform(meta.extractor);
   const urlHash = hashUrl(normalized);
+
+  let urlHost = "unknown";
+  try {
+    urlHost = new URL(normalized).hostname;
+  } catch {
+    /* ignore */
+  }
+
+  const availableQualities = computeAvailableQualities(meta, {
+    platform: platform ?? meta.extractor ?? "unknown",
+    urlHost,
+  });
 
   await prisma.link.upsert({
     where: { urlHash },
@@ -61,6 +75,7 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
     durationSec: meta.duration != null ? Math.floor(meta.duration) : undefined,
     thumbnail: meta.thumbnail,
     extractor: meta.extractor ?? "unknown",
-    availableFormats: [...AVAILABLE_FORMATS],
+    availableFormats: [...AVAILABLE_FORMATS_LEGACY],
+    availableQualities,
   };
 }

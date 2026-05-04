@@ -4,6 +4,18 @@ import path from "node:path";
 import { config } from "../config";
 import { logger } from "./logger";
 
+export interface YtdlpFormatRow {
+  format_id?: string;
+  ext?: string;
+  height?: number;
+  width?: number;
+  vcodec?: string;
+  acodec?: string;
+  filesize?: number;
+  filesize_approx?: number;
+  url?: string;
+}
+
 export interface YtdlpVideoInfo {
   id?: string;
   title?: string;
@@ -11,6 +23,7 @@ export interface YtdlpVideoInfo {
   duration?: number;
   extractor?: string;
   webpage_url?: string;
+  formats?: YtdlpFormatRow[];
 }
 
 const YT_DLP = process.env.YT_DLP_PATH || "yt-dlp";
@@ -45,7 +58,25 @@ export async function fetchMetadataJson(url: string): Promise<YtdlpVideoInfo> {
   return JSON.parse(line) as YtdlpVideoInfo;
 }
 
-export type DownloadFormatKind = "best" | "1080p" | "720p" | "audio_mp3";
+export type DownloadFormatKind = "best" | "1080p" | "720p" | "480p" | "audio_mp3";
+
+/** yt-dlp `-f` selector for worker logs / diagnostics */
+export const YT_DLP_FORMAT_PRIMARY: Record<Exclude<DownloadFormatKind, never>, string> = {
+  best: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+  "1080p":
+    "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[height<=1080]/best[ext=mp4]/best",
+  "720p":
+    "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best",
+  "480p":
+    "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480][ext=mp4]/best[height<=480]/best[ext=mp4]/best",
+  audio_mp3: "bestaudio/best",
+};
+
+export function extractFormatArg(args: string[]): string | undefined {
+  const i = args.indexOf("-f");
+  if (i >= 0 && i + 1 < args.length) return args[i + 1];
+  return undefined;
+}
 
 export function buildDownloadArgs(opts: {
   url: string;
@@ -57,13 +88,14 @@ export function buildDownloadArgs(opts: {
 
   if (opts.format === "audio_mp3") {
     const out = path.join(baseOut, "audio", `${opts.jobId}.%(ext)s`);
+    const formatSelector = YT_DLP_FORMAT_PRIMARY.audio_mp3;
     return {
       subdir: "audio",
       pattern: path.join(baseOut, "audio", `${opts.jobId}.%(ext)s`),
       args: [
         ...cookiesArgs(),
         "-f",
-        "bestaudio/best",
+        formatSelector,
         "--extract-audio",
         "--audio-format",
         "mp3",
@@ -79,14 +111,7 @@ export function buildDownloadArgs(opts: {
   }
 
   const out = path.join(baseOut, "videos", `${opts.jobId}.%(ext)s`);
-  let formatSelector: string;
-  if (opts.format === "1080p") {
-    formatSelector = "bv*[height<=1080]+ba/b[height<=1080]";
-  } else if (opts.format === "720p") {
-    formatSelector = "bv*[height<=720]+ba/b[height<=720]";
-  } else {
-    formatSelector = "bv*+ba/b";
-  }
+  const formatSelector = YT_DLP_FORMAT_PRIMARY[opts.format];
 
   return {
     subdir: "videos",
@@ -157,6 +182,23 @@ function runYtDlp(
       resolve({ stdout, stderr, code });
     });
   });
+}
+
+export function stderrMeansUnavailableFormat(stderr: string): boolean {
+  return /requested format is not available/i.test(stderr);
+}
+
+const MSG_QUALITY_UNAVAILABLE_HE =
+  "האיכות שנבחרה לא זמינה לסרטון הזה. נסה איכות אחרת או Best MP4.";
+const MSG_FALLBACK_FAILED_HE = "לא ניתן להוריד את הסרטון הזה בפורמט זמין.";
+
+/** User-facing job error (DB); raw stderr should stay in logs only. */
+export function formatDownloadFailureMessage(stderrTail: string, attemptedFallback: boolean): string {
+  const tail = stderrTail.trim();
+  if (stderrMeansUnavailableFormat(tail)) {
+    return attemptedFallback ? MSG_FALLBACK_FAILED_HE : MSG_QUALITY_UNAVAILABLE_HE;
+  }
+  return tail.slice(0, 4000) || "Download failed";
 }
 
 export async function getYtDlpVersion(): Promise<string> {

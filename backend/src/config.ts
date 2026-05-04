@@ -4,6 +4,15 @@ import path from "node:path";
 
 dotenv.config();
 
+/** Env booleans must not use `Boolean("false")` semantics (non-empty string → true). */
+export function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
+  if (value == null || value === "") return defaultValue;
+  const normalized = value.trim().toLowerCase();
+  if (["true", "1", "yes", "y", "on"].includes(normalized)) return true;
+  if (["false", "0", "no", "n", "off"].includes(normalized)) return false;
+  return defaultValue;
+}
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().default(3000),
@@ -28,6 +37,8 @@ const raw = parsed.data;
 
 export const config = {
   ...raw,
+  AUTO_REGISTER_DEVICES: parseBooleanEnv(process.env.AUTO_REGISTER_DEVICES, false),
+  REQUIRE_INVITE_CODE: parseBooleanEnv(process.env.REQUIRE_INVITE_CODE, true),
   storageDir: path.resolve(raw.STORAGE_DIR),
   cookiesFile: raw.COOKIES_FILE ? path.resolve(raw.COOKIES_FILE) : undefined,
   isDev: raw.NODE_ENV === "development",

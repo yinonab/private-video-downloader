@@ -29,11 +29,21 @@ flutter run
 
 בחרו מכשיר Android או אמולטור מחובר.
 
-## D. בניית APK (Release)
+## D. בניית APK (Release) לשרת ייצור (Render HTTPS)
+
+כתובת ה־API מוטמעת ב־APK בעזרת `--dart-define` (משתמש רגיל לא צריך להקליד שרת):
 
 ```bash
 cd mobile
-flutter build apk --release
+flutter build apk --release --dart-define=API_BASE_URL=https://YOUR-SERVICE.onrender.com
+```
+
+לבדיקות מורכבות של הורדות לקובץ אפשר להפעיל לוגים מפורטים:
+
+```bash
+flutter build apk --release \
+  --dart-define=API_BASE_URL=https://YOUR-SERVICE.onrender.com \
+  --dart-define=DOWNLOAD_DEBUG_LOGS=true
 ```
 
 ## E. מיקום קובץ ה־APK
@@ -42,7 +52,9 @@ flutter build apk --release
 mobile/build/app/outputs/flutter-apk/app-release.apk
 ```
 
-## F. כתובת שרת (Backend URL)
+## F. פיתוח מקומי (שרת LAN / אמולטור)
+
+כשלא מועבר `API_BASE_URL`, האפליקציה משתמשת בהגדרות שמורות או במסך רישום עם כתובת שרת.
 
 - **טלפון פיזי ומחשב על אותה רשת Wi‑Fi:**  
   `http://<LAN-IP-של-המחשב>:<פורט>`  
@@ -54,6 +66,10 @@ mobile/build/app/outputs/flutter-apk/app-release.apk
   (גישה מותאמת ל־host של המחשב מהאמולטור.)
 
 - אם השרת רץ ב־HTTP בלבד, ייתכן שתצטרכו לאפשר **cleartext traffic** ב־`android/app/src/main/AndroidManifest.xml` (למשל `android:usesCleartextTraffic="true"` בתוך `<application>`) — רק לבדיקות מקומיות.
+
+**מתקדם:** בהגדרות האפליקציה → «מתקדם / מפתחים» ניתן להזין שרת ידני ולבצע רישום מחדש.
+
+לביצוע **רישום אוטומטי** מהאפליקציה (בלי קוד הזמנה), השרת צריך `AUTO_REGISTER_DEVICES=true` ו־`REQUIRE_INVITE_CODE=false` — ראו `backend/.env.example`.
 
 ## G. תפריט Share ב־Android (העברת קישור `text/plain`)
 

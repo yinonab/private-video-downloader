@@ -2,11 +2,11 @@ import "dart:developer" as dev;
 import "dart:io";
 
 import "package:dio/dio.dart";
-import "package:flutter/foundation.dart";
 import "package:media_store_plus/media_store_plus.dart";
 import "package:path/path.dart" as p;
 import "package:path_provider/path_provider.dart";
 
+import "../core/config/build_flags.dart";
 import "../core/models/api_error.dart";
 import "../core/models/download_models.dart";
 import "../core/network/api_client.dart";
@@ -14,23 +14,23 @@ import "../core/storage/local_session.dart";
 import "../core/utils/download_media_naming.dart";
 import "../core/utils/file_utils.dart";
 
-void _downloadDebugPrint(String msg) => debugPrint("### DOWNLOAD_DEBUG ### $msg");
+void _downloadDebugPrint(String msg) => downloadDebugPrint(msg);
 
 void _downloadDebugCatch(String context, Object e, StackTrace? st) {
-  _downloadDebugPrint("catch context=$context type=${e.runtimeType} message=$e");
+  downloadDebugPrint("catch context=$context type=${e.runtimeType} message=$e");
   if (e is DioException) {
-    _downloadDebugPrint(
+    downloadDebugPrint(
       "DioException dioType=${e.type} responseStatus=${e.response?.statusCode} "
       "cancelTokenCancelled=${e.requestOptions.cancelToken?.isCancelled}",
     );
   }
   if (e is ApiError) {
-    _downloadDebugPrint(
+    downloadDebugPrint(
       "ApiError code=${e.code} httpStatus=${e.httpStatus} localized=${e.localized}",
     );
   }
   if (st != null) {
-    debugPrint("### DOWNLOAD_DEBUG ### stackTrace=\n$st");
+    downloadDebugStackTrace(context, st);
   }
 }
 

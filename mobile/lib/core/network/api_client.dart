@@ -1,10 +1,10 @@
 import "dart:developer" as dev;
-import "dart:io" show File, HttpHeaders;
+import "dart:io" show File, HttpHeaders, SocketException;
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
-import "package:flutter/foundation.dart";
 
+import "../config/build_flags.dart";
 import "../models/analyze_models.dart";
 import "../models/api_error.dart";
 import "../models/device_models.dart";
@@ -88,10 +88,33 @@ class ApiClient {
     final b =
         normalizeServerInput(normalizedServerUrl).trimRight().replaceAll(RegExp(r"/+$"), "");
     final uri = "$b/devices/register";
-    return _unwrap(
-      _dio.post(uri, data: body.toJson()),
-      (data) => RegisterDeviceResponse.fromJson(data is Map ? Map<String, dynamic>.from(data) : null),
-    );
+    final payload = body.toJson();
+    regDebugPrint("before POST /devices/register");
+    regDebugPrint("request body keys=${payload.keys.join(",")}");
+    try {
+      final res = await _dio.post(uri, data: payload);
+      regDebugPrint("register response status=${res.statusCode}");
+      regDebugPrint("register response body=${res.data}");
+      final data = res.data;
+      return RegisterDeviceResponse.fromJson(data is Map ? Map<String, dynamic>.from(data) : null);
+    } on DioException catch (e, st) {
+      regDebugPrint("register failed type=DioException");
+      regDebugPrint("error message=$e");
+      regDebugPrint("DioException type=${e.type}");
+      regDebugPrint("DioException response status=${e.response?.statusCode}");
+      regDebugPrint("DioException response body=${e.response?.data}");
+      final cause = e.error;
+      if (cause is SocketException) {
+        regDebugPrint("SocketException=$cause");
+      }
+      regDebugPrint("stack=$st");
+      throw ApiError.fromDio(e);
+    } catch (e, st) {
+      regDebugPrint("register failed type=${e.runtimeType}");
+      regDebugPrint("error message=$e");
+      regDebugPrint("stack=$st");
+      rethrow;
+    }
   }
 
   Future<DeviceMeResponse> deviceMe() async {
@@ -168,8 +191,8 @@ class ApiClient {
     final bearer = tokenExists ? "Bearer ${_session.deviceToken.trim()}" : null;
 
     dev.log("dio_download: start url=$url savePath=$absolutePath jobId=$jobId");
-    debugPrint(
-      "### DOWNLOAD_DEBUG ### downloadJobFileToPath jobId=$jobId baseUrl=$_base finalFileUrl=$url "
+    downloadDebugPrint(
+      "downloadJobFileToPath jobId=$jobId baseUrl=$_base finalFileUrl=$url "
       "tokenExists=$tokenExists tempPartPath=$absolutePath",
     );
 
@@ -180,7 +203,7 @@ class ApiClient {
     }
 
     try {
-      debugPrint("### DOWNLOAD_DEBUG ### before GET bytes (manual save) url=$url");
+      downloadDebugPrint("before GET bytes (manual save) url=$url");
 
       final response = await _dio.get<List<int>>(
         url,
@@ -195,7 +218,7 @@ class ApiClient {
         onReceiveProgress: onReceiveProgress == null
             ? null
             : (received, total) {
-                debugPrint("### DOWNLOAD_DEBUG ### GET bytes progress received=$received total=$total");
+                downloadDebugPrint("GET bytes progress received=$received total=$total");
                 onReceiveProgress(received, total);
               },
       );
@@ -207,23 +230,23 @@ class ApiClient {
       final ct = response.headers.value(HttpHeaders.contentTypeHeader);
       final clHdrRaw = response.headers.value(HttpHeaders.contentLengthHeader);
 
-      debugPrint(
-        "### DOWNLOAD_DEBUG ### diagnostic GET bytes statusCode=$statusCode headers=$hdrMap "
+      downloadDebugPrint(
+        "diagnostic GET bytes statusCode=$statusCode headers=$hdrMap "
         "contentType=$ct contentLength=$clHdrRaw dataLength=${bytes.length}",
       );
       if (bytes.isEmpty) {
-        debugPrint("### DOWNLOAD_DEBUG ### firstBytes=(empty)");
+        downloadDebugPrint("firstBytes=(empty)");
       } else {
         final n = bytes.length < 16 ? bytes.length : 16;
-        debugPrint("### DOWNLOAD_DEBUG ### firstBytes=${bytes.sublist(0, n)}");
+        downloadDebugPrint("firstBytes=${bytes.sublist(0, n)}");
       }
 
       final out = File(absolutePath);
       await out.parent.create(recursive: true);
       await out.writeAsBytes(bytes, flush: true);
 
-      debugPrint(
-        "### DOWNLOAD_DEBUG ### wrote part file path=$absolutePath bytesWritten=${bytes.length} "
+      downloadDebugPrint(
+        "wrote part file path=$absolutePath bytesWritten=${bytes.length} "
         "(manual GET bytes, not Dio.download)",
       );
 
@@ -233,8 +256,8 @@ class ApiClient {
       dev.log(
         "dio_download: complete status=$statusCode contentLengthHeader=$parsedCl bytesWritten=${bytes.length} url=$url",
       );
-      debugPrint(
-        "### DOWNLOAD_DEBUG ### manual download completed statusCode=$statusCode "
+      downloadDebugPrint(
+        "manual download completed statusCode=$statusCode "
         "contentLengthHeader=$parsedCl bytesWritten=${bytes.length} url=$url",
       );
 
@@ -244,11 +267,11 @@ class ApiClient {
         contentLength: effectiveCl,
       );
     } on DioException catch (e, st) {
-      debugPrint(
-        "### DOWNLOAD_DEBUG ### catch downloadJobFileToPath DioException type=${e.type} message=${e.message} "
+      downloadDebugPrint(
+        "catch downloadJobFileToPath DioException type=${e.type} message=${e.message} "
         "responseStatus=${e.response?.statusCode} cancelTokenCancelled=${e.requestOptions.cancelToken?.isCancelled}",
       );
-      debugPrint("### DOWNLOAD_DEBUG ### stackTrace=\n$st");
+      downloadDebugStackTrace("downloadJobFileToPath", st);
       throw ApiError(
         code: "DEVICE_FILE_DOWNLOAD",
         message: e.message ?? "${e.type}",

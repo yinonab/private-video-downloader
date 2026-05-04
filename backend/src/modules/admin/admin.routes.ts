@@ -189,7 +189,7 @@ const adminRoutes: FastifyPluginAsync = async (app) => {
       return;
     }
     const fmt = job.format ?? "best";
-    const allowed = new Set(["best", "1080p", "720p", "audio_mp3"]);
+    const allowed = new Set(["best", "1080p", "720p", "480p", "audio_mp3"]);
     const kind = (allowed.has(fmt) ? fmt : "best") as DownloadFormatKind;
 
     await app.prisma.downloadJob.update({

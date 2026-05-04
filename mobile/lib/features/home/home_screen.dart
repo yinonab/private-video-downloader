@@ -54,14 +54,13 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("הקישור לא תקין")));
       return;
     }
-    Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => AnalyzeScreen(initialUrl: UrlUtils.stripTrailingJunk(u))));
-  }
-
-  Future<void> _consumePendingShare() async {
-    await Future<void>.delayed(Duration.zero);
-    if (!mounted) return;
-    final url = AppScope.read(context).session.consumePendingShare();
-    if (url != null && url.isNotEmpty) _openAnalyze(url);
+    final cleanUrl = UrlUtils.stripTrailingJunk(u);
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => AnalyzeScreen(key: ValueKey<String>("analyze|$cleanUrl"), initialUrl: cleanUrl),
+      ),
+    );
   }
 
   Future<void> _pasteDialog() async {
@@ -153,7 +152,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _load();
-      await _consumePendingShare();
     });
   }
 

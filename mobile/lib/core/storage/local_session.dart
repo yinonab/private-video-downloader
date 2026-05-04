@@ -4,6 +4,7 @@ import "package:path/path.dart" as p;
 import "package:shared_preferences/shared_preferences.dart";
 import "package:uuid/uuid.dart";
 
+import "../config/build_flags.dart";
 import "../utils/download_media_naming.dart";
 import "../utils/url_utils.dart";
 
@@ -36,8 +37,12 @@ class LocalSession extends ChangeNotifier {
 
   static const _prefsServerKey = "server_base_url";
   static const _prefsDisplayKey = "device_display_name";
+  static const _prefsCustomServerKey = "custom_server_url_enabled";
+  static const _prefsPreferManualRegisterKey = "prefer_manual_register";
 
   bool _hydrated = false;
+  bool _customServerEnabled = false;
+  bool _preferManualRegister = false;
   String _serverUrl = "";
   String _deviceId = "";
   String _deviceToken = "";
@@ -51,6 +56,12 @@ class LocalSession extends ChangeNotifier {
   bool get isRegistered =>
       (_deviceToken.trim().isNotEmpty) && UrlUtils.looksLikeHttpUrl(_serverUrl);
 
+  /// User chose "manual setup" after auto-register failed; cleared on successful registration or factory reset.
+  bool get preferManualRegister => _preferManualRegister;
+
+  /// True when the user chose a manual server URL (developer / LAN); otherwise [kApiBaseUrlFromDefine] applies when set.
+  bool get usesCustomServerUrl => _customServerEnabled;
+
   String get serverUrl => _serverUrl;
   String get deviceId => _deviceId;
 
@@ -59,7 +70,22 @@ class LocalSession extends ChangeNotifier {
 
   Future<void> bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
-    _serverUrl = UrlUtils.normalizeServerBase(prefs.getString(_prefsServerKey) ?? "");
+    _customServerEnabled = prefs.getBool(_prefsCustomServerKey) ?? false;
+
+    if (_customServerEnabled) {
+      _serverUrl = UrlUtils.normalizeServerBase(prefs.getString(_prefsServerKey) ?? "");
+    } else {
+      final baked = kApiBaseUrlFromDefine.trim();
+      if (baked.isNotEmpty) {
+        _serverUrl = UrlUtils.normalizeServerBase(baked);
+        await prefs.setString(_prefsServerKey, _serverUrl);
+      } else {
+        _serverUrl = UrlUtils.normalizeServerBase(prefs.getString(_prefsServerKey) ?? "");
+      }
+    }
+
+    _preferManualRegister = prefs.getBool(_prefsPreferManualRegisterKey) ?? false;
+
     _displayName = prefs.getString(_prefsDisplayKey);
 
     var id = (await _secure.read(key: "device_id_secure"))?.trim();
@@ -73,6 +99,25 @@ class LocalSession extends ChangeNotifier {
     _deviceToken = tok?.trim() ?? "";
 
     _hydrated = true;
+
+    final bakedRaw = kApiBaseUrlFromDefine.trim();
+    final bakedNormalized =
+        bakedRaw.isNotEmpty ? UrlUtils.normalizeServerBase(bakedRaw) : "";
+    final bakedUrlValid =
+        bakedRaw.isNotEmpty && UrlUtils.looksLikeHttpUrl(bakedNormalized);
+    final hasDeviceToken = _deviceToken.trim().isNotEmpty;
+    final shouldAutoRegister = !_preferManualRegister &&
+        UrlUtils.looksLikeHttpUrl(_serverUrl) &&
+        !hasDeviceToken;
+
+    regDebugPrint("API_BASE_URL=$kApiBaseUrlFromDefine");
+    regDebugPrint("bakedUrlValid=$bakedUrlValid");
+    regDebugPrint("customServerEnabled=$_customServerEnabled");
+    regDebugPrint("resolvedBaseUrl=$_serverUrl");
+    regDebugPrint("hasDeviceToken=$hasDeviceToken");
+    regDebugPrint("preferManualRegister=$_preferManualRegister");
+    regDebugPrint("shouldAutoRegister=$shouldAutoRegister");
+
     notifyListeners();
   }
 
@@ -97,6 +142,9 @@ class LocalSession extends ChangeNotifier {
     await _secure.write(key: "device_id_secure", value: stableDeviceId.trim());
     await _secure.write(key: "device_token_secure", value: newDeviceToken.trim());
 
+    await prefs.remove(_prefsPreferManualRegisterKey);
+    _preferManualRegister = false;
+
     _serverUrl = normalized;
     _deviceId = stableDeviceId.trim();
     _deviceToken = newDeviceToken.trim();
@@ -109,6 +157,46 @@ class LocalSession extends ChangeNotifier {
     final normalized = UrlUtils.normalizeServerBase(rawUrl);
     await prefs.setString(_prefsServerKey, normalized);
     _serverUrl = normalized;
+    notifyListeners();
+  }
+
+  Future<void> setPreferManualRegister(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (value) {
+      await prefs.setBool(_prefsPreferManualRegisterKey, true);
+    } else {
+      await prefs.remove(_prefsPreferManualRegisterKey);
+    }
+    _preferManualRegister = value;
+    notifyListeners();
+  }
+
+  /// Persist manual-server mode and optionally set URL. When [enabled] is false, reapplies baked-in [kApiBaseUrlFromDefine] when present.
+  Future<void> setCustomServerEnabled(bool enabled, {String? serverUrlRaw}) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefsCustomServerKey, enabled);
+    _customServerEnabled = enabled;
+
+    if (!enabled) {
+      final baked = kApiBaseUrlFromDefine.trim();
+      if (baked.isNotEmpty) {
+        _serverUrl = UrlUtils.normalizeServerBase(baked);
+        await prefs.setString(_prefsServerKey, _serverUrl);
+      }
+    } else if (serverUrlRaw != null && serverUrlRaw.trim().isNotEmpty) {
+      await updateServerUrl(serverUrlRaw);
+      return;
+    }
+    notifyListeners();
+  }
+
+  /// Clears bearer token only (keeps device id and server URL). Used when switching servers from settings.
+  Future<void> clearRegistrationToken() async {
+    await _secure.delete(key: "device_token_secure");
+    _deviceToken = "";
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_prefsPreferManualRegisterKey);
+    _preferManualRegister = false;
     notifyListeners();
   }
 
@@ -228,12 +316,13 @@ class LocalSession extends ChangeNotifier {
     _serverUrl = "";
     _deviceToken = "";
     _displayName = null;
+    _customServerEnabled = false;
 
     final id = const Uuid().v4();
     await _secure.write(key: "device_id_secure", value: id);
     _deviceId = id;
 
-    notifyListeners();
+    await bootstrap();
   }
 
   void stageSharedUrl(String raw) {

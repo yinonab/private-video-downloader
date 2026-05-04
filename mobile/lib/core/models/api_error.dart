@@ -77,6 +77,8 @@ class ApiError implements Exception {
         return "אין הרשאה לפעולה";
       case "BAD_REQUEST":
         return "בקשה לא תקינה";
+      case "UNSUPPORTED_QUALITY":
+        return "האיכות שנבחרה אינה נתמכת. נסה לבחור איכות אחרת.";
       case "NETWORK":
         return http != null ? "שגיאת רשת (קוד $http)" : "שגיאת רשת";
       default:

@@ -2,14 +2,14 @@ import "dart:async";
 import "dart:io";
 
 import "package:dio/dio.dart";
-import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 
 import "../../core/app_scope.dart";
+import "../../core/config/build_flags.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
+import "../../core/utils/download_error_display.dart";
 import "../../core/widgets/app_button.dart";
-import "../../services/file_download_service.dart";
 import "../../services/saved_media_actions.dart";
 
 class DownloadStatusScreen extends StatefulWidget {
@@ -70,8 +70,8 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
     final d = _detail;
     if (d == null || d.status != "done") return;
     final scope = AppScope.read(context);
-    debugPrint(
-      "### DOWNLOAD_DEBUG ### pressed הורד למכשיר jobId=${widget.jobId} "
+    downloadDebugPrint(
+      "pressed הורד למכשיר jobId=${widget.jobId} "
       "baseUrl=${scope.session.serverUrl.trim()} finalFileUrl=${scope.api.downloadFileUrl(widget.jobId)} "
       "tokenExists=${scope.session.deviceToken.trim().isNotEmpty}",
     );
@@ -94,8 +94,8 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         },
       );
       if (!mounted) return;
-      debugPrint(
-        "### DOWNLOAD_DEBUG ### downloadToDevice success internalPath=${outcome.internalPath} "
+      downloadDebugPrint(
+        "downloadToDevice success internalPath=${outcome.internalPath} "
         "mediaStorePublished=${outcome.mediaStorePublished} publicUri=${outcome.publicUri}",
       );
       final msg = outcome.mediaStorePublished == true && outcome.publicUri != null
@@ -105,21 +105,21 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
               : "הקובץ נשמר");
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e, st) {
-      debugPrint(
-        "### DOWNLOAD_DEBUG ### catch download_status_screen._downloadToDevice type=${e.runtimeType} message=$e",
+      downloadDebugPrint(
+        "catch download_status_screen._downloadToDevice type=${e.runtimeType} message=$e",
       );
       if (e is DioException) {
-        debugPrint(
-          "### DOWNLOAD_DEBUG ### DioException dioType=${e.type} responseStatus=${e.response?.statusCode} "
+        downloadDebugPrint(
+          "DioException dioType=${e.type} responseStatus=${e.response?.statusCode} "
           "cancelTokenCancelled=${e.requestOptions.cancelToken?.isCancelled}",
         );
       }
       if (e is ApiError) {
-        debugPrint(
-          "### DOWNLOAD_DEBUG ### ApiError code=${e.code} httpStatus=${e.httpStatus} localized=${e.localized}",
+        downloadDebugPrint(
+          "ApiError code=${e.code} httpStatus=${e.httpStatus} localized=${e.localized}",
         );
       }
-      debugPrint("### DOWNLOAD_DEBUG ### stackTrace=\n$st");
+      downloadDebugStackTrace("download_status_screen._downloadToDevice", st);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is ApiError ? e.localized : "$e")));
     } finally {
@@ -206,7 +206,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                   Text("זמן משוער: ${d.etaText}", style: Theme.of(context).textTheme.bodyMedium),
                 if ((d.status == "failed" || d.status == "canceled") && (d.error ?? "").trim().isNotEmpty) ...[
                   const SizedBox(height: 14),
-                  Text(d.error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                  Text(formatDownloadJobError(d.error!), style: TextStyle(color: Theme.of(context).colorScheme.error)),
                 ],
                 if (d.status == "failed" || d.status == "canceled") ...[
                   const SizedBox(height: 22),

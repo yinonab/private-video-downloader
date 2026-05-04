@@ -110,8 +110,19 @@ class DownloadStatusParsed {
 class CreateDownloadRequest {
   CreateDownloadRequest({required this.url, required this.format, required this.quality});
 
-  Map<String, dynamic> toJson() =>
-      {"url": url.trim(), "format": format.trim(), "quality": quality.trim().isEmpty ? format.trim() : quality.trim()};
+  /// Removes bidi marks; normalizes case (matches backend [sanitizeQualityToken]).
+  static String sanitizeQualityId(String raw) {
+    var s = raw.replaceAll(RegExp(r"[\u200e\u200f\u202a-\u202e\u2066-\u2069]"), "");
+    s = s.trim().toLowerCase();
+    return s;
+  }
+
+  Map<String, dynamic> toJson() {
+    final f = sanitizeQualityId(format);
+    final qRaw = quality.trim().isEmpty ? format : quality;
+    final q = sanitizeQualityId(qRaw);
+    return {"url": url.trim(), "format": f, "quality": q};
+  }
 
   final String url;
   final String format;

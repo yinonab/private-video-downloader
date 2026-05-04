@@ -1,0 +1,89 @@
+# Render Blueprint (starter — validate against https://render.com/docs/blueprint-spec )
+#
+# STORAGE: API and worker run as separate services. Two Render disks are NOT a shared filesystem.
+# For production media, use S3-compatible storage (R2 / S3 / B2). See docs/render-deploy.md.
+#
+# After first deploy, copy the same DEVICE_TOKEN_SECRET (and ADMIN_TOKEN if worker needs it)
+# from the web service env into the worker env manually if they were generated separately.
+
+databases:
+  - name: downloader-postgres
+    databaseName: downloader
+    user: downloader
+
+services:
+  - type: redis
+    name: downloader-redis
+    ipAllowList: []
+
+  - type: web
+    name: downloader-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: sh -c "npx prisma migrate deploy && npm run start"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: STORAGE_DIR
+        value: /app/storage
+      - key: DATABASE_URL
+        fromDatabase:
+          name: downloader-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: downloader-redis
+          property: connectionString
+      - key: ADMIN_TOKEN
+        generateValue: true
+      - key: DEVICE_TOKEN_SECRET
+        generateValue: true
+      - key: AUTO_REGISTER_DEVICES
+        value: "true"
+      - key: REQUIRE_INVITE_CODE
+        value: "false"
+      - key: DEFAULT_DAILY_LIMIT
+        value: "20"
+      - key: ANALYZE_DAILY_LIMIT
+        value: "200"
+      - key: DOWNLOAD_CONCURRENCY
+        value: "3"
+
+  - type: worker
+    name: downloader-worker
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: npm run worker
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: STORAGE_DIR
+        value: /app/storage
+      - key: DATABASE_URL
+        fromDatabase:
+          name: downloader-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: downloader-redis
+          property: connectionString
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: DEVICE_TOKEN_SECRET
+        sync: false
+      - key: AUTO_REGISTER_DEVICES
+        value: "true"
+      - key: REQUIRE_INVITE_CODE
+        value: "false"
+      - key: DEFAULT_DAILY_LIMIT
+        value: "20"
+      - key: ANALYZE_DAILY_LIMIT
+        value: "200"
+      - key: DOWNLOAD_CONCURRENCY
+        value: "3"

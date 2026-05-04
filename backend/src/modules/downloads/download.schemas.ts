@@ -1,9 +1,16 @@
 import { z } from "zod";
 
+const trimMin1 = z.preprocess((val) => (typeof val === "string" ? val.trim() : val), z.string().min(1));
+
 export const createDownloadSchema = z.object({
-  url: z.string().min(1),
-  format: z.string().min(1),
-  quality: z.string().optional(),
+  url: trimMin1,
+  format: trimMin1,
+  quality: z.preprocess((val) => {
+    if (val == null || val === "") return undefined;
+    const s = typeof val === "string" ? val.trim() : val;
+    if (typeof s === "string" && s === "") return undefined;
+    return s;
+  }, z.string().min(1).optional()),
 });
 
 export type CreateDownloadBody = z.infer<typeof createDownloadSchema>;

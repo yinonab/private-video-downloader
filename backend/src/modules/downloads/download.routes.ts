@@ -176,8 +176,28 @@ const downloadRoutes: FastifyPluginAsync = async (app) => {
   app.post("/downloads", { preHandler: authDevice }, async (request, reply) => {
     const parsed = createDownloadSchema.safeParse(request.body);
     if (!parsed.success) {
+      request.log.warn(
+        {
+          downloadValidate: true,
+          accepted: false,
+          reason: "schema",
+          issues: parsed.error.flatten(),
+          formatReceived: (request.body as { format?: unknown })?.format,
+          qualityReceived: (request.body as { quality?: unknown })?.quality,
+        },
+        "POST /downloads validation failed"
+      );
       throw new AppError(codes.BAD_REQUEST, "Invalid body", 400);
     }
+    request.log.info(
+      {
+        downloadValidate: true,
+        acceptedShape: true,
+        formatReceived: parsed.data.format,
+        qualityReceived: parsed.data.quality,
+      },
+      "POST /downloads body shape ok"
+    );
     const ctx = request.deviceCtx!;
     const device = await app.prisma.device.findUnique({ where: { id: ctx.id } });
     const dailyLimit = device?.dailyLimit ?? ctx.dailyLimit;
