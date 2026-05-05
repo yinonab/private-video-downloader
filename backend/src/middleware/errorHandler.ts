@@ -13,6 +13,7 @@ export function errorHandler(
         code: error.code,
         message: error.message,
         details: error.details,
+        ...(error.meta ?? {}),
       },
     });
     return;

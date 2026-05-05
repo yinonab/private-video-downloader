@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:io";
 
 import "package:dio/dio.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_animate/flutter_animate.dart";
 import "package:lucide_icons_flutter/lucide_icons.dart";
@@ -10,9 +11,7 @@ import "../../core/app_scope.dart";
 import "../../core/config/build_flags.dart";
 import "../../core/l10n/api_error_localizations.dart";
 import "../../core/l10n/context_l10n.dart";
-import "../../l10n/app_localizations.dart";
-import "../../core/l10n/download_stage_localizations.dart";
-import "../../core/l10n/download_status_localizations.dart";
+import "../../core/l10n/download_job_ui_state.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
 import "../../core/theme/app_theme.dart";
@@ -46,6 +45,10 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   @override
   void initState() {
     super.initState();
+    assert(() {
+      if (kDebugMode) debugPrint("### JOB_STATUS_DEBUG ### polling start jobId=${widget.jobId}");
+      return true;
+    }());
     _tickOnce();
     _timer = Timer.periodic(const Duration(seconds: 2), (_) => _tickOnce());
     WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
@@ -53,6 +56,10 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
 
   @override
   void dispose() {
+    assert(() {
+      if (kDebugMode) debugPrint("### JOB_STATUS_DEBUG ### polling dispose jobId=${widget.jobId}");
+      return true;
+    }());
     _timer?.cancel();
     super.dispose();
   }
@@ -78,7 +85,24 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         _detail = next;
         _err = null;
       });
+      assert(() {
+        if (kDebugMode) {
+          debugPrint(
+            "### JOB_STATUS_DEBUG ### poll tick jobId=${widget.jobId} "
+            "status=${next.status} stage=${next.processingStage} progress=${next.progressPercent} terminal=${next.terminal}",
+          );
+        }
+        return true;
+      }());
       if (next.terminal) {
+        assert(() {
+          if (kDebugMode) {
+            debugPrint(
+              "### JOB_STATUS_DEBUG ### polling stop jobId=${widget.jobId} reason=terminal status=${next.status}",
+            );
+          }
+          return true;
+        }());
         _timer?.cancel();
       }
       if (next.status == "done") {
@@ -189,8 +213,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
     }
   }
 
-  bool _showServerProgress(DownloadDetailResponse d) =>
-      d.status == "queued" || d.status == "analyzing" || d.status == "running";
+  bool _showServerProgress(DownloadDetailResponse d) => !d.terminal;
 
   @override
   Widget build(BuildContext context) {
@@ -198,6 +221,35 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final d = _detail;
+
+    DownloadJobUiState? headlineUi;
+    DownloadJobUiState? progressUi;
+    if (d != null) {
+      final showProg = !d.terminal;
+      headlineUi = mapDownloadJobUi(
+        l10n,
+        jobId: d.id,
+        status: d.status,
+        processingStage: d.processingStage,
+        progressPercent: d.progressPercent,
+        requestedFormat: d.requestedFormat,
+        forDoneSavedLocallyHeadline: d.status == "done" && _localLookupDone && _localSaved,
+        compactProgressCard: false,
+        debugLog: !showProg,
+      );
+      if (showProg) {
+        progressUi = mapDownloadJobUi(
+          l10n,
+          jobId: d.id,
+          status: d.status,
+          processingStage: d.processingStage,
+          progressPercent: d.progressPercent,
+          requestedFormat: d.requestedFormat,
+          compactProgressCard: false,
+          debugLog: true,
+        );
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.downloadStatusTitle)),
@@ -290,28 +342,46 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                         switchInCurve: Curves.easeOut,
                         switchOutCurve: Curves.easeIn,
                         child: Align(
-                          key: ValueKey<String>("${d.status}|$_localSaved|$_localLookupDone"),
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Text(
-                            _headlineLabel(l10n, d),
-                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                          key: ValueKey<String>(
+                            "${d.status}|${d.processingStage}|${d.progressPercent}|${d.requestedFormat}|$_localSaved|$_localLookupDone",
                           ),
+                          alignment: AlignmentDirectional.centerStart,
+                          child: headlineUi == null
+                              ? const SizedBox.shrink()
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      headlineUi.screenHeadline,
+                                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                                    ),
+                                    if ((headlineUi.screenHeadlineSubtitle ?? "").trim().isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        headlineUi.screenHeadlineSubtitle!.trim(),
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: scheme.onSurfaceVariant,
+                                          height: 1.35,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
                         ),
                       ),
                       const SizedBox(height: 14),
                       if (_showServerProgress(d)) ...[
-                        Builder(
-                          builder: (context) {
-                            final indeterminate = d.status == "queued" && d.progress <= 0;
-                            final pct = d.progress.clamp(0, 100);
-                            return BrandedProgressBar(
-                              indeterminate: indeterminate,
-                              value: indeterminate ? null : pct / 100.0,
-                              percentLabel: indeterminate ? null : l10n.downloadPercentValue(pct),
-                              stageLabel: downloadStageTitle(l10n, d.status),
-                            );
-                          },
-                        ),
+                        if (progressUi != null) ...[
+                          BrandedProgressBar(
+                            indeterminate: progressUi.showIndeterminateProgress,
+                            value: progressUi.showDeterminateProgress ? (progressUi.determinatePercent ?? 0) / 100.0 : null,
+                            percentLabel: progressUi.showDeterminateProgress
+                                ? l10n.progressPercent(progressUi.determinatePercent ?? 0)
+                                : null,
+                            stageLabel: progressUi.progressStageTitle,
+                            stageSubtitle: progressUi.progressStageSubtitle,
+                          ),
+                        ],
                         if ((d.speedText ?? "").trim().isNotEmpty || (d.etaText ?? "").trim().isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Wrap(
@@ -385,7 +455,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                               indeterminate: _totalBytes <= 0,
                               value: _totalBytes > 0 ? (_receiveBytes / _totalBytes).clamp(0.0, 1.0) : null,
                               percentLabel: _totalBytes > 0
-                                  ? l10n.downloadPercentValue(
+                                  ? l10n.progressPercent(
                                       (100 * _receiveBytes / _totalBytes).clamp(0, 100).round(),
                                     )
                                   : null,
@@ -424,13 +494,6 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         ),
       ),
     );
-  }
-
-  String _headlineLabel(AppLocalizations l10n, DownloadDetailResponse d) {
-    if (d.status == "done" && _localLookupDone && _localSaved) {
-      return l10n.downloadStatusSavedOnDeviceTitle;
-    }
-    return localizedDownloadJobStatus(l10n, d.status);
   }
 
   Widget _ph(BuildContext context) => ColoredBox(

@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _openAnalyze(String raw) {
+  Future<void> _openAnalyze(String raw) async {
     final l10n = context.l10n;
     final u = UrlUtils.extractFirst(raw) ?? (UrlUtils.looksLikeHttpUrl(raw.trim()) ? raw.trim() : null);
     if (u == null || u.trim().isEmpty) {
@@ -62,12 +62,13 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     final cleanUrl = UrlUtils.stripTrailingJunk(u);
-    Navigator.push<void>(
+    await Navigator.push<void>(
       context,
       MaterialPageRoute<void>(
         builder: (_) => AnalyzeScreen(key: ValueKey<String>("analyze|$cleanUrl"), initialUrl: cleanUrl),
       ),
     );
+    if (mounted) await _load();
   }
 
   Future<void> _pasteDialog() async {

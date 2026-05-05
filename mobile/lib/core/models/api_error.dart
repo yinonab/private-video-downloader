@@ -8,6 +8,7 @@ class ApiError implements Exception {
     this.details,
     this.hebrewSummary,
     this.httpStatus,
+    this.existingJobId,
   });
 
   factory ApiError.fromUnknown(Object error) {
@@ -21,7 +22,14 @@ class ApiError implements Exception {
     final msg = raw.$1 == "NETWORK" && raw.$2 == "network" ? _dioMessageFallback(e) : raw.$2;
     final code = raw.$1;
     final heb = raw.$3 ?? hebrewForCode(code, e.response?.statusCode);
-    return ApiError(code: code, message: msg, details: raw.$4, httpStatus: e.response?.statusCode, hebrewSummary: heb);
+    return ApiError(
+      code: code,
+      message: msg,
+      details: raw.$4,
+      existingJobId: raw.$5,
+      httpStatus: e.response?.statusCode,
+      hebrewSummary: heb,
+    );
   }
 
   static String _dioMessageFallback(DioException e) {
@@ -34,11 +42,12 @@ class ApiError implements Exception {
   final String? details;
   final String? hebrewSummary;
   final int? httpStatus;
+  final String? existingJobId;
 
   String get localized => hebrewSummary ?? message;
 
-  /// Returns (code, message, hebrew?, details?)
-  static (String, String, String?, String?) _parseBody(Object? body) {
+  /// Returns (code, message, hebrew?, details?, existingJobId?)
+  static (String, String, String?, String?, String?) _parseBody(Object? body) {
     if (body is Map) {
       final err = body["error"];
       if (err is Map) {
@@ -46,13 +55,14 @@ class ApiError implements Exception {
         final code = "${map["code"] ?? map["cod"] ?? "ERROR"}".trim().isEmpty ? "ERROR" : "${map["code"]}";
         final message = "${map["message"] ?? ""}";
         final details = map["details"] == null ? null : "${map["details"]}";
-        return (code, message.isEmpty ? "שגיאה" : message, hebrewForCode(code, null), details);
+        final existingJobId = map["existingJobId"] != null ? "${map["existingJobId"]}" : null;
+        return (code, message.isEmpty ? "שגיאה" : message, hebrewForCode(code, null), details, existingJobId);
       }
     }
     if (body is String && body.isNotEmpty) {
-      return ("ERROR", body, null, null);
+      return ("ERROR", body, null, null, null);
     }
-    return ("NETWORK", "network", null, null);
+    return ("NETWORK", "network", null, null, null);
   }
 
   static String hebrewForCode(String code, int? http) {

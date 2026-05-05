@@ -58,11 +58,13 @@ export async function fetchMetadataJson(url: string): Promise<YtdlpVideoInfo> {
   return JSON.parse(line) as YtdlpVideoInfo;
 }
 
-export type DownloadFormatKind = "best" | "1080p" | "720p" | "480p" | "audio_mp3";
+export type DownloadFormatKind = "best" | "1080p" | "720p" | "480p" | "audio_mp3" | "tiktok_ready";
 
 /** yt-dlp `-f` selector for worker logs / diagnostics */
 export const YT_DLP_FORMAT_PRIMARY: Record<Exclude<DownloadFormatKind, never>, string> = {
   best: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+  /** Same source chain as best; TikTok normalization runs after download only for `tiktok_ready`. */
+  tiktok_ready: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
   "1080p":
     "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[height<=1080]/best[ext=mp4]/best",
   "720p":

@@ -15,6 +15,8 @@ String formatOptionDisplayLabel(BuildContext context, FormatOption f) {
       return l10n.format720pMp4;
     case "480p":
       return l10n.format480pMp4;
+    case "tiktok_ready":
+      return l10n.qualityTikTokReady;
     case "audio":
     case "audio_mp3":
       return l10n.formatAudioMp3;

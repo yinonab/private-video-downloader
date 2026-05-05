@@ -7,6 +7,7 @@ class BrandedProgressBar extends StatelessWidget {
     this.value,
     this.percentLabel,
     this.stageLabel,
+    this.stageSubtitle,
     this.bytesSubtitle,
     this.indeterminate = false,
     this.dense = false,
@@ -19,6 +20,9 @@ class BrandedProgressBar extends StatelessWidget {
   final String? percentLabel;
 
   final String? stageLabel;
+
+  /// Optional secondary line under [stageLabel] (e.g. long transcode explanation).
+  final String? stageSubtitle;
 
   final String? bytesSubtitle;
 
@@ -44,6 +48,13 @@ class BrandedProgressBar extends StatelessWidget {
                 ? theme.textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600)
                 : theme.textTheme.titleSmall?.copyWith(color: scheme.onSurface, fontWeight: FontWeight.w700),
           ),
+          if (stageSubtitle != null && stageSubtitle!.trim().isNotEmpty) ...[
+            SizedBox(height: dense ? 4 : 6),
+            Text(
+              stageSubtitle!,
+              style: theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
+            ),
+          ],
           SizedBox(height: dense ? 6 : 8),
         ],
         Row(

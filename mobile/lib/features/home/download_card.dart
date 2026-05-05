@@ -3,8 +3,7 @@ import "package:intl/intl.dart" hide TextDirection;
 import "package:lucide_icons_flutter/lucide_icons.dart";
 
 import "../../core/l10n/context_l10n.dart";
-import "../../core/l10n/download_stage_localizations.dart";
-import "../../core/l10n/download_status_localizations.dart";
+import "../../core/l10n/download_job_ui_state.dart";
 import "../../core/models/download_models.dart";
 import "../../core/widgets/branded_progress.dart";
 
@@ -51,7 +50,16 @@ class DownloadCard extends StatelessWidget {
     final sizeStr = item.file != null ? _fmtBytes(item.file!.sizeBytes) : null;
     final titleLine = item.title.isEmpty ? l10n.untitledVideo : item.title;
     final platformLine = item.platform.isEmpty ? l10n.unknownPlatform : item.platform;
-    final statusLabel = localizedDownloadJobStatus(l10n, item.status);
+    final ui = mapDownloadJobUi(
+      l10n,
+      jobId: item.id,
+      status: item.status,
+      processingStage: item.processingStage,
+      progressPercent: item.progressPercent,
+      requestedFormat: item.requestedFormat,
+      compactProgressCard: true,
+    );
+    final statusLabel = ui.statusChipLabel;
     final done = item.statusParsed.label == DownloadUiStatusLabel.done;
     final failedOrCanceled = item.status == "failed" || item.status == "canceled";
 
@@ -117,20 +125,34 @@ class DownloadCard extends StatelessWidget {
                               backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.65),
                               side: BorderSide.none,
                             ),
+                            if (done &&
+                                (item.requestedFormat ?? "").trim().toLowerCase() == "tiktok_ready")
+                              Chip(
+                                label: Text(l10n.downloadChipTikTokReady),
+                                visualDensity: VisualDensity.compact,
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                labelStyle: theme.textTheme.labelMedium?.copyWith(
+                                  color: scheme.onSecondaryContainer,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                backgroundColor: scheme.secondaryContainer.withValues(alpha: 0.55),
+                                side: BorderSide.none,
+                              ),
                           ],
                         ),
                         if (item.active) ...[
                           const SizedBox(height: 12),
                           Builder(
                             builder: (context) {
-                              final indeterminate = item.status == "queued" && item.progress <= 0;
-                              final pct = item.progress.clamp(0, 100);
+                              final pct = ui.determinatePercent ?? 0;
                               return BrandedProgressBar(
                                 dense: true,
-                                indeterminate: indeterminate,
-                                value: indeterminate ? null : pct / 100.0,
-                                percentLabel: indeterminate ? null : l10n.downloadPercentValue(pct),
-                                stageLabel: downloadStageTitle(l10n, item.status),
+                                indeterminate: ui.showIndeterminateProgress,
+                                value: ui.showDeterminateProgress ? pct / 100.0 : null,
+                                percentLabel: ui.showDeterminateProgress ? l10n.progressPercent(pct) : null,
+                                stageLabel: ui.progressStageTitle,
+                                stageSubtitle: ui.progressStageSubtitle,
                               );
                             },
                           ),

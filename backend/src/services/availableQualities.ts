@@ -87,16 +87,19 @@ export function computeAvailableQualities(
   let v720: boolean;
   let v480: boolean;
   let audioAvail: boolean;
+  let tiktokReadyAvail: boolean;
 
   if (formats.length === 0) {
     const ok = metaLooksDownloadable(meta);
     bestAvail = ok;
     audioAvail = ok;
+    tiktokReadyAvail = ok;
     v1080 = false;
     v720 = false;
     v480 = false;
   } else {
     bestAvail = anyVideo || metaLooksDownloadable(meta);
+    tiktokReadyAvail = bestAvail;
     v1080 = hasHeightInRange(formats, 900, 1080);
     v720 = hasHeightInRange(formats, 600, 720);
     v480 = has480Tier(formats);
@@ -112,6 +115,7 @@ export function computeAvailableQualities(
 
   const result = [
     mk("best", "Best MP4", bestAvail),
+    mk("tiktok_ready", "TikTok-ready MP4", tiktokReadyAvail),
     mk("1080p", "1080p MP4", v1080),
     mk("720p", "720p MP4", v720),
     mk("480p", "480p MP4", v480),

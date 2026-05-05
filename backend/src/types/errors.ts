@@ -2,12 +2,21 @@ export class AppError extends Error {
   readonly statusCode: number;
   readonly code: string;
   readonly details?: string;
+  /** Merged into JSON error body (e.g. existingJobId on 409). */
+  readonly meta?: Record<string, unknown>;
 
-  constructor(code: string, message: string, statusCode = 400, details?: string) {
+  constructor(
+    code: string,
+    message: string,
+    statusCode = 400,
+    details?: string,
+    meta?: Record<string, unknown>
+  ) {
     super(message);
     this.code = code;
     this.statusCode = statusCode;
     this.details = details;
+    this.meta = meta;
     this.name = "AppError";
   }
 }

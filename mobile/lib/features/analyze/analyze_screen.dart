@@ -1,4 +1,5 @@
 import "package:dio/dio.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_animate/flutter_animate.dart";
 import "package:lucide_icons_flutter/lucide_icons.dart";
@@ -125,6 +126,24 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       }
       downloadDebugStackTrace("analyze_screen._startDownload", st);
       if (!mounted) return;
+      if (e is ApiError && e.code == "CONFLICT") {
+        final existingId = e.existingJobId?.trim();
+        if (existingId != null && existingId.isNotEmpty) {
+          assert(() {
+            if (kDebugMode) {
+              debugPrint(
+                "### JOB_STATUS_DEBUG ### analyze CONFLICT — navigating to existing jobId=$existingId",
+              );
+            }
+            return true;
+          }());
+          await Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => DownloadStatusScreen(jobId: existingId)),
+          );
+          return;
+        }
+      }
       final msg = e is ApiError ? localizedApiErrorMessage(l10n, e) : "$e";
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } finally {

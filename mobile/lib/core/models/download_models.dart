@@ -31,12 +31,22 @@ class DownloadItem {
     required this.platform,
     this.thumbnail,
     required this.createdAt,
-    required this.progress,
+    this.processingStage,
+    this.progressPercent,
+    this.requestedFormat,
     this.speedText,
     this.etaText,
     this.error,
     this.file,
   });
+
+  static int? _parseOptionalPercent(Map<String, dynamic> m) {
+    final raw = m["progressPercent"] ?? m["progress"];
+    if (raw == null) return null;
+    if (raw is num) return raw.round().clamp(0, 100);
+    final p = int.tryParse("$raw");
+    return p?.clamp(0, 100);
+  }
 
   factory DownloadItem.fromJson(Map<String, dynamic>? j) {
     final m = Map<String, dynamic>.from(j ?? {});
@@ -45,18 +55,26 @@ class DownloadItem {
     if (m["file"] is Map) {
       fileObj = DownloadFile.fromJson(Map<String, dynamic>.from(m["file"] as Map));
     }
-    final prog = m["progress"] is num ? (m["progress"] as num).round() : int.tryParse("${m["progress"] ?? ""}");
+    var prog = _parseOptionalPercent(m);
 
     final titleCandidate = "${m["title"] ?? ""}".trim();
     final platformCandidate = "${m["platform"] ?? ""}".trim();
+    final st = "${m["status"] ?? ""}".trim().isEmpty ? "unknown" : "${m["status"]}";
+    final terminal = {"done", "failed", "canceled"}.contains(st);
+    if (!terminal && prog != null && prog <= 0) prog = null;
+    final stageTrimmed = m["processingStage"]?.toString().trim() ?? "";
+    final fmtTrimmed = m["format"]?.toString().trim() ?? "";
+
     return DownloadItem(
       id: "${m["id"] ?? ""}",
-      status: "${m["status"] ?? ""}".trim().isEmpty ? "unknown" : "${m["status"]}",
+      status: st,
       title: titleCandidate,
       platform: platformCandidate,
       thumbnail: m["thumbnail"]?.toString(),
       createdAt: date ?? DateTime.fromMillisecondsSinceEpoch(0),
-      progress: prog ?? 0,
+      processingStage: stageTrimmed.isEmpty ? null : stageTrimmed,
+      progressPercent: prog,
+      requestedFormat: fmtTrimmed.isEmpty ? null : fmtTrimmed,
       speedText: m["speedText"]?.toString(),
       etaText: m["etaText"]?.toString(),
       error: m["error"]?.toString(),
@@ -70,13 +88,19 @@ class DownloadItem {
   final String platform;
   final String? thumbnail;
   final DateTime createdAt;
-  final int progress;
+  final String? processingStage;
+
+  /// Server-reported 0–100, or null when unknown / not meaningful.
+  final int? progressPercent;
+
+  /// Canonical download format id (`tiktok_ready`, `best`, …).
+  final String? requestedFormat;
   final String? speedText;
   final String? etaText;
   final String? error;
   final DownloadFile? file;
 
-  bool get active => {"queued", "analyzing", "running"}.contains(status);
+  bool get active => !{"done", "failed", "canceled"}.contains(status);
 
   DownloadStatusParsed get statusParsed => DownloadStatusParsed.fromRaw(status);
 }
@@ -152,7 +176,9 @@ class DownloadDetailResponse {
   DownloadDetailResponse({
     required this.id,
     required this.status,
-    required this.progress,
+    this.processingStage,
+    this.progressPercent,
+    this.requestedFormat,
     this.speedText,
     this.etaText,
     this.title,
@@ -163,7 +189,20 @@ class DownloadDetailResponse {
 
   factory DownloadDetailResponse.fromJson(Map<String, dynamic>? j) {
     final m = Map<String, dynamic>.from(j ?? {});
-    final prog = (m["progress"] is num) ? (m["progress"] as num).round() : int.tryParse("${m["progress"] ?? 0}") ?? 0;
+    final progRaw = m["progressPercent"] ?? m["progress"];
+    int? prog;
+    if (progRaw != null) {
+      if (progRaw is num) {
+        prog = progRaw.round().clamp(0, 100);
+      } else {
+        prog = int.tryParse("$progRaw")?.clamp(0, 100);
+      }
+    }
+    final statusStr = "${m["status"] ?? ""}";
+    final terminal = {"done", "failed", "canceled"}.contains(statusStr);
+    if (!terminal && prog != null && prog <= 0) prog = null;
+    final stageTrimmed = m["processingStage"]?.toString().trim() ?? "";
+    final fmtTrimmed = m["format"]?.toString().trim() ?? "";
     DownloadFile? fileObj;
     if (m["file"] is Map) {
       fileObj = DownloadFile.fromJson(Map<String, dynamic>.from(m["file"] as Map));
@@ -171,7 +210,9 @@ class DownloadDetailResponse {
     return DownloadDetailResponse(
       id: "${m["id"] ?? ""}",
       status: "${m["status"] ?? ""}",
-      progress: prog,
+      processingStage: stageTrimmed.isEmpty ? null : stageTrimmed,
+      progressPercent: prog,
+      requestedFormat: fmtTrimmed.isEmpty ? null : fmtTrimmed,
       speedText: m["speedText"]?.toString(),
       etaText: m["etaText"]?.toString(),
       title: m["title"]?.toString(),
@@ -185,7 +226,13 @@ class DownloadDetailResponse {
 
   final String id;
   final String status;
-  final int progress;
+  final String? processingStage;
+
+  /// Server-reported 0–100, or null when unknown / not meaningful.
+  final int? progressPercent;
+
+  /// Canonical download format id (`tiktok_ready`, `best`, …).
+  final String? requestedFormat;
   final String? speedText;
   final String? etaText;
   final String? title;

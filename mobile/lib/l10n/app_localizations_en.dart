@@ -163,6 +163,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get formatAudioMp3 => 'Audio MP3';
 
   @override
+  String get qualityTikTokReady => 'TikTok-ready MP4';
+
+  @override
+  String get qualityTikTokReadyDescription =>
+      'Optimized for TikTok and social apps. May take longer.';
+
+  @override
+  String get qualityTikTokReadyBadge => 'Recommended for upload';
+
+  @override
+  String get downloadPreparingTikTokReadyTitle =>
+      'Preparing TikTok-ready video';
+
+  @override
+  String get downloadPreparingTikTokReadySubtitle =>
+      'This video is being optimized for TikTok and social apps. It may take a few minutes.';
+
+  @override
+  String get downloadChipTikTokReady => 'TikTok-ready';
+
+  @override
   String get qualityUnavailableForVideo => 'Not available for this video';
 
   @override
@@ -392,6 +413,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'The selected quality is not available for this video. Try another quality or Best MP4.';
 
   @override
+  String get downloadJobErrorNormalizeFailed =>
+      'Could not prepare the video in a supported format.';
+
+  @override
   String get shareNoLinkInContent => 'No shared link was found.';
 
   @override
@@ -480,6 +505,51 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadStatusLoadingJob => 'Loading download…';
+
+  @override
+  String get stageQueued => 'Queued';
+
+  @override
+  String get stagePreparing => 'Preparing your video...';
+
+  @override
+  String get stageDownloading => 'Downloading...';
+
+  @override
+  String get stageCheckingCompatibility => 'Checking video compatibility...';
+
+  @override
+  String get stageRemuxing => 'Preparing video...';
+
+  @override
+  String get stageNormalizingAudio => 'Optimizing audio...';
+
+  @override
+  String get stageFullTranscoding => 'Processing video...';
+
+  @override
+  String get stageFinalizing => 'Finalizing...';
+
+  @override
+  String get stageDone => 'Ready to save';
+
+  @override
+  String get stageFailed => 'Failed';
+
+  @override
+  String get fullTranscodeTitle => 'Extra processing needed';
+
+  @override
+  String get fullTranscodeSubtitle =>
+      'This video needs extra processing to work well with TikTok and other apps. It may take a few minutes.';
+
+  @override
+  String progressPercent(int percent) {
+    return '$percent%';
+  }
+
+  @override
+  String get downloadUnknownProgress => 'Working on it...';
 
   @override
   String get bootstrapLoadingShort => 'Starting LinkClip…';

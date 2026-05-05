@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { Worker } from "bullmq";
@@ -7,6 +8,21 @@ import { config } from "../config";
 import { DOWNLOAD_QUEUE_NAME } from "../plugins/queues";
 import type { QueuePayload } from "../modules/downloads/download.service";
 import { ensureDeviceDirs, getAudioDir, getVideoDir } from "../services/storage";
+import {
+  DOWNLOAD_JOB_ERROR_NORMALIZE_FAILED,
+  ffmpegNormalizeCommandSummary,
+  ffprobeMedia,
+  runFfmpegAudioNormalize,
+  runFfmpegFullTranscode,
+  runFfmpegRemux,
+  selectNormalizeStrategy,
+  type NormalizeStrategy,
+  type ProbeResult,
+} from "../services/ffmpegNormalize";
+import {
+  createProgressThrottler,
+  updateDownloadJobProgress,
+} from "../services/jobProgress";
 import {
   buildDownloadArgs,
   extractFormatArg,
@@ -28,7 +44,20 @@ function mimeForExt(ext: string): string {
   return "application/octet-stream";
 }
 
-const VIDEO_QUALITY_FORMATS: DownloadFormatKind[] = ["1080p", "720p", "480p"];
+const VIDEO_QUALITY_FORMATS: DownloadFormatKind[] = ["1080p", "720p", "480p", "tiktok_ready"];
+
+const OUTPUT_INVALID_MSG = "לא ניתן להוריד את הסרטון הזה בפורמט זמין.";
+
+function stageForStrategy(s: NormalizeStrategy): string {
+  switch (s) {
+    case "remux":
+      return "remuxing";
+    case "audio_only":
+      return "normalizing_audio";
+    default:
+      return "full_transcoding";
+  }
+}
 
 export function createDownloadWorker(prisma: PrismaClient): Worker {
   const connection = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
@@ -44,11 +73,33 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
         include: { link: true },
       });
       const platformLabel = jobRow?.link?.platform ?? jobRow?.link?.extractor ?? "unknown";
+      const isTikTokReady = format === "tiktok_ready";
 
-      await prisma.downloadJob.update({
-        where: { id: jobId },
-        data: { status: "running", progress: 0, error: null },
-      });
+      logger.info(
+        {
+          jobId,
+          platform: platformLabel,
+          requestedFormat: format,
+          normalizedFormat: format,
+          isTikTokReady,
+          normalizationEnabled: isTikTokReady,
+        },
+        "download worker job picked"
+      );
+
+      await updateDownloadJobProgress(
+        prisma,
+        jobId,
+        {
+          status: "running",
+          processingStage: "preparing",
+          progress: null,
+          error: null,
+          speedText: null,
+          etaText: null,
+        },
+        { platform: platformLabel, requestedQuality: format, logMessage: "download picked — preparing" }
+      );
 
       await ensureDeviceDirs(deviceId);
 
@@ -65,14 +116,18 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
           const now = Date.now();
           if (now - lastDbWrite < 1500) return;
           lastDbWrite = now;
-          void prisma.downloadJob.update({
-            where: { id: jobId },
-            data: {
-              progress: parsed.progress,
+          const pct = parsed.progress > 0 ? parsed.progress : null;
+          void updateDownloadJobProgress(
+            prisma,
+            jobId,
+            {
+              processingStage: "downloading",
+              progress: pct,
               speedText: parsed.speedText,
               etaText: parsed.etaText,
             },
-          });
+            { platform: platformLabel, requestedQuality: format, logMessage: "yt-dlp progress updated" }
+          );
         };
       })();
 
@@ -94,6 +149,13 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
       const primaryBuilt = buildDownloadArgs({ url, deviceId, jobId, format });
       lastArgs = primaryBuilt.args;
       primaryFormatStr = extractFormatArg(primaryBuilt.args) ?? "(unknown)";
+
+      await updateDownloadJobProgress(
+        prisma,
+        jobId,
+        { processingStage: "downloading", progress: null },
+        { platform: platformLabel, requestedQuality: format }
+      );
 
       let code = await runYtDlpOnce(primaryBuilt.args);
 
@@ -145,14 +207,19 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
 
       if (code !== 0) {
         const userMsg = formatDownloadFailureMessage(lastStderr, fallbackAttempted);
-        await prisma.downloadJob.update({
-          where: { id: jobId },
-          data: {
+        await updateDownloadJobProgress(
+          prisma,
+          jobId,
+          {
             status: "failed",
-            progress: 0,
+            processingStage: "failed",
+            progress: null,
             error: userMsg.slice(0, 4000),
+            speedText: null,
+            etaText: null,
           },
-        });
+          { platform: platformLabel, requestedQuality: format, logMessage: "download final status updated — failed" }
+        );
         await prisma.eventLog.create({
           data: {
             jobId,
@@ -182,18 +249,22 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
       try {
         entries = await fs.readdir(dir);
       } catch {
-        await prisma.downloadJob.update({
-          where: { id: jobId },
-          data: { status: "failed", error: OUTPUT_INVALID_MSG },
+        await updateDownloadJobProgress(prisma, jobId, {
+          status: "failed",
+          processingStage: "failed",
+          progress: null,
+          error: OUTPUT_INVALID_MSG,
         });
         return;
       }
 
       const candidates = entries.filter((f) => f.startsWith(`${jobId}.`));
       if (!candidates.length) {
-        await prisma.downloadJob.update({
-          where: { id: jobId },
-          data: { status: "failed", error: OUTPUT_INVALID_MSG },
+        await updateDownloadJobProgress(prisma, jobId, {
+          status: "failed",
+          processingStage: "failed",
+          progress: null,
+          error: OUTPUT_INVALID_MSG,
         });
         logger.warn({ jobId, dir }, "download output file missing");
         return;
@@ -212,9 +283,11 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
 
       const bestPath = path.join(dir, best);
       if (bestSize <= 0) {
-        await prisma.downloadJob.update({
-          where: { id: jobId },
-          data: { status: "failed", error: OUTPUT_INVALID_MSG },
+        await updateDownloadJobProgress(prisma, jobId, {
+          status: "failed",
+          processingStage: "failed",
+          progress: null,
+          error: OUTPUT_INVALID_MSG,
         });
         logger.warn(
           {
@@ -229,43 +302,350 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
         return;
       }
 
-      const ext = path.extname(best);
-      const mimeType = mimeForExt(ext);
-      const storageKey = path.posix.join("devices", deviceId, primaryBuilt.subdir, best);
+      let assetFilename = best;
+      let assetSize = bestSize;
+      let mimeType = mimeForExt(path.extname(best));
 
-      await prisma.fileAsset.create({
+      if (primaryBuilt.subdir === "videos") {
+        if (isTikTokReady) {
+          await updateDownloadJobProgress(
+            prisma,
+            jobId,
+            { processingStage: "checking_compatibility", progress: null },
+            {
+              platform: platformLabel,
+              requestedQuality: format,
+              requestedFormat: format,
+              normalizationEnabled: true,
+              isTikTokReady: true,
+            }
+          );
+
+          let probe: ProbeResult;
+          try {
+            probe = await ffprobeMedia(bestPath);
+          } catch (err) {
+            logger.warn({ jobId, err, inputPath: bestPath }, "ffprobe failed — using full transcode");
+            probe = { durationMs: 0 };
+          }
+
+          logger.info(
+            {
+              jobId,
+              platform: platformLabel,
+              inputPath: bestPath,
+              durationMs: probe.durationMs,
+              videoCodec: probe.video?.codec,
+              pixFmt: probe.video?.pixFmt,
+              width: probe.video?.width,
+              height: probe.video?.height,
+              videoProfile: probe.video?.profile,
+              audioCodec: probe.audio?.codec,
+              audioProfile: probe.audio?.profile,
+              normalizationEnabled: true,
+              isTikTokReady: true,
+            },
+            "ffprobe compatibility summary"
+          );
+
+          const strategy = selectNormalizeStrategy(probe);
+          logger.info(
+            {
+              jobId,
+              platform: platformLabel,
+              strategy,
+              normalizationEnabled: true,
+              normalizationStrategy: strategy,
+              isTikTokReady: true,
+            },
+            "normalization strategy selected"
+          );
+
+          await updateDownloadJobProgress(
+            prisma,
+            jobId,
+            { processingStage: stageForStrategy(strategy), progress: null },
+            {
+              platform: platformLabel,
+              requestedQuality: format,
+              requestedFormat: format,
+              strategy,
+              normalizationEnabled: true,
+              isTikTokReady: true,
+            }
+          );
+
+          const tmpName = `${jobId}-normalize-${randomBytes(8).toString("hex")}.tmp.mp4`;
+          const tempNormPath = path.join(dir, tmpName);
+
+          const throttle =
+            strategy === "full_transcode"
+              ? createProgressThrottler((pct) => {
+                  void updateDownloadJobProgress(
+                    prisma,
+                    jobId,
+                    { processingStage: "full_transcoding", progress: pct },
+                    {
+                      platform: platformLabel,
+                      requestedQuality: format,
+                      requestedFormat: format,
+                      strategy,
+                      normalizationEnabled: true,
+                      isTikTokReady: true,
+                      logMessage: "ffmpeg progress updated",
+                    }
+                  );
+                })
+              : null;
+
+          let ffmpegResult: { code: number | null; stderrTail: string; args: string[] };
+          if (strategy === "remux") {
+            ffmpegResult = await runFfmpegRemux({ inputPath: bestPath, outputTempPath: tempNormPath });
+          } else if (strategy === "audio_only") {
+            ffmpegResult = await runFfmpegAudioNormalize({ inputPath: bestPath, outputTempPath: tempNormPath });
+          } else {
+            ffmpegResult = await runFfmpegFullTranscode({
+              inputPath: bestPath,
+              outputTempPath: tempNormPath,
+              durationMs: probe.durationMs,
+              onProgress: throttle ? (p) => throttle(p) : undefined,
+            });
+          }
+
+          const ffmpegCommandSummary = ffmpegNormalizeCommandSummary(ffmpegResult.args);
+
+          let normStat: { size: number } | null = null;
+          try {
+            const st = await fs.stat(tempNormPath);
+            normStat = { size: st.size };
+          } catch {
+            normStat = null;
+          }
+          const normalizedBytes = normStat?.size ?? 0;
+          const normalizeOk = ffmpegResult.code === 0 && normalizedBytes > 0;
+
+          if (!normalizeOk) {
+            await fs.unlink(tempNormPath).catch(() => {});
+            await updateDownloadJobProgress(
+              prisma,
+              jobId,
+              {
+                status: "failed",
+                processingStage: "failed",
+                progress: null,
+                error: DOWNLOAD_JOB_ERROR_NORMALIZE_FAILED,
+              },
+              {
+                platform: platformLabel,
+                requestedQuality: format,
+                requestedFormat: format,
+                strategy,
+                normalizationEnabled: true,
+                isTikTokReady: true,
+                logMessage: "download final status updated — normalize failed",
+              }
+            );
+            logger.warn(
+              {
+                jobId,
+                platform: platformLabel,
+                strategy,
+                inputPath: bestPath,
+                normalizedTempPath: tempNormPath,
+                inputBytes: bestSize,
+                normalizedBytes,
+                ffmpegCommandSummary,
+                ffmpegExitCode: ffmpegResult.code,
+                stderrTail: ffmpegResult.stderrTail,
+                success: false,
+                normalizationEnabled: true,
+                isTikTokReady: true,
+              },
+              "ffmpeg normalize failed"
+            );
+            return;
+          }
+
+          await updateDownloadJobProgress(
+            prisma,
+            jobId,
+            { processingStage: "finalizing", progress: null },
+            {
+              platform: platformLabel,
+              requestedQuality: format,
+              requestedFormat: format,
+              strategy,
+              normalizationEnabled: true,
+              isTikTokReady: true,
+              logMessage: "download stage updated — finalizing",
+            }
+          );
+
+          const finalName = `${jobId}.mp4`;
+          const finalPath = path.join(dir, finalName);
+          for (const name of candidates) {
+            await fs.unlink(path.join(dir, name)).catch(() => {});
+          }
+
+          try {
+            await fs.rename(tempNormPath, finalPath);
+          } catch (err) {
+            await fs.unlink(tempNormPath).catch(() => {});
+            await updateDownloadJobProgress(
+              prisma,
+              jobId,
+              {
+                status: "failed",
+                processingStage: "failed",
+                progress: null,
+                error: DOWNLOAD_JOB_ERROR_NORMALIZE_FAILED,
+              },
+              {
+                platform: platformLabel,
+                requestedQuality: format,
+                requestedFormat: format,
+                strategy,
+                normalizationEnabled: true,
+                isTikTokReady: true,
+              }
+            );
+            logger.warn(
+              {
+                jobId,
+                platform: platformLabel,
+                err,
+                strategy,
+                normalizedTempPath: tempNormPath,
+                finalPath,
+                success: false,
+                normalizationEnabled: true,
+                isTikTokReady: true,
+              },
+              "ffmpeg normalize rename to final asset failed"
+            );
+            return;
+          }
+
+          let finalSize = normalizedBytes;
+          try {
+            finalSize = (await fs.stat(finalPath)).size;
+          } catch {
+            /* keep */
+          }
+
+          assetFilename = finalName;
+          assetSize = finalSize;
+          mimeType = "video/mp4";
+
+          logger.info(
+            {
+              jobId,
+              platform: platformLabel,
+              strategy,
+              inputPath: bestPath,
+              finalPath,
+              inputBytes: bestSize,
+              outputBytes: finalSize,
+              durationMs: probe.durationMs,
+              ffmpegCommandSummary,
+              ffmpegExitCode: ffmpegResult.code,
+              success: true,
+              normalizationEnabled: true,
+              normalizationStrategy: strategy,
+              isTikTokReady: true,
+            },
+            "ffmpeg normalize succeeded"
+          );
+        } else {
+          await updateDownloadJobProgress(
+            prisma,
+            jobId,
+            { processingStage: "finalizing", progress: null },
+            {
+              platform: platformLabel,
+              requestedQuality: format,
+              requestedFormat: format,
+              normalizationEnabled: false,
+              isTikTokReady: false,
+              logMessage: "download stage updated — finalizing (fast path)",
+            }
+          );
+          logger.info(
+            {
+              jobId,
+              platform: platformLabel,
+              requestedFormat: format,
+              normalizedFormat: format,
+              isTikTokReady: false,
+              normalizationEnabled: false,
+              inputBytes: bestSize,
+              outputFilename: assetFilename,
+              mimeType,
+            },
+            "download fast path — ffmpeg normalization skipped"
+          );
+        }
+      } else {
+        await updateDownloadJobProgress(
+          prisma,
+          jobId,
+          { processingStage: "finalizing", progress: null },
+          { platform: platformLabel, requestedQuality: format, logMessage: "download stage updated — finalizing (audio)" }
+        );
+      }
+
+      const storageKey = path.posix.join("devices", deviceId, primaryBuilt.subdir, assetFilename);
+
+      const createdAsset = await prisma.fileAsset.create({
         data: {
           deviceId,
           jobId,
           type: primaryBuilt.subdir === "videos" ? "video" : "audio",
           storageKey,
-          filename: best,
+          filename: assetFilename,
           mimeType,
-          sizeBytes: BigInt(bestSize),
+          sizeBytes: BigInt(assetSize),
         },
       });
 
-      await prisma.downloadJob.update({
-        where: { id: jobId },
-        data: {
+      await updateDownloadJobProgress(
+        prisma,
+        jobId,
+        {
           status: "done",
+          processingStage: "done",
           progress: 100,
           speedText: null,
           etaText: null,
           error: null,
         },
-      });
+        {
+          platform: platformLabel,
+          requestedQuality: format,
+          requestedFormat: format,
+          normalizationEnabled: isTikTokReady,
+          isTikTokReady,
+          logMessage: "download final status updated — done",
+        }
+      );
 
       logger.info(
         {
           jobId,
           platform: platformLabel,
+          requestedFormat: format,
           requestedQuality: format,
           primaryYtDlpFormat: primaryFormatStr,
           fallbackAttempted,
           finalFormatString: finalFormatStr,
-          outputPath: bestPath,
-          outputBytes: bestSize,
+          outputFilename: assetFilename,
+          outputBytes: assetSize,
+          fileAssetId: createdAsset.id,
+          finalStatus: "done",
+          processingStage: "done",
+          progressPercent: 100,
+          normalizationEnabled: isTikTokReady,
+          isTikTokReady,
         },
         "download completed"
       );
@@ -282,5 +662,3 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
 
   return worker;
 }
-
-const OUTPUT_INVALID_MSG = "לא ניתן להוריד את הסרטון הזה בפורמט זמין.";

@@ -392,6 +392,42 @@ abstract class AppLocalizations {
   /// **'Audio MP3'**
   String get formatAudioMp3;
 
+  /// No description provided for @qualityTikTokReady.
+  ///
+  /// In en, this message translates to:
+  /// **'TikTok-ready MP4'**
+  String get qualityTikTokReady;
+
+  /// No description provided for @qualityTikTokReadyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Optimized for TikTok and social apps. May take longer.'**
+  String get qualityTikTokReadyDescription;
+
+  /// No description provided for @qualityTikTokReadyBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended for upload'**
+  String get qualityTikTokReadyBadge;
+
+  /// No description provided for @downloadPreparingTikTokReadyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing TikTok-ready video'**
+  String get downloadPreparingTikTokReadyTitle;
+
+  /// No description provided for @downloadPreparingTikTokReadySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This video is being optimized for TikTok and social apps. It may take a few minutes.'**
+  String get downloadPreparingTikTokReadySubtitle;
+
+  /// No description provided for @downloadChipTikTokReady.
+  ///
+  /// In en, this message translates to:
+  /// **'TikTok-ready'**
+  String get downloadChipTikTokReady;
+
   /// No description provided for @qualityUnavailableForVideo.
   ///
   /// In en, this message translates to:
@@ -824,6 +860,12 @@ abstract class AppLocalizations {
   /// **'The selected quality is not available for this video. Try another quality or Best MP4.'**
   String get downloadJobErrorQuality;
 
+  /// No description provided for @downloadJobErrorNormalizeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not prepare the video in a supported format.'**
+  String get downloadJobErrorNormalizeFailed;
+
   /// No description provided for @shareNoLinkInContent.
   ///
   /// In en, this message translates to:
@@ -991,6 +1033,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loading download…'**
   String get downloadStatusLoadingJob;
+
+  /// No description provided for @stageQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued'**
+  String get stageQueued;
+
+  /// No description provided for @stagePreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing your video...'**
+  String get stagePreparing;
+
+  /// No description provided for @stageDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading...'**
+  String get stageDownloading;
+
+  /// No description provided for @stageCheckingCompatibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking video compatibility...'**
+  String get stageCheckingCompatibility;
+
+  /// No description provided for @stageRemuxing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing video...'**
+  String get stageRemuxing;
+
+  /// No description provided for @stageNormalizingAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Optimizing audio...'**
+  String get stageNormalizingAudio;
+
+  /// No description provided for @stageFullTranscoding.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing video...'**
+  String get stageFullTranscoding;
+
+  /// No description provided for @stageFinalizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finalizing...'**
+  String get stageFinalizing;
+
+  /// No description provided for @stageDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to save'**
+  String get stageDone;
+
+  /// No description provided for @stageFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get stageFailed;
+
+  /// No description provided for @fullTranscodeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra processing needed'**
+  String get fullTranscodeTitle;
+
+  /// No description provided for @fullTranscodeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This video needs extra processing to work well with TikTok and other apps. It may take a few minutes.'**
+  String get fullTranscodeSubtitle;
+
+  /// No description provided for @progressPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}%'**
+  String progressPercent(int percent);
+
+  /// No description provided for @downloadUnknownProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Working on it...'**
+  String get downloadUnknownProgress;
 
   /// No description provided for @bootstrapLoadingShort.
   ///

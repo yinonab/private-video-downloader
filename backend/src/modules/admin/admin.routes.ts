@@ -7,6 +7,7 @@ import { z } from "zod";
 import { authAdmin } from "../../middleware/authAdmin";
 import { config } from "../../config";
 import { getYtDlpVersion, type DownloadFormatKind } from "../../services/ytdlp";
+import { DOWNLOAD_ALLOWED_FORMATS } from "../../modules/downloads/download.service";
 import { logger } from "../../services/logger";
 import { deleteJobFilesFromDisk } from "../../services/storage";
 import type { Device, InviteCode } from "@prisma/client";
@@ -189,7 +190,7 @@ const adminRoutes: FastifyPluginAsync = async (app) => {
       return;
     }
     const fmt = job.format ?? "best";
-    const allowed = new Set(["best", "1080p", "720p", "480p", "audio_mp3"]);
+    const allowed = new Set<string>(DOWNLOAD_ALLOWED_FORMATS);
     const kind = (allowed.has(fmt) ? fmt : "best") as DownloadFormatKind;
 
     await app.prisma.downloadJob.update({

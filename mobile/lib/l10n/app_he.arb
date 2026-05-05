@@ -54,6 +54,12 @@
   "format720pMp4": "720p MP4",
   "format480pMp4": "480p MP4",
   "formatAudioMp3": "Audio MP3",
+  "qualityTikTokReady": "מתאים לטיק טוק",
+  "qualityTikTokReadyDescription": "מותאם לטיק טוק ולאפליקציות חברתיות. עשוי לקחת יותר זמן.",
+  "qualityTikTokReadyBadge": "מומלץ להעלאה",
+  "downloadPreparingTikTokReadyTitle": "מכינים סרטון מותאם לטיק טוק",
+  "downloadPreparingTikTokReadySubtitle": "הסרטון עובר התאמה לטיק טוק ולאפליקציות חברתיות. זה עשוי לקחת כמה דקות.",
+  "downloadChipTikTokReady": "מותאם לטיק טוק",
   "qualityUnavailableForVideo": "לא זמין לסרטון הזה",
   "downloadStatusTitle": "סטטוס הורדה",
   "downloadStatusQueued": "בתור",
@@ -136,6 +142,7 @@
   "autoRegisterManualSetup": "הגדרה ידנית / מתקדם",
   "downloadJobErrorGeneric": "לא ניתן להוריד את הסרטון הזה בפורמט זמין.",
   "downloadJobErrorQuality": "האיכות שנבחרה לא זמינה לסרטון הזה. נסה איכות אחרת או Best MP4.",
+  "downloadJobErrorNormalizeFailed": "לא ניתן להכין את הסרטון לפורמט נתמך.",
   "shareNoLinkInContent": "לא נמצא קישור לשיתוף",
   "settingsMeStatusLabel": "סטטוס במערכת",
   "settingsMeNameLabel": "שם במערכת",
@@ -174,5 +181,24 @@
   },
   "downloadStatusSavedOnDeviceTitle": "נשמר במכשיר",
   "downloadStatusLoadingJob": "טוען הורדה…",
+  "stageQueued": "ממתין בתור",
+  "stagePreparing": "מכינים את הסרטון...",
+  "stageDownloading": "מוריד...",
+  "stageCheckingCompatibility": "בודק תאימות וידאו...",
+  "stageRemuxing": "מכינים את הסרטון...",
+  "stageNormalizingAudio": "מייעלים את האודיו...",
+  "stageFullTranscoding": "מעבד את הסרטון...",
+  "stageFinalizing": "מסיים...",
+  "stageDone": "מוכן לשמירה",
+  "stageFailed": "נכשל",
+  "fullTranscodeTitle": "נדרש עיבוד נוסף",
+  "fullTranscodeSubtitle": "הסרטון דורש עיבוד נוסף כדי לעבוד טוב בטיקטוק ובאפליקציות אחרות. זה עשוי לקחת כמה דקות.",
+  "progressPercent": "{percent}%",
+  "@progressPercent": {
+    "placeholders": {
+      "percent": {"type": "int"}
+    }
+  },
+  "downloadUnknownProgress": "עובדים על זה...",
   "bootstrapLoadingShort": "מתחילים את LinkClip…"
 }

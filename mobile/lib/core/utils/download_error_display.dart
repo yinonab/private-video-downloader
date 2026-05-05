@@ -7,5 +7,8 @@ String formatDownloadJobError(AppLocalizations l10n, String raw) {
   if (t.contains("Requested format is not available")) {
     return l10n.downloadJobErrorQuality;
   }
+  if (t == "NORMALIZE_FAILED") {
+    return l10n.downloadJobErrorNormalizeFailed;
+  }
   return t;
 }

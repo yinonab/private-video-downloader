@@ -45,13 +45,14 @@ class FormatOption {
 
   static List<FormatOption> platformDefaults() => [
         FormatOption(label: "Best MP4", value: "best", type: "video"),
+        FormatOption(label: "TikTok-ready MP4", value: "tiktok_ready", type: "video"),
         FormatOption(label: "1080p MP4", value: "1080p", type: "video"),
         FormatOption(label: "720p MP4", value: "720p", type: "video"),
         FormatOption(label: "480p MP4", value: "480p", type: "video"),
         FormatOption(label: "Audio MP3", value: "audio", type: "audio"),
       ];
 
-  static const _canonicalOrder = ["best", "1080p", "720p", "480p", "audio"];
+  static const _canonicalOrder = ["best", "tiktok_ready", "1080p", "720p", "480p", "audio"];
 
   static List<FormatOption> fromAvailableQualities(List<AvailableQuality> qualities) {
     final byId = <String, AvailableQuality>{};
@@ -119,6 +120,8 @@ class FormatOption {
         return "480p MP4";
       case "audio":
         return "Audio MP3";
+      case "tiktok_ready":
+        return "TikTok-ready MP4";
       default:
         return id;
     }

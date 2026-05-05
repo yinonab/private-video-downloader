@@ -67,12 +67,42 @@ class QualitySelector extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(
-                              rowLabel,
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    color: disabled ? scheme.onSurfaceVariant : null,
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  rowLabel,
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                        color: disabled ? scheme.onSurfaceVariant : null,
+                                      ),
+                                ),
+                                if (!disabled && f.value == "tiktok_ready")
+                                  Chip(
+                                    label: Text(l10n.qualityTikTokReadyBadge),
+                                    visualDensity: VisualDensity.compact,
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                                    labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: scheme.onSecondaryContainer,
+                                        ),
+                                    backgroundColor: scheme.secondaryContainer.withValues(alpha: 0.85),
+                                    side: BorderSide.none,
                                   ),
+                              ],
                             ),
+                            if (!disabled && f.value == "tiktok_ready") ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                l10n.qualityTikTokReadyDescription,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                      height: 1.35,
+                                    ),
+                              ),
+                            ],
                             if (disabled) ...[
                               const SizedBox(height: 4),
                               Text(

@@ -54,6 +54,12 @@
   "format720pMp4": "720p MP4",
   "format480pMp4": "480p MP4",
   "formatAudioMp3": "Audio MP3",
+  "qualityTikTokReady": "TikTok-ready MP4",
+  "qualityTikTokReadyDescription": "Optimized for TikTok and social apps. May take longer.",
+  "qualityTikTokReadyBadge": "Recommended for upload",
+  "downloadPreparingTikTokReadyTitle": "Preparing TikTok-ready video",
+  "downloadPreparingTikTokReadySubtitle": "This video is being optimized for TikTok and social apps. It may take a few minutes.",
+  "downloadChipTikTokReady": "TikTok-ready",
   "qualityUnavailableForVideo": "Not available for this video",
   "downloadStatusTitle": "Download status",
   "downloadStatusQueued": "Queued",
@@ -136,6 +142,7 @@
   "autoRegisterManualSetup": "Manual / advanced setup",
   "downloadJobErrorGeneric": "Could not download in an available format.",
   "downloadJobErrorQuality": "The selected quality is not available for this video. Try another quality or Best MP4.",
+  "downloadJobErrorNormalizeFailed": "Could not prepare the video in a supported format.",
   "shareNoLinkInContent": "No shared link was found.",
   "settingsMeStatusLabel": "System status",
   "settingsMeNameLabel": "Name on server",
@@ -174,5 +181,24 @@
   },
   "downloadStatusSavedOnDeviceTitle": "Saved on device",
   "downloadStatusLoadingJob": "Loading download…",
+  "stageQueued": "Queued",
+  "stagePreparing": "Preparing your video...",
+  "stageDownloading": "Downloading...",
+  "stageCheckingCompatibility": "Checking video compatibility...",
+  "stageRemuxing": "Preparing video...",
+  "stageNormalizingAudio": "Optimizing audio...",
+  "stageFullTranscoding": "Processing video...",
+  "stageFinalizing": "Finalizing...",
+  "stageDone": "Ready to save",
+  "stageFailed": "Failed",
+  "fullTranscodeTitle": "Extra processing needed",
+  "fullTranscodeSubtitle": "This video needs extra processing to work well with TikTok and other apps. It may take a few minutes.",
+  "progressPercent": "{percent}%",
+  "@progressPercent": {
+    "placeholders": {
+      "percent": {"type": "int"}
+    }
+  },
+  "downloadUnknownProgress": "Working on it...",
   "bootstrapLoadingShort": "Starting LinkClip…"
 }

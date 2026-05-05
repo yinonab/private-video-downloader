@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+RUN ffmpeg -version && ffprobe -version
+
 RUN python3 -m pip install --break-system-packages -U yt-dlp
 
 WORKDIR /app

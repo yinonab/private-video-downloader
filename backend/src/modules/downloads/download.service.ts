@@ -20,7 +20,10 @@ export type QueuePayload = {
   format: DownloadFormatKind;
 };
 
-const ALLOWED = new Set<string>(["best", "1080p", "720p", "480p", "audio_mp3"]);
+/** Canonical yt-dlp / worker format IDs (not localized labels). */
+export const DOWNLOAD_ALLOWED_FORMATS = ["best", "1080p", "720p", "480p", "audio_mp3", "tiktok_ready"] as const;
+
+const ALLOWED = new Set<string>(DOWNLOAD_ALLOWED_FORMATS);
 
 /** Strip bidi / invisible chars; lowercase (fixes rare client RTL/zero-width pollution). */
 export function sanitizeQualityToken(raw: string): string {
@@ -90,19 +93,29 @@ export async function createDownload(opts: {
       normalizedFormat: kind,
       formatReceived: opts.body.format,
       qualityReceived: opts.body.quality,
+      isTikTokReady: kind === "tiktok_ready",
+      normalizationEnabled: kind === "tiktok_ready",
     },
     "POST /downloads format accepted"
   );
   const pair = storagePair(kind);
 
-  const concurrent = await opts.prisma.downloadJob.count({
+  const concurrent = await opts.prisma.downloadJob.findFirst({
     where: {
       deviceId: opts.deviceId,
       status: { in: ["queued", "running"] },
+      format: pair.format,
+      link: { urlHash },
     },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, status: true, processingStage: true },
   });
-  if (concurrent >= 1) {
-    throw new AppError(codes.CONFLICT, "Another download is already in progress", 409);
+  if (concurrent) {
+    throw new AppError(codes.CONFLICT, "Another download is already in progress", 409, undefined, {
+      existingJobId: concurrent.id,
+      existingStatus: concurrent.status,
+      existingProcessingStage: concurrent.processingStage ?? undefined,
+    });
   }
 
   await assertUnderDailyDownloadLimit(opts.redis, opts.deviceId, opts.dailyLimit);
@@ -148,6 +161,8 @@ export async function createDownload(opts: {
       status: "queued",
       format: pair.format,
       quality: pair.quality,
+      processingStage: "queued",
+      progress: null,
     },
   });
 
@@ -191,9 +206,13 @@ export async function getDownloadForDevice(
   return {
     id: job.id,
     status: job.status,
+    format: job.format ?? undefined,
+    processingStage: job.processingStage ?? undefined,
     progress: job.progress,
+    progressPercent: job.progress,
     speedText: job.speedText,
     etaText: job.etaText,
+    createdAt: job.createdAt.toISOString(),
     title: job.link.title ?? undefined,
     thumbnail: job.link.thumbnail ?? undefined,
     error: job.error ?? undefined,
@@ -250,11 +269,14 @@ export async function listDownloadsForDevice(
     return {
       id: job.id,
       status: job.status,
+      format: job.format ?? undefined,
+      processingStage: job.processingStage ?? undefined,
+      progress: job.progress,
+      progressPercent: job.progress,
       title: job.link.title ?? "Untitled",
       platform: job.link.platform ?? job.link.extractor ?? "unknown",
       thumbnail: job.link.thumbnail ?? undefined,
       createdAt: job.createdAt.toISOString(),
-      progress: job.progress,
       speedText: job.speedText ?? undefined,
       etaText: job.etaText ?? undefined,
       error: job.error ?? undefined,
@@ -300,7 +322,8 @@ export async function retryDownload(opts: {
     where: { id: job.id },
     data: {
       status: "queued",
-      progress: 0,
+      progress: null,
+      processingStage: "queued",
       error: null,
       speedText: null,
       etaText: null,

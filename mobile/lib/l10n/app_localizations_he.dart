@@ -161,6 +161,26 @@ class AppLocalizationsHe extends AppLocalizations {
   String get formatAudioMp3 => 'Audio MP3';
 
   @override
+  String get qualityTikTokReady => 'מתאים לטיק טוק';
+
+  @override
+  String get qualityTikTokReadyDescription =>
+      'מותאם לטיק טוק ולאפליקציות חברתיות. עשוי לקחת יותר זמן.';
+
+  @override
+  String get qualityTikTokReadyBadge => 'מומלץ להעלאה';
+
+  @override
+  String get downloadPreparingTikTokReadyTitle => 'מכינים סרטון מותאם לטיק טוק';
+
+  @override
+  String get downloadPreparingTikTokReadySubtitle =>
+      'הסרטון עובר התאמה לטיק טוק ולאפליקציות חברתיות. זה עשוי לקחת כמה דקות.';
+
+  @override
+  String get downloadChipTikTokReady => 'מותאם לטיק טוק';
+
+  @override
   String get qualityUnavailableForVideo => 'לא זמין לסרטון הזה';
 
   @override
@@ -390,6 +410,10 @@ class AppLocalizationsHe extends AppLocalizations {
       'האיכות שנבחרה לא זמינה לסרטון הזה. נסה איכות אחרת או Best MP4.';
 
   @override
+  String get downloadJobErrorNormalizeFailed =>
+      'לא ניתן להכין את הסרטון לפורמט נתמך.';
+
+  @override
   String get shareNoLinkInContent => 'לא נמצא קישור לשיתוף';
 
   @override
@@ -477,6 +501,51 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get downloadStatusLoadingJob => 'טוען הורדה…';
+
+  @override
+  String get stageQueued => 'ממתין בתור';
+
+  @override
+  String get stagePreparing => 'מכינים את הסרטון...';
+
+  @override
+  String get stageDownloading => 'מוריד...';
+
+  @override
+  String get stageCheckingCompatibility => 'בודק תאימות וידאו...';
+
+  @override
+  String get stageRemuxing => 'מכינים את הסרטון...';
+
+  @override
+  String get stageNormalizingAudio => 'מייעלים את האודיו...';
+
+  @override
+  String get stageFullTranscoding => 'מעבד את הסרטון...';
+
+  @override
+  String get stageFinalizing => 'מסיים...';
+
+  @override
+  String get stageDone => 'מוכן לשמירה';
+
+  @override
+  String get stageFailed => 'נכשל';
+
+  @override
+  String get fullTranscodeTitle => 'נדרש עיבוד נוסף';
+
+  @override
+  String get fullTranscodeSubtitle =>
+      'הסרטון דורש עיבוד נוסף כדי לעבוד טוב בטיקטוק ובאפליקציות אחרות. זה עשוי לקחת כמה דקות.';
+
+  @override
+  String progressPercent(int percent) {
+    return '$percent%';
+  }
+
+  @override
+  String get downloadUnknownProgress => 'עובדים על זה...';
 
   @override
   String get bootstrapLoadingShort => 'מתחילים את LinkClip…';
