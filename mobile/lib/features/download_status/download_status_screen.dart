@@ -14,12 +14,13 @@ import "../../core/l10n/context_l10n.dart";
 import "../../core/l10n/download_job_ui_state.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
-import "../../core/theme/app_theme.dart";
+import "../../core/theme/linkclip_palette.dart";
 import "../../core/utils/download_error_display.dart";
 import "../../core/utils/format_bytes_ui.dart";
 import "../../core/widgets/app_button.dart";
 import "../../core/widgets/branded_loading.dart";
 import "../../core/widgets/branded_progress.dart";
+import "../../core/widgets/linkclip_app_bar.dart";
 import "../../services/saved_media_actions.dart";
 
 class DownloadStatusScreen extends StatefulWidget {
@@ -251,8 +252,11 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.downloadStatusTitle)),
+    return DecoratedBox(
+      decoration: linkClipPageGradientDecoration(context),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: LinkClipPremiumAppBar(title: Text(l10n.downloadStatusTitle)),
       body: RefreshIndicator(
         onRefresh: _tickOnce,
         child: ListView(
@@ -299,20 +303,18 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
               ],
               DecoratedBox(
                 decoration: BoxDecoration(
-                  color: scheme.surface,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: scheme.outline.withValues(alpha: 0.45)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 18,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: theme.brightness == Brightness.dark ? const <BoxShadow>[] : context.lcPalette.cardShadows,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: scheme.surface,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: scheme.outline.withValues(alpha: theme.brightness == Brightness.dark ? 0.55 : 0.45)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       AspectRatio(
@@ -428,7 +430,20 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
                                       const SizedBox(height: 6),
-                                      Icon(LucideIcons.circleCheck, size: 48, color: AppTheme.successGreen),
+                                      Center(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(18),
+                                          decoration: BoxDecoration(
+                                            color: context.lcPalette.successState.withValues(alpha: 0.14),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            LucideIcons.circleCheck,
+                                            size: 44,
+                                            color: context.lcPalette.successState,
+                                          ),
+                                        ),
+                                      ),
                                       const SizedBox(height: 8),
                                       Text(
                                         l10n.downloadStatusSavedOnDeviceTitle,
@@ -488,10 +503,12 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                     ],
                   ),
                 ),
+              ),
               ).animate().fadeIn(duration: 240.ms).slideY(begin: 0.05, end: 0, curve: Curves.easeOut),
             ],
           ],
         ),
+      ),
       ),
     );
   }

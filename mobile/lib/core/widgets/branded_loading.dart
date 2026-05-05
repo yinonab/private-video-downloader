@@ -1,6 +1,8 @@
 import "package:flutter/material.dart";
 import "package:lucide_icons_flutter/lucide_icons.dart";
 
+import "../theme/linkclip_palette.dart";
+
 /// Small bouncing downward arrow — LinkClip-branded motion for loaders.
 class BrandedLoadingMark extends StatefulWidget {
   const BrandedLoadingMark({super.key, this.size = 40, this.iconColor});
@@ -53,6 +55,7 @@ class BrandedLoadingPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
+    final bubble = context.lcPalette.loaderBubble;
     final circlePad = compact ? 18.0 : 22.0;
     final iconSize = compact ? 32.0 : 44.0;
 
@@ -62,8 +65,15 @@ class BrandedLoadingPanel extends StatelessWidget {
         Container(
           padding: EdgeInsets.all(circlePad),
           decoration: BoxDecoration(
-            color: scheme.primaryContainer.withValues(alpha: 0.35),
+            color: Color.alphaBlend(bubble.withValues(alpha: 0.92), scheme.surface),
             shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: scheme.primary.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.22 : 0.12),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           child: BrandedLoadingMark(size: iconSize),
         ),

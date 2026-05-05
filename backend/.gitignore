@@ -2,8 +2,21 @@ node_modules/
 dist/
 .env
 .env.local
+.env.production
 *.log
+
 storage/
-secrets/*.txt
+
+# Secrets on disk (cookies, tokens); allow empty dir marker only
+secrets/*
+!secrets/cookies/
+secrets/cookies/*
 !secrets/cookies/.gitkeep
+
 .DS_Store
+
+# Media / artifacts (never commit)
+*.mp4
+*.mp3
+*.m4a
+test-download.mp4

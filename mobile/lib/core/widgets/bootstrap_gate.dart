@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 
 import "../l10n/context_l10n.dart";
 import "../storage/local_session.dart";
+import "../theme/linkclip_palette.dart";
 import "branded_loading.dart";
 import "language_picker.dart";
 
@@ -14,17 +15,21 @@ class BootstrapGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            BrandedLoadingPanel(message: l10n.bootstrapLoadingShort),
-            PositionedDirectional(
-              top: 4,
-              end: 4,
-              child: languagePickerButton(context, session),
-            ),
-          ],
+    return DecoratedBox(
+      decoration: linkClipPageGradientDecoration(context),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              BrandedLoadingPanel(message: l10n.bootstrapLoadingShort),
+              PositionedDirectional(
+                top: 4,
+                end: 4,
+                child: languagePickerButton(context, session),
+              ),
+            ],
+          ),
         ),
       ),
     );

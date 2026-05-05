@@ -220,9 +220,9 @@ class _PrivateDownloaderAppState extends State<PrivateDownloaderApp> {
             locale: c.session.locale,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            themeMode: ThemeMode.system,
-            theme: AppTheme.theme(Brightness.light),
-            darkTheme: AppTheme.theme(Brightness.dark),
+            themeMode: c.session.themeMode,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
             home: AnimatedSwitcher(
               duration: const Duration(milliseconds: 260),
               child: _homeGate(),

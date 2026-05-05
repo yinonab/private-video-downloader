@@ -1,6 +1,89 @@
 import "package:flutter/material.dart";
 
+import "../theme/linkclip_palette.dart";
 import "branded_loading.dart";
+
+/// Primary hero-style CTA with a subtle premium gradient (home empty state).
+class PremiumGradientCta extends StatelessWidget {
+  const PremiumGradientCta({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.loading = false,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final Widget? icon;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final palette = context.lcPalette;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final gradients = dark
+        ? const [Color(0xFF8B84FF), Color(0xFF6C63FF)]
+        : const [Color(0xFF6C63FF), Color(0xFF4F46E5)];
+
+    final shadows = dark ? const <BoxShadow>[] : palette.cardShadows;
+
+    final child = loading
+        ? SizedBox(
+            height: 26,
+            width: 26,
+            child: BrandedLoadingMark(size: 22, iconColor: Colors.white.withValues(alpha: 0.95)),
+          )
+        : icon != null
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconTheme(
+                    data: const IconThemeData(size: 22, color: Colors.white),
+                    child: icon!,
+                  ),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: TextStyle(color: scheme.onPrimary, fontWeight: FontWeight.w700, fontSize: 16),
+                    ),
+                  ),
+                ],
+              )
+            : Text(label, style: TextStyle(color: scheme.onPrimary, fontWeight: FontWeight.w700, fontSize: 16));
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: shadows,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(22),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: loading ? null : onPressed,
+          child: Ink(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: gradients, begin: Alignment.centerLeft, end: Alignment.centerRight),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+              child: DefaultTextStyle.merge(
+                textAlign: TextAlign.center,
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class AppPrimaryButton extends StatelessWidget {
   const AppPrimaryButton({

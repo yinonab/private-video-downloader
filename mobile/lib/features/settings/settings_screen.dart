@@ -7,8 +7,11 @@ import "../../core/l10n/context_l10n.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/device_models.dart";
 import "../../core/network/api_client.dart";
+import "../../core/storage/local_session.dart";
+import "../../core/theme/linkclip_palette.dart";
 import "../../core/widgets/branded_loading.dart";
 import "../../core/widgets/language_picker.dart";
+import "../../core/widgets/linkclip_app_bar.dart";
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -141,8 +144,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final me = _me;
     final baked = kApiBaseUrlFromDefine.trim().isNotEmpty;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.settingsTitle)),
+    return DecoratedBox(
+      decoration: linkClipPageGradientDecoration(context),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: LinkClipPremiumAppBar(title: Text(l10n.settingsTitle)),
       body: RefreshIndicator(
         onRefresh: _refreshMe,
         child: ListView(
@@ -158,6 +164,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const Divider(height: 24),
+            Text(l10n.appearance, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            for (final mode in ThemePreference.values)
+              ListTile(
+                dense: true,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                title: Text(
+                  switch (mode) {
+                    ThemePreference.system => l10n.themeSystem,
+                    ThemePreference.light => l10n.themeLight,
+                    ThemePreference.dark => l10n.themeDark,
+                  },
+                ),
+                trailing: Icon(
+                  s.themePreference == mode ? Icons.check_circle_rounded : Icons.circle_outlined,
+                  size: 22,
+                  color: s.themePreference == mode ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline,
+                ),
+                onTap: () async {
+                  await s.setThemePreference(mode);
+                  if (mounted) setState(() {});
+                },
+              ),
+            const Divider(height: 28),
             Text(l10n.settingsServerUrl, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             Text(s.serverUrl.isEmpty ? l10n.settingsEmptyPlaceholder : s.serverUrl, style: Theme.of(context).textTheme.bodyLarge),
@@ -233,6 +263,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

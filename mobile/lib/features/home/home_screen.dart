@@ -8,8 +8,10 @@ import "../../core/l10n/context_l10n.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
 import "../../core/utils/url_utils.dart";
+import "../../core/theme/linkclip_palette.dart";
 import "../../core/widgets/app_button.dart";
 import "../../core/widgets/error_view.dart";
+import "../../core/widgets/linkclip_app_bar.dart";
 import "../../core/widgets/loading_view.dart";
 import "../../l10n/app_localizations.dart";
 import "../../services/saved_media_actions.dart";
@@ -179,25 +181,28 @@ class _HomeScreenState extends State<HomeScreen> {
     final hasItems = listReady && _items.isNotEmpty;
     final isEmpty = listReady && _items.isEmpty;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.homeTitle),
-        actions: [
-          IconButton(
-            icon: Icon(LucideIcons.refreshCw, color: scheme.onSurface),
-            tooltip: l10n.homeRetry,
-            onPressed: _busy ? null : _load,
-          ),
-          IconButton(
-            icon: Icon(LucideIcons.settings, color: scheme.onSurface),
-            tooltip: l10n.settingsTitle,
-            onPressed: () async {
-              await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
-              await _load();
-            },
-          ),
-        ],
-      ),
+    return DecoratedBox(
+      decoration: linkClipPageGradientDecoration(context),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: LinkClipPremiumAppBar(
+          title: Text(l10n.appTitle),
+          actions: [
+            LinkClipToolbarIconButton(
+              icon: LucideIcons.refreshCw,
+              tooltip: l10n.homeRetry,
+              onPressed: _busy ? null : _load,
+            ),
+            LinkClipToolbarIconButton(
+              icon: LucideIcons.settings,
+              tooltip: l10n.settingsTitle,
+              onPressed: () async {
+                await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
+                await _load();
+              },
+            ),
+          ],
+        ),
       floatingActionButton: hasItems
           ? FloatingActionButton.extended(
               onPressed: _pasteDialog,
@@ -231,7 +236,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Text(
                           l10n.homeRecentDownloads,
                           style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
                             color: scheme.onSurface,
                           ),
                         ),
@@ -242,11 +248,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
+      ),
     );
   }
 
   Widget _buildList(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom + 88;
+    final bottomInset = MediaQuery.of(context).padding.bottom + 112;
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.builder(
@@ -305,36 +312,65 @@ class _HomeHeroCard extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final palette = context.lcPalette;
+    final dark = theme.brightness == Brightness.dark;
 
     final card = DecoratedBox(
       decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: scheme.outline.withValues(alpha: 0.45)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            scheme.surface,
+            Color.alphaBlend(
+              scheme.primaryContainer.withValues(alpha: dark ? 0.22 : 0.14),
+              scheme.surface,
+            ),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: scheme.outline.withValues(alpha: dark ? 0.55 : 0.38)),
+        boxShadow: dark ? const <BoxShadow>[] : palette.cardShadows,
       ),
       child: Padding(
-        padding: EdgeInsets.all(compact ? 16 : 20),
+        padding: EdgeInsets.all(compact ? 16 : 22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(LucideIcons.circlePlay, color: scheme.primary, size: compact ? 28 : 32),
-                const SizedBox(width: 12),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        scheme.primaryContainer.withValues(alpha: dark ? 0.65 : 1),
+                        scheme.primaryContainer.withValues(alpha: dark ? 0.35 : 0.72),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: scheme.primary.withValues(alpha: 0.14)),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(compact ? 10 : 12),
+                    child: Icon(LucideIcons.circlePlay, color: scheme.primary, size: compact ? 24 : 28),
+                  ),
+                ),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Text(
                     l10n.homeHeroTitle,
                     style: compact
-                        ? theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, color: scheme.onSurface)
-                        : theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, color: scheme.onSurface),
+                        ? theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                            color: scheme.onSurface,
+                          )
+                        : theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                            color: scheme.onSurface,
+                          ),
                   ),
                 ),
               ],
@@ -372,10 +408,13 @@ class _HomeHeroCard extends StatelessWidget {
             ],
             if (showPrimaryButton) ...[
               const SizedBox(height: 18),
-              AppPrimaryButton(
-                label: l10n.homePasteLinkButton,
-                icon: Icon(LucideIcons.clipboardPaste, color: Theme.of(context).colorScheme.onPrimary),
-                onPressed: onPaste,
+              SizedBox(
+                width: double.infinity,
+                child: PremiumGradientCta(
+                  label: l10n.homePasteLinkButton,
+                  icon: Icon(LucideIcons.clipboardPaste),
+                  onPressed: onPaste,
+                ),
               ),
             ],
           ],

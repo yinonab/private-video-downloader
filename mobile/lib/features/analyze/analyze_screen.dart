@@ -11,9 +11,12 @@ import "../../core/l10n/context_l10n.dart";
 import "../../core/models/analyze_models.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
+import "../../core/theme/linkclip_palette.dart";
 import "../../core/widgets/app_button.dart";
 import "../../core/widgets/error_view.dart";
 import "../../core/widgets/branded_loading.dart";
+import "../../core/widgets/linkclip_app_bar.dart";
+import "../../core/widgets/linkclip_chips.dart";
 import "../download_status/download_status_screen.dart";
 import "quality_selector.dart";
 
@@ -154,9 +157,13 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.analyzeTitle)),
-      body: SafeArea(child: _buildBody()),
+    return DecoratedBox(
+      decoration: linkClipPageGradientDecoration(context),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: LinkClipPremiumAppBar(title: Text(l10n.analyzeTitle)),
+        body: SafeArea(child: _buildBody()),
+      ),
     );
   }
 
@@ -186,43 +193,93 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
 
     final titleLine = d.title.trim().isEmpty ? l10n.untitledVideo : d.title;
 
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final palette = context.lcPalette;
+    final dark = theme.brightness == Brightness.dark;
+
     final column = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(l10n.analyzeVideoFound, style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child: d.thumbnail != null && d.thumbnail!.isNotEmpty
-                  ? Image.network(
-                      d.thumbnail!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _mediaPlaceholder(),
-                    )
-                  : _mediaPlaceholder(),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          l10n.analyzeVideoFound,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.25,
+            color: scheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 12),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: dark ? const <BoxShadow>[] : palette.cardShadows,
+          ),
+          child: Material(
+            color: scheme.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+              side: BorderSide(color: scheme.outline.withValues(alpha: dark ? 0.55 : 0.4)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: d.thumbnail != null && d.thumbnail!.isNotEmpty
+                          ? Image.network(
+                              d.thumbnail!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _mediaPlaceholder(),
+                            )
+                          : _mediaPlaceholder(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    titleLine,
+                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.35),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      LinkClipPlatformChip(label: d.platform),
+                      if (durText != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: scheme.surfaceContainerHighest.withValues(alpha: 0.88),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: scheme.outline.withValues(alpha: 0.28)),
+                          ),
+                          child: Text(
+                            l10n.analyzeDurationLabel(durText),
+                            style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(titleLine, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              Chip(label: Text(d.platform)),
-              if (durText != null) Chip(label: Text(l10n.analyzeDurationLabel(durText))),
-            ],
-          ),
-          const SizedBox(height: 22),
-          QualitySelector(
-            formats: d.availableFormats,
-            selectedIndex: FormatOption.clampSelectableIndex(d.availableFormats, _fmtIndex),
-            onChanged: (i) => setState(() => _fmtIndex = i),
-          ),
-          const SizedBox(height: 26),
-          AppPrimaryButton(label: l10n.analyzePrepareDownload, loading: _starting, onPressed: _starting ? null : _startDownload),
-        ],
+        ),
+        const SizedBox(height: 22),
+        QualitySelector(
+          formats: d.availableFormats,
+          selectedIndex: FormatOption.clampSelectableIndex(d.availableFormats, _fmtIndex),
+          onChanged: (i) => setState(() => _fmtIndex = i),
+        ),
+        const SizedBox(height: 26),
+        AppPrimaryButton(label: l10n.analyzePrepareDownload, loading: _starting, onPressed: _starting ? null : _startDownload),
+      ],
     );
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),

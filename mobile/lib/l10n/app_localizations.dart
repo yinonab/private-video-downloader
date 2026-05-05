@@ -170,6 +170,30 @@ abstract class AppLocalizations {
   /// **'Language'**
   String get languageSectionTitle;
 
+  /// No description provided for @appearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get appearance;
+
+  /// No description provided for @themeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get themeSystem;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get themeLight;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get themeDark;
+
   /// No description provided for @homeTitle.
   ///
   /// In en, this message translates to:
@@ -185,7 +209,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeHeroSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Share a video from another app or paste a link to get started.'**
+  /// **'Share a video or paste a link to get started.'**
   String get homeHeroSubtitle;
 
   /// No description provided for @homeHeroSubtitleCompact.

@@ -45,6 +45,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageSectionTitle => 'Language';
 
   @override
+  String get appearance => 'Appearance';
+
+  @override
+  String get themeSystem => 'System';
+
+  @override
+  String get themeLight => 'Light';
+
+  @override
+  String get themeDark => 'Dark';
+
+  @override
   String get homeTitle => 'LinkClip';
 
   @override
@@ -52,7 +64,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeHeroSubtitle =>
-      'Share a video from another app or paste a link to get started.';
+      'Share a video or paste a link to get started.';
 
   @override
   String get homeHeroSubtitleCompact =>

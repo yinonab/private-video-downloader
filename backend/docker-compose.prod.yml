@@ -1,0 +1,134 @@
+# Production stack for LinkClip API (Hetzner / single VPS).
+# Only Caddy binds :80 and :443. API, Postgres, Redis stay on the private Docker network.
+#
+# Prerequisites:
+#   - Create .env from .env.example (POSTGRES_PASSWORD)
+#   - Create .env.production from .env.production.example (fill secrets + DATABASE_URL password)
+#   - secrets/cookies/global.txt on host (mounted read-only into api/worker)
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: linkclip-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    networks:
+      - linkclip
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: linkclip-backend:latest
+    container_name: linkclip-api
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    command: ["sh", "-c", "npx prisma migrate deploy && npm run start"]
+    expose:
+      - "3000"
+    volumes:
+      - downloads_data:/app/storage
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - linkclip
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: linkclip-backend:latest
+    container_name: linkclip-worker
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    command: ["npm", "run", "worker"]
+    volumes:
+      - downloads_data:/app/storage
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - linkclip
+
+  cleanup:
+    image: alpine:3.20
+    container_name: linkclip-cleanup
+    restart: unless-stopped
+    environment:
+      MEDIA_RETENTION_MINUTES: "30"
+    volumes:
+      - downloads_data:/app/storage
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        RET=$${MEDIA_RETENTION_MINUTES:-30}
+        echo "linkclip-cleanup: removing files under /app/storage not modified in the last $$RET minutes (every 300s)"
+        while true; do
+          find /app/storage -type f -mmin +$$RET -delete 2>/dev/null || true
+          find /app/storage -type d -empty -delete 2>/dev/null || true
+          sleep 300
+        done
+    networks:
+      - linkclip
+
+  postgres:
+    image: postgres:16
+    container_name: linkclip-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: linkclip
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
+      POSTGRES_DB: linkclip
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U linkclip -d linkclip"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - linkclip
+
+  redis:
+    image: redis:7-alpine
+    container_name: linkclip-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - linkclip
+
+volumes:
+  postgres_data:
+  redis_data:
+  downloads_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  linkclip:
+    driver: bridge

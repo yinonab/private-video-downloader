@@ -1,4 +1,5 @@
 import "package:flutter/foundation.dart";
+import "package:flutter/material.dart" show ThemeMode;
 import "package:flutter/widgets.dart" show Locale;
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:path/path.dart" as p;
@@ -8,6 +9,37 @@ import "package:uuid/uuid.dart";
 import "../config/build_flags.dart";
 import "../utils/download_media_naming.dart";
 import "../utils/url_utils.dart";
+
+/// Persisted under [LocalSession._prefsThemeModeKey] (`selected_theme_mode`).
+enum ThemePreference {
+  system,
+  light,
+  dark;
+
+  static ThemePreference parseStored(String? raw) {
+    switch (raw) {
+      case "light":
+        return ThemePreference.light;
+      case "dark":
+        return ThemePreference.dark;
+      case "system":
+      default:
+        return ThemePreference.system;
+    }
+  }
+
+  String get storageValue => switch (this) {
+        ThemePreference.system => "system",
+        ThemePreference.light => "light",
+        ThemePreference.dark => "dark",
+      };
+
+  ThemeMode get materialThemeMode => switch (this) {
+        ThemePreference.system => ThemeMode.system,
+        ThemePreference.light => ThemeMode.light,
+        ThemePreference.dark => ThemeMode.dark,
+      };
+}
 
 final class SavedDownloadDescriptor {
   SavedDownloadDescriptor({
@@ -41,6 +73,7 @@ class LocalSession extends ChangeNotifier {
   static const _prefsCustomServerKey = "custom_server_url_enabled";
   static const _prefsPreferManualRegisterKey = "prefer_manual_register";
   static const _prefsLocaleKey = "selected_locale";
+  static const _prefsThemeModeKey = "selected_theme_mode";
 
   bool _hydrated = false;
   bool _customServerEnabled = false;
@@ -52,8 +85,15 @@ class LocalSession extends ChangeNotifier {
 
   Locale _locale = const Locale("en");
 
+  ThemePreference _themePreference = ThemePreference.system;
+
   /// Active UI locale (`en` default; persisted under [_prefsLocaleKey]).
   Locale get locale => _locale;
+
+  /// Persisted appearance choice (default system).
+  ThemePreference get themePreference => _themePreference;
+
+  ThemeMode get themeMode => _themePreference.materialThemeMode;
 
   String? get displayName => _displayName;
 
@@ -82,6 +122,8 @@ class LocalSession extends ChangeNotifier {
 
     final lang = prefs.getString(_prefsLocaleKey);
     _locale = lang == "he" ? const Locale("he") : const Locale("en");
+
+    _themePreference = ThemePreference.parseStored(prefs.getString(_prefsThemeModeKey));
 
     _customServerEnabled = prefs.getBool(_prefsCustomServerKey) ?? false;
 
@@ -139,6 +181,13 @@ class LocalSession extends ChangeNotifier {
     _locale = Locale(code);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefsLocaleKey, code);
+    notifyListeners();
+  }
+
+  Future<void> setThemePreference(ThemePreference value) async {
+    _themePreference = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefsThemeModeKey, value.storageValue);
     notifyListeners();
   }
 
@@ -331,10 +380,14 @@ class LocalSession extends ChangeNotifier {
   Future<void> factoryResetLocal() async {
     final prefs = await SharedPreferences.getInstance();
     final savedLang = prefs.getString(_prefsLocaleKey);
+    final savedTheme = prefs.getString(_prefsThemeModeKey);
     await _secure.deleteAll();
     await prefs.clear();
     if (savedLang != null && savedLang.isNotEmpty) {
       await prefs.setString(_prefsLocaleKey, savedLang);
+    }
+    if (savedTheme != null && savedTheme.isNotEmpty) {
+      await prefs.setString(_prefsThemeModeKey, savedTheme);
     }
     pendingSharedUrl = null;
 

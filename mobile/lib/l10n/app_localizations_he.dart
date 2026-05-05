@@ -45,14 +45,25 @@ class AppLocalizationsHe extends AppLocalizations {
   String get languageSectionTitle => 'שפה';
 
   @override
+  String get appearance => 'מראה';
+
+  @override
+  String get themeSystem => 'לפי המערכת';
+
+  @override
+  String get themeLight => 'בהיר';
+
+  @override
+  String get themeDark => 'כהה';
+
+  @override
   String get homeTitle => 'LinkClip';
 
   @override
   String get homeHeroTitle => 'הורדת סרטונים בקלות';
 
   @override
-  String get homeHeroSubtitle =>
-      'שתף סרטון מאפליקציה אחרת או הדבק קישור כדי להתחיל.';
+  String get homeHeroSubtitle => 'שתף סרטון או הדבק קישור כדי להתחיל.';
 
   @override
   String get homeHeroSubtitleCompact => 'שתף סרטון או הדבק קישור כדי להתחיל.';
