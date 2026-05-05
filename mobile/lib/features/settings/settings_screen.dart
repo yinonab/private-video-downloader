@@ -2,9 +2,12 @@ import "package:flutter/material.dart";
 
 import "../../core/app_scope.dart";
 import "../../core/config/build_flags.dart";
+import "../../core/l10n/api_error_localizations.dart";
+import "../../core/l10n/context_l10n.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/device_models.dart";
 import "../../core/network/api_client.dart";
+import "../../core/widgets/language_picker.dart";
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -58,33 +61,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _reset() async {
+    final l10n = context.l10n;
+    final session = AppScope.read(context).session;
+    final nav = Navigator.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("איפוס אפליקציה"),
-        content: const Text("פעולה זו תמחק את ההתחברות וההיסטוריה המקומית שמורים במכשיר."),
+        title: Text(l10n.settingsFactoryResetTitle),
+        content: Text(l10n.settingsFactoryResetBody),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("ביטול")),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("איפוס")),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.homeCancel)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.settingsFactoryResetConfirm)),
         ],
       ),
     );
     if (ok != true) return;
-    await AppScope.read(context).session.factoryResetLocal();
-    if (!mounted) return;
-    Navigator.of(context).popUntil((r) => r.isFirst);
+    await session.factoryResetLocal();
+    if (!context.mounted) return;
+    nav.popUntil((r) => r.isFirst);
   }
 
   Future<void> _applyCustomServer() async {
+    final l10n = context.l10n;
     final scope = AppScope.read(context);
     final normalized = ApiClient.normalizeServerInput(_serverCtl.text.trim());
     if (normalized.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("נא להזין כתובת שרת")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsEnterServerSnack)));
       return;
     }
     final parsed = Uri.tryParse(normalized);
     if (parsed == null || !parsed.hasScheme) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("כתובת השרת לא תקינה")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsInvalidServerSnack)));
       return;
     }
 
@@ -94,7 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await scope.session.clearRegistrationToken();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("השרת עודכן. מתבצע רישום מחדש אוטומטית.")),
+        SnackBar(content: Text(l10n.settingsServerUpdatedSnack)),
       );
       Navigator.of(context).pop();
     } finally {
@@ -103,10 +110,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _useBakedServerDefault() async {
+    final l10n = context.l10n;
     final baked = kApiBaseUrlFromDefine.trim();
     if (baked.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("אין כתובת שרת מוטמעת בגרסה זו")),
+        SnackBar(content: Text(l10n.settingsNoBakedUrlSnack)),
       );
       return;
     }
@@ -117,7 +125,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await scope.session.clearRegistrationToken();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("חוזרים לשרת המוגדר בגרסת האפליקציה")),
+        SnackBar(content: Text(l10n.settingsRevertSnack)),
       );
       Navigator.of(context).pop();
     } finally {
@@ -127,91 +135,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final s = AppScope.read(context).session;
     final me = _me;
     final baked = kApiBaseUrlFromDefine.trim().isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("הגדרות")),
+      appBar: AppBar(title: Text(l10n.settingsTitle)),
       body: RefreshIndicator(
         onRefresh: _refreshMe,
         child: ListView(
           padding: const EdgeInsets.all(18),
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            Directionality(
-              textDirection: TextDirection.rtl,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text("כתובת שרת", style: Theme.of(context).textTheme.labelLarge),
-                  const SizedBox(height: 8),
-                  Text(s.serverUrl.isEmpty ? "(ריק)" : s.serverUrl, style: Theme.of(context).textTheme.bodyLarge),
-                  const SizedBox(height: 22),
-                  Text("מזהה מכשיר", style: Theme.of(context).textTheme.labelLarge),
-                  const SizedBox(height: 8),
-                  SelectableText(s.deviceId.isEmpty ? "—" : s.deviceId),
-                  const SizedBox(height: 22),
-                  Row(
-                    children: [
-                      FilledButton.tonal(onPressed: _loading ? null : _refreshMe, child: const Text("רענון נתוני מכשיר")),
-                      if (_loading) ...[const SizedBox(width: 12), const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))],
-                    ],
+            ListTile(
+              leading: const Icon(Icons.language_outlined),
+              title: Text(l10n.languageSectionTitle),
+              trailing: TextButton(
+                onPressed: () => showAppLanguagePicker(context, s),
+                child: Text(l10n.languageSelectButton),
+              ),
+            ),
+            const Divider(height: 24),
+            Text(l10n.settingsServerUrl, style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            Text(s.serverUrl.isEmpty ? l10n.settingsEmptyPlaceholder : s.serverUrl, style: Theme.of(context).textTheme.bodyLarge),
+            const SizedBox(height: 22),
+            Text(l10n.settingsDeviceId, style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            SelectableText(s.deviceId.isEmpty ? "—" : s.deviceId),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                FilledButton.tonal(onPressed: _loading ? null : _refreshMe, child: Text(l10n.settingsRefreshDevice)),
+                if (_loading) ...[const SizedBox(width: 12), const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))],
+              ],
+            ),
+            const SizedBox(height: 22),
+            if (_lastErr != null)
+              Text(
+                _lastErr is ApiError ? localizedApiErrorMessage(l10n, _lastErr! as ApiError) : l10n.homeErrorGeneric,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            if (me != null) ...[
+              const Divider(height: 32),
+              Text("${l10n.settingsMeStatusLabel}: ${me.status.isEmpty ? "—" : me.status}"),
+              if ((me.name ?? "").trim().isNotEmpty) Text("${l10n.settingsMeNameLabel}: ${me.name}"),
+              Text("${l10n.settingsMeDailyDownloadsLabel}: ${me.dailyLimit <= 0 ? "—" : "${me.dailyLimit}"}"),
+              Text("${l10n.settingsMeDailyAnalyzeLabel}: ${me.analyzeDailyLimit <= 0 ? "—" : "${me.analyzeDailyLimit}"}"),
+            ],
+            const Divider(height: 32),
+            ExpansionTile(
+              title: Text(l10n.settingsAdvancedDevelopers),
+              subtitle: Text(s.usesCustomServerUrl ? l10n.settingsAdvancedCustomSubtitle : l10n.settingsAdvancedDefaultSubtitle),
+              children: [
+                TextField(
+                  controller: _serverCtl,
+                  decoration: InputDecoration(
+                    labelText: l10n.settingsServerFieldLabel,
+                    hintText: l10n.settingsServerFieldHint,
                   ),
-                  const SizedBox(height: 22),
-                  if (_lastErr != null)
-                    Text(
-                      _lastErr is ApiError ? (_lastErr! as ApiError).localized : "שגיאה",
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
-                    ),
-                  if (me != null) ...[
-                    const Divider(height: 32),
-                    Text("סטטוס במערכת: ${me.status.isEmpty ? "—" : me.status}"),
-                    if ((me.name ?? "").trim().isNotEmpty) Text("שם במערכת: ${me.name}"),
-                    Text("מגבלת הורדות יומית: ${me.dailyLimit <= 0 ? "לא ידוע" : "${me.dailyLimit}"}"),
-                    Text("מגבלת ניתוח יומית: ${me.analyzeDailyLimit <= 0 ? "לא הוגדר" : "${me.analyzeDailyLimit}"}"),
-                  ],
-                  const Divider(height: 32),
-                  ExpansionTile(
-                    title: const Text("מתקדם / מפתחים"),
-                    subtitle: Text(s.usesCustomServerUrl ? "שרת מותאם אישית" : "שרת ברירת מחדל מהאפליקציה"),
-                    children: [
-                      TextField(
-                        controller: _serverCtl,
-                        decoration: const InputDecoration(
-                          labelText: "כתובת שרת (LAN / בדיקות)",
-                          hintText: "https://… או http://192.168.x.x:3000",
-                        ),
-                        keyboardType: TextInputType.url,
-                        autocorrect: false,
-                      ),
-                      const SizedBox(height: 12),
-                      FilledButton(
-                        onPressed: _advBusy ? null : _applyCustomServer,
-                        child: const Text("שמור שרת מותאם והתחבר מחדש"),
-                      ),
-                      if (baked) ...[
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: _advBusy ? null : _useBakedServerDefault,
-                          child: const Text("חזרה לשרת המוגדר בגרסת האפליקציה"),
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      Text(
-                        "גרסת ייצור רגילה משתמשת בכתובת המוטמעת ב־APK. כאן רק לפיתוח או שרת זמני.",
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 44),
-                  FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.errorContainer),
-                    onPressed: _reset,
-                    child: Text("איפוס והזנה מחדש", style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
+                  keyboardType: TextInputType.url,
+                  autocorrect: false,
+                ),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: _advBusy ? null : _applyCustomServer,
+                  child: Text(l10n.settingsSaveCustomServer),
+                ),
+                if (baked) ...[
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: _advBusy ? null : _useBakedServerDefault,
+                    child: Text(l10n.settingsRevertToBakedServer),
                   ),
                 ],
-              ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.settingsAdvancedFooterNote,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+            const SizedBox(height: 44),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.errorContainer),
+              onPressed: _reset,
+              child: Text(l10n.settingsFactoryResetConfirm, style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
             ),
           ],
         ),

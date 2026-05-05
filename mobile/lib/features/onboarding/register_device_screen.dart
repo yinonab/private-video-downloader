@@ -4,11 +4,14 @@ import "package:flutter/material.dart";
 
 import "../../core/app_scope.dart";
 import "../../core/config/build_flags.dart";
+import "../../core/l10n/api_error_localizations.dart";
+import "../../core/l10n/context_l10n.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/device_models.dart";
 import "../../core/network/api_client.dart";
 import "../../core/widgets/app_button.dart";
 import "../../core/widgets/app_text_field.dart";
+import "../../core/widgets/language_picker.dart";
 import "../settings/settings_screen.dart";
 
 class RegisterDeviceScreen extends StatefulWidget {
@@ -25,7 +28,7 @@ class _RegisterDeviceScreenState extends State<RegisterDeviceScreen> {
   final _nameCtl = TextEditingController();
 
   bool _loading = false;
-  String? _errorHe;
+  String? _errorUx;
 
   @override
   void dispose() {
@@ -58,7 +61,8 @@ class _RegisterDeviceScreenState extends State<RegisterDeviceScreen> {
   }
 
   Future<void> _submit() async {
-    setState(() => _errorHe = null);
+    final l10n = context.l10n;
+    setState(() => _errorUx = null);
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     final scope = AppScope.read(context);
@@ -70,12 +74,12 @@ class _RegisterDeviceScreenState extends State<RegisterDeviceScreen> {
       showServerField ? _serverCtl.text.trim() : session.serverUrl.trim(),
     );
     if (normalizedServer.isEmpty) {
-      setState(() => _errorHe = "נא להזין כתובת שרת תקינה או לעדכן בהגדרות מתקדמות");
+      setState(() => _errorUx = l10n.registerNeedServer);
       return;
     }
     final parsed = Uri.tryParse(normalizedServer);
     if (parsed == null || !parsed.hasScheme) {
-      setState(() => _errorHe = "כתובת השרת לא תקינה");
+      setState(() => _errorUx = l10n.registerInvalidServerHost);
       return;
     }
 
@@ -114,8 +118,8 @@ class _RegisterDeviceScreenState extends State<RegisterDeviceScreen> {
       regDebugPrint("navigating Home");
     } catch (e, st) {
       regDebugLogRegistrationFailure(e, st);
-      final msg = e is ApiError ? e.localized : ApiError.fromUnknown(e).localized;
-      setState(() => _errorHe = msg);
+      final msg = e is ApiError ? localizedApiErrorMessage(l10n, e) : localizedApiErrorMessage(l10n, ApiError.fromUnknown(e));
+      setState(() => _errorUx = msg);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -123,6 +127,7 @@ class _RegisterDeviceScreenState extends State<RegisterDeviceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final scope = AppScope.read(context);
     final session = scope.session;
     final baked = kApiBaseUrlFromDefine.trim().isNotEmpty;
@@ -130,12 +135,13 @@ class _RegisterDeviceScreenState extends State<RegisterDeviceScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("רישום מכשיר"),
+        title: Text(l10n.registerTitle),
         actions: [
+          languagePickerButton(context, session),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             onPressed: _loading ? null : _openSettings,
-            tooltip: "הגדרות",
+            tooltip: l10n.registerSettingsTooltip,
           ),
         ],
       ),
@@ -148,12 +154,12 @@ class _RegisterDeviceScreenState extends State<RegisterDeviceScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (!showServerField) ...[
-                  Text("שרת", style: Theme.of(context).textTheme.labelLarge),
+                  Text(l10n.registerServerSection, style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 8),
-                  SelectableText(session.serverUrl.isEmpty ? "(לא מוגדר)" : session.serverUrl),
+                  SelectableText(session.serverUrl.isEmpty ? l10n.registerServerNotSet : session.serverUrl),
                   const SizedBox(height: 8),
                   Text(
-                    "כתובת השרת נקבעה בגרסת האפליקציה. לשינוי — הגדרות ← מתקדם.",
+                    l10n.registerServerBakedHint,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: 14),
@@ -161,15 +167,15 @@ class _RegisterDeviceScreenState extends State<RegisterDeviceScreen> {
                 if (showServerField) ...[
                   AppTextField(
                     controller: _serverCtl,
-                    label: "כתובת שרת",
+                    label: l10n.registerServerUrlLabel,
                     keyboardType: TextInputType.url,
                     autocorrect: false,
                     validator: (v) {
-                      final raw = "${v ?? ""}".trim();
-                      if (raw.isEmpty) return "חובה";
+                      final raw = (v ?? "").trim();
+                      if (raw.isEmpty) return l10n.registerValidationRequired;
                       final n = ApiClient.normalizeServerInput(raw);
                       final parsed = Uri.tryParse(n);
-                      if (n.isEmpty || parsed == null || !parsed.hasScheme) return "כתובת לא תקינה";
+                      if (n.isEmpty || parsed == null || !parsed.hasScheme) return l10n.registerValidationBadUrl;
                       return null;
                     },
                   ),
@@ -177,24 +183,21 @@ class _RegisterDeviceScreenState extends State<RegisterDeviceScreen> {
                 ],
                 AppTextField(
                   controller: _inviteCtl,
-                  label: "קוד הזמנה (אופציונלי)",
+                  label: l10n.registerInviteOptional,
                   autocorrect: false,
                 ),
                 const SizedBox(height: 14),
-                AppTextField(controller: _nameCtl, label: "שם מכשיר (אופציונלי)", autocorrect: false),
-                if (_errorHe != null) ...[
+                AppTextField(controller: _nameCtl, label: l10n.registerDeviceNameOptional, autocorrect: false),
+                if (_errorUx != null) ...[
                   const SizedBox(height: 16),
-                  Directionality(
-                    textDirection: TextDirection.rtl,
-                    child: Text(
-                      _errorHe!,
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
-                      textAlign: TextAlign.center,
-                    ),
+                  Text(
+                    _errorUx!,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    textAlign: TextAlign.center,
                   ),
                 ],
                 const SizedBox(height: 22),
-                AppPrimaryButton(label: "רישום מכשיר", loading: _loading, onPressed: _loading ? null : _submit),
+                AppPrimaryButton(label: l10n.registerSubmit, loading: _loading, onPressed: _loading ? null : _submit),
               ],
             ),
           ),

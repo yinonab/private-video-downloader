@@ -14,7 +14,7 @@
         android:maxSdkVersion="29" />
 
     <application
-        android:label="private_video_downloader"
+        android:label="LinkClip"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true"

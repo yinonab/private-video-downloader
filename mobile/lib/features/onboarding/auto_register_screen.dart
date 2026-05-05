@@ -4,7 +4,10 @@ import "package:flutter/material.dart";
 
 import "../../core/app_scope.dart";
 import "../../core/config/build_flags.dart";
+import "../../core/l10n/api_error_localizations.dart";
+import "../../core/l10n/context_l10n.dart";
 import "../../core/models/api_error.dart";
+import "../../core/widgets/language_picker.dart";
 
 /// Shown while the app POSTs `/devices/register` using the baked-in or default server URL.
 class AutoRegisterScreen extends StatefulWidget {
@@ -48,38 +51,50 @@ class _AutoRegisterScreenState extends State<AutoRegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final theme = Theme.of(context);
+    final session = AppScope.read(context).session;
     return Scaffold(
-      appBar: AppBar(title: const Text("התחברות")),
+      appBar: AppBar(
+        title: Text(l10n.autoRegisterTitle),
+        actions: [languagePickerButton(context, session)],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Directionality(
-            textDirection: TextDirection.rtl,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (widget.busy) ...[
-                  const Center(child: CircularProgressIndicator()),
-                  const SizedBox(height: 24),
-                  Text("מתחבר לשרת…", textAlign: TextAlign.center, style: theme.textTheme.titleMedium),
-                ],
-                if (!widget.busy && widget.error != null) ...[
-                  Icon(Icons.warning_amber_rounded, size: 52, color: theme.colorScheme.error),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.error is ApiError ? (widget.error! as ApiError).localized : "ההתחברות נכשלה",
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 28),
-                  FilledButton(onPressed: widget.onRetry, child: const Text("נסה שוב")),
-                  const SizedBox(height: 12),
-                  TextButton(onPressed: widget.onManualSetup, child: const Text("הגדרה ידנית / מתקדם")),
-                ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.busy) ...[
+                const Center(child: CircularProgressIndicator()),
+                const SizedBox(height: 24),
+                Text(l10n.autoRegisterConnecting, textAlign: TextAlign.center, style: theme.textTheme.titleMedium),
               ],
-            ),
+              if (!widget.busy && widget.error != null) ...[
+                Icon(Icons.warning_amber_rounded, size: 52, color: theme.colorScheme.error),
+                const SizedBox(height: 16),
+                Text(
+                  widget.error is ApiError
+                      ? localizedApiErrorMessage(l10n, widget.error! as ApiError)
+                      : l10n.bootstrapConnectionFailed,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyLarge,
+                ),
+                if (widget.error is! ApiError) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    l10n.bootstrapConnectionHint,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ],
+                const SizedBox(height: 28),
+                FilledButton(onPressed: widget.onRetry, child: Text(l10n.bootstrapRetry)),
+                const SizedBox(height: 12),
+                TextButton(onPressed: widget.onManualSetup, child: Text(l10n.autoRegisterManualSetup)),
+              ],
+            ],
           ),
         ),
       ),

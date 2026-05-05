@@ -18,22 +18,19 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 64, color: Theme.of(context).colorScheme.surfaceTint),
-            const SizedBox(height: 14),
-            Text(title, style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            Text(subtitle, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
-            const SizedBox(height: 18),
-            FilledButton(onPressed: onTap, child: Text(buttonLabel)),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 64, color: Theme.of(context).colorScheme.surfaceTint),
+          const SizedBox(height: 14),
+          Text(title, style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
+          const SizedBox(height: 8),
+          Text(subtitle, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+          const SizedBox(height: 18),
+          FilledButton(onPressed: onTap, child: Text(buttonLabel)),
+        ],
       ),
     );
   }

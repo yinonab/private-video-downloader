@@ -6,6 +6,9 @@ import "package:flutter/material.dart";
 
 import "../../core/app_scope.dart";
 import "../../core/config/build_flags.dart";
+import "../../core/l10n/api_error_localizations.dart";
+import "../../core/l10n/context_l10n.dart";
+import "../../core/l10n/download_status_localizations.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
 import "../../core/utils/download_error_display.dart";
@@ -67,6 +70,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   }
 
   Future<void> _downloadToDevice() async {
+    final l10n = context.l10n;
     final d = _detail;
     if (d == null || d.status != "done") return;
     final scope = AppScope.read(context);
@@ -99,10 +103,8 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         "mediaStorePublished=${outcome.mediaStorePublished} publicUri=${outcome.publicUri}",
       );
       final msg = outcome.mediaStorePublished == true && outcome.publicUri != null
-          ? "הקובץ נשמר בתיקיית ההורדות"
-          : (Platform.isAndroid
-              ? "הקובץ נשמר באפליקציה, אך לא ניתן לשמור לתיקיית ההורדות"
-              : "הקובץ נשמר");
+          ? l10n.downloadSavedToDownloads
+          : (Platform.isAndroid ? l10n.downloadSavedInAppOnly : l10n.downloadSavedGeneric);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e, st) {
       downloadDebugPrint(
@@ -121,7 +123,8 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       }
       downloadDebugStackTrace("download_status_screen._downloadToDevice", st);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is ApiError ? e.localized : "$e")));
+      final msg = e is ApiError ? localizedApiErrorMessage(l10n, e) : "$e";
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } finally {
       if (mounted) setState(() => _fileBusy = false);
     }
@@ -145,6 +148,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   }
 
   Future<void> _retry() async {
+    final l10n = context.l10n;
     setState(() => _err = null);
     try {
       await AppScope.read(context).downloadService.retry(widget.jobId);
@@ -154,86 +158,93 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       await _tickOnce();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is ApiError ? e.localized : "$e")));
+      final msg = e is ApiError ? localizedApiErrorMessage(l10n, e) : "$e";
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final d = _detail;
     return Scaffold(
-      appBar: AppBar(title: const Text("סטטוס הורדה")),
+      appBar: AppBar(title: Text(l10n.downloadStatusTitle)),
       body: RefreshIndicator(
         onRefresh: _tickOnce,
-        child: Directionality(
-          textDirection: TextDirection.rtl,
-          child: ListView(
-            padding: const EdgeInsets.all(18),
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: [
-              if (_err != null) ...[
-                Icon(Icons.warning_amber_rounded, size: 48, color: Theme.of(context).colorScheme.error),
-                const SizedBox(height: 10),
-                Text(_err!.localized, style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 14),
-              ],
-              if (d == null && _err == null)
-                const Padding(padding: EdgeInsets.only(top: 80), child: Center(child: CircularProgressIndicator())),
-              if (d != null) ...[
-                AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: d.thumbnail != null && d.thumbnail!.isNotEmpty
-                        ? Image.network(
-                            d.thumbnail!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _ph(context),
-                          )
-                        : _ph(context),
-                  ),
+        child: ListView(
+          padding: const EdgeInsets.all(18),
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            if (_err != null) ...[
+              Icon(Icons.warning_amber_rounded, size: 48, color: Theme.of(context).colorScheme.error),
+              const SizedBox(height: 10),
+              Text(localizedApiErrorMessage(l10n, _err!), style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 14),
+              AppPrimaryButton(label: l10n.downloadRetry, loading: false, onPressed: _retry),
+            ],
+            if (d == null && _err == null)
+              const Padding(padding: EdgeInsets.only(top: 80), child: Center(child: CircularProgressIndicator())),
+            if (d != null) ...[
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: d.thumbnail != null && d.thumbnail!.isNotEmpty
+                      ? Image.network(
+                          d.thumbnail!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _ph(context),
+                        )
+                      : _ph(context),
                 ),
+              ),
+              const SizedBox(height: 14),
+              Text((() {
+                final t = (d.title ?? "").trim();
+                return t.isEmpty ? l10n.untitledVideo : t;
+              })(), style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 14),
+              Text(localizedDownloadJobStatus(l10n, d.status), style: Theme.of(context).textTheme.headlineSmall),
+              if (d.status == "done") ...[
+                const SizedBox(height: 8),
+                Text(l10n.downloadVideoReadyHint, style: Theme.of(context).textTheme.bodyMedium),
+              ],
+              const SizedBox(height: 10),
+              LinearProgressIndicator(value: (d.progress.clamp(0, 100)) / 100),
+              Text("${d.progress.clamp(0, 100)}%", style: Theme.of(context).textTheme.titleMedium),
+              if ((d.speedText ?? "").trim().isNotEmpty)
+                Text(l10n.downloadSpeed(d.speedText!.trim()), style: Theme.of(context).textTheme.bodyMedium),
+              if ((d.etaText ?? "").trim().isNotEmpty)
+                Text(l10n.downloadEta(d.etaText!.trim()), style: Theme.of(context).textTheme.bodyMedium),
+              if ((d.status == "failed" || d.status == "canceled") && (d.error ?? "").trim().isNotEmpty) ...[
                 const SizedBox(height: 14),
-                Text(d.title ?? "ללא כותרת", style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 14),
-                Text(DownloadStatusParsed.fromRaw(d.status).hebrew, style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 10),
-                LinearProgressIndicator(value: (d.progress.clamp(0, 100)) / 100),
-                Text("${d.progress.clamp(0, 100)}%", style: Theme.of(context).textTheme.titleMedium),
-                if ((d.speedText ?? "").trim().isNotEmpty)
-                  Text("מהירות: ${d.speedText}", style: Theme.of(context).textTheme.bodyMedium),
-                if ((d.etaText ?? "").trim().isNotEmpty)
-                  Text("זמן משוער: ${d.etaText}", style: Theme.of(context).textTheme.bodyMedium),
-                if ((d.status == "failed" || d.status == "canceled") && (d.error ?? "").trim().isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  Text(formatDownloadJobError(d.error!), style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                ],
-                if (d.status == "failed" || d.status == "canceled") ...[
-                  const SizedBox(height: 22),
-                  AppPrimaryButton(label: "נסה שוב", loading: false, onPressed: _retry),
-                ],
-                if (d.status == "done") ...[
-                  const SizedBox(height: 22),
-                  if (_fileBusy && _totalBytes > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: LinearProgressIndicator(
-                        value: _totalBytes <= 0 ? null : (_receiveBytes / _totalBytes).clamp(0.0, 1.0),
-                      ),
+                Text(formatDownloadJobError(l10n, d.error!), style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              ],
+              if (d.status == "failed" || d.status == "canceled") ...[
+                const SizedBox(height: 22),
+                AppPrimaryButton(label: l10n.downloadRetry, loading: false, onPressed: _retry),
+              ],
+              if (d.status == "done") ...[
+                const SizedBox(height: 22),
+                if (_fileBusy && _totalBytes > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: LinearProgressIndicator(
+                      value: _totalBytes <= 0 ? null : (_receiveBytes / _totalBytes).clamp(0.0, 1.0),
                     ),
-                  AppPrimaryButton(
-                    label: "הורד למכשיר",
-                    loading: _fileBusy,
-                    onPressed: _fileBusy ? null : _downloadToDevice,
                   ),
-                  const SizedBox(height: 10),
-                  AppOutlinedButton(label: "פתח", onPressed: _openLocal),
-                  const SizedBox(height: 10),
-                  AppOutlinedButton(label: "שתף", onPressed: _shareLocal),
-                ],
+                AppPrimaryButton(
+                  label: l10n.downloadSaveToDevice,
+                  loading: _fileBusy,
+                  onPressed: _fileBusy ? null : _downloadToDevice,
+                ),
+                const SizedBox(height: 10),
+                AppOutlinedButton(label: l10n.downloadOpen, onPressed: _openLocal),
+                const SizedBox(height: 10),
+                AppOutlinedButton(label: l10n.downloadShare, onPressed: _shareLocal),
               ],
             ],
-          ),
+          ],
         ),
       ),
     );

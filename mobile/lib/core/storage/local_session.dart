@@ -1,4 +1,5 @@
 import "package:flutter/foundation.dart";
+import "package:flutter/widgets.dart" show Locale;
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:path/path.dart" as p;
 import "package:shared_preferences/shared_preferences.dart";
@@ -39,6 +40,7 @@ class LocalSession extends ChangeNotifier {
   static const _prefsDisplayKey = "device_display_name";
   static const _prefsCustomServerKey = "custom_server_url_enabled";
   static const _prefsPreferManualRegisterKey = "prefer_manual_register";
+  static const _prefsLocaleKey = "selected_locale";
 
   bool _hydrated = false;
   bool _customServerEnabled = false;
@@ -47,6 +49,13 @@ class LocalSession extends ChangeNotifier {
   String _deviceId = "";
   String _deviceToken = "";
   String? _displayName;
+
+  Locale _locale = const Locale("en");
+
+  /// Active UI locale (`en` default; persisted under [_prefsLocaleKey]).
+  Locale get locale => _locale;
+
+  String? get displayName => _displayName;
 
   /// Last URL handed from Share sheet before onboarding completes.
   String? pendingSharedUrl;
@@ -70,6 +79,10 @@ class LocalSession extends ChangeNotifier {
 
   Future<void> bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
+
+    final lang = prefs.getString(_prefsLocaleKey);
+    _locale = lang == "he" ? const Locale("he") : const Locale("en");
+
     _customServerEnabled = prefs.getBool(_prefsCustomServerKey) ?? false;
 
     if (_customServerEnabled) {
@@ -118,6 +131,14 @@ class LocalSession extends ChangeNotifier {
     regDebugPrint("preferManualRegister=$_preferManualRegister");
     regDebugPrint("shouldAutoRegister=$shouldAutoRegister");
 
+    notifyListeners();
+  }
+
+  Future<void> setLocale(Locale locale) async {
+    final code = locale.languageCode == "he" ? "he" : "en";
+    _locale = Locale(code);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefsLocaleKey, code);
     notifyListeners();
   }
 
@@ -309,8 +330,12 @@ class LocalSession extends ChangeNotifier {
   /// Deletes secure + prefs snapshot and rotates local UUID (invite required server-side anyway).
   Future<void> factoryResetLocal() async {
     final prefs = await SharedPreferences.getInstance();
+    final savedLang = prefs.getString(_prefsLocaleKey);
     await _secure.deleteAll();
     await prefs.clear();
+    if (savedLang != null && savedLang.isNotEmpty) {
+      await prefs.setString(_prefsLocaleKey, savedLang);
+    }
     pendingSharedUrl = null;
 
     _serverUrl = "";

@@ -7,19 +7,16 @@ class LoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            if (message != null) ...[
-              const SizedBox(height: 12),
-              Text(message!, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
-            ],
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(),
+          if (message != null) ...[
+            const SizedBox(height: 12),
+            Text(message!, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
           ],
-        ),
+        ],
       ),
     );
   }

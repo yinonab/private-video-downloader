@@ -7,6 +7,7 @@ import "package:open_filex/open_filex.dart";
 import "package:share_plus/share_plus.dart";
 
 import "../core/storage/local_session.dart";
+import "../l10n/app_localizations.dart";
 
 Future<bool> validateSavedDownload(LocalSession session, String jobId) async {
   final desc = await session.savedDownloadForJob(jobId);
@@ -39,10 +40,11 @@ Future<void> openSavedDownload({
   required LocalSession session,
   required String jobId,
 }) async {
+  final l10n = AppLocalizations.of(context);
   final messenger = ScaffoldMessenger.of(context);
   final desc = await session.savedDownloadForJob(jobId);
   if (desc == null || desc.internalPath.isEmpty) {
-    messenger.showSnackBar(const SnackBar(content: Text("יש להוריד את הקובץ תחילה")));
+    messenger.showSnackBar(SnackBar(content: Text(l10n.savedMustDownloadFirst)));
     return;
   }
   final localPath = desc.internalPath.trim();
@@ -50,18 +52,18 @@ Future<void> openSavedDownload({
     "saved_media open: internal=$localPath publicUri=${desc.publicUri} name=${desc.shareFileName} mime=${desc.mimeType}",
   );
   if (!await validateSavedDownload(session, jobId)) {
-    messenger.showSnackBar(const SnackBar(content: Text("לא ניתן לפתוח את הקובץ")));
+    messenger.showSnackBar(SnackBar(content: Text(l10n.savedCannotOpenFile)));
     return;
   }
   try {
     final r = await OpenFilex.open(localPath);
     dev.log("saved_media open: OpenFilex result type=${r.type} message=${r.message}");
     if (r.type != ResultType.done) {
-      messenger.showSnackBar(const SnackBar(content: Text("לא ניתן לפתוח את הקובץ")));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.savedCannotOpenFile)));
     }
   } catch (e, st) {
     dev.log("saved_media open: exception", error: e, stackTrace: st);
-    messenger.showSnackBar(const SnackBar(content: Text("לא ניתן לפתוח את הקובץ")));
+    messenger.showSnackBar(SnackBar(content: Text(l10n.savedCannotOpenFile)));
   }
 }
 
@@ -71,10 +73,11 @@ Future<void> shareSavedDownload({
   required String jobId,
   String? title,
 }) async {
+  final l10n = AppLocalizations.of(context);
   final messenger = ScaffoldMessenger.of(context);
   final desc = await session.savedDownloadForJob(jobId);
   if (desc == null || desc.internalPath.isEmpty) {
-    messenger.showSnackBar(const SnackBar(content: Text("יש להוריד את הקובץ תחילה")));
+    messenger.showSnackBar(SnackBar(content: Text(l10n.savedMustDownloadFirst)));
     return;
   }
   final localPath = desc.internalPath.trim();
@@ -82,7 +85,7 @@ Future<void> shareSavedDownload({
     "saved_media share: internal=$localPath name=${desc.shareFileName} mime=${desc.mimeType}",
   );
   if (!await validateSavedDownload(session, jobId)) {
-    messenger.showSnackBar(const SnackBar(content: Text("לא ניתן לשתף את הקובץ")));
+    messenger.showSnackBar(SnackBar(content: Text(l10n.savedCannotShareFile)));
     return;
   }
   final shareText = (title != null && title.trim().isNotEmpty) ? title.trim() : null;
@@ -96,18 +99,18 @@ Future<void> shareSavedDownload({
     dev.log("saved_media share: ShareResult status=${result.status} raw=$result");
     if (result.status == ShareResultStatus.unavailable) {
       messenger.showSnackBar(
-        const SnackBar(content: Text("השיתוף נכשל. נסה לפתוח את הקובץ או לשתף מאפליקציית הקבצים.")),
+        SnackBar(content: Text(l10n.savedShareFailedHint)),
       );
     }
   } on PlatformException catch (e, st) {
     dev.log("saved_media share: PlatformException", error: e, stackTrace: st);
     messenger.showSnackBar(
-      const SnackBar(content: Text("השיתוף נכשל. נסה לפתוח את הקובץ או לשתף מאפליקציית הקבצים.")),
+      SnackBar(content: Text(l10n.savedShareFailedHint)),
     );
   } catch (e, st) {
     dev.log("saved_media share: failed", error: e, stackTrace: st);
     messenger.showSnackBar(
-      const SnackBar(content: Text("השיתוף נכשל. נסה לפתוח את הקובץ או לשתף מאפליקציית הקבצים.")),
+      SnackBar(content: Text(l10n.savedShareFailedHint)),
     );
   }
 }

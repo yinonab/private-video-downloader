@@ -3,6 +3,8 @@ import "package:flutter/material.dart";
 
 import "../../core/app_scope.dart";
 import "../../core/config/build_flags.dart";
+import "../../core/l10n/api_error_localizations.dart";
+import "../../core/l10n/context_l10n.dart";
 import "../../core/models/analyze_models.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
@@ -50,7 +52,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     if (u.isEmpty) {
       setState(() {
         _loading = false;
-        _err = ApiError(code: "BAD_REQUEST", message: "empty", hebrewSummary: "חסר קישור");
+        _err = ApiError(code: "MISSING_LINK", message: "empty");
       });
       return;
     }
@@ -76,6 +78,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
   }
 
   Future<void> _startDownload() async {
+    final l10n = context.l10n;
     final d = _data;
     if (d == null) return;
     final fmtList = d.availableFormats;
@@ -85,7 +88,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     if (!fmt.available) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("איכות זו אינה זמינה לסרטון הזה")),
+        SnackBar(content: Text(l10n.analyzeQualityUnavailableSnack)),
       );
       return;
     }
@@ -114,17 +117,12 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
         );
       }
       if (e is ApiError) {
-        downloadDebugPrint("ApiError code=${e.code} httpStatus=${e.httpStatus} localized=${e.localized}");
-        const unexpectedHebrew = "אירעה שגיאה לא צפויה";
-        if (e.localized == unexpectedHebrew || e.hebrewSummary == unexpectedHebrew) {
-          downloadDebugPrint(
-            "causes-localized-unexpected-error message=${e.message} details=${e.details}",
-          );
-        }
+      downloadDebugPrint("ApiError code=${e.code} httpStatus=${e.httpStatus} localized=${e.localized}");
       }
       downloadDebugStackTrace("analyze_screen._startDownload", st);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is ApiError ? e.localized : "$e")));
+      final msg = e is ApiError ? localizedApiErrorMessage(l10n, e) : "$e";
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } finally {
       if (mounted) setState(() => _starting = false);
     }
@@ -132,16 +130,22 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text("ניתוח קישור")),
+      appBar: AppBar(title: Text(l10n.analyzeTitle)),
       body: SafeArea(child: _buildBody()),
     );
   }
 
   Widget _buildBody() {
-    if (_loading) return const LoadingView(message: "מנתח קישור…");
+    final l10n = context.l10n;
+    if (_loading) return LoadingView(message: l10n.analyzeLoading);
     if (_err != null) {
-      return ErrorView(title: _err!.localized, retryLabel: "נסה שוב", onRetry: _run);
+      return ErrorView(
+        title: localizedApiErrorMessage(l10n, _err!),
+        retryLabel: l10n.bootstrapRetry,
+        onRetry: _run,
+      );
     }
     final d = _data;
     if (d == null) return const SizedBox.shrink();
@@ -157,48 +161,47 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
           : "$m:${s.toString().padLeft(2, '0')}";
     }
 
+    final titleLine = d.title.trim().isEmpty ? l10n.untitledVideo : d.title;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
-      child: Directionality(
-        textDirection: TextDirection.rtl,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text("נמצא סרטון", style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: d.thumbnail != null && d.thumbnail!.isNotEmpty
-                    ? Image.network(
-                        d.thumbnail!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _mediaPlaceholder(),
-                      )
-                    : _mediaPlaceholder(),
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.analyzeVideoFound, style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: d.thumbnail != null && d.thumbnail!.isNotEmpty
+                  ? Image.network(
+                      d.thumbnail!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _mediaPlaceholder(),
+                    )
+                  : _mediaPlaceholder(),
             ),
-            const SizedBox(height: 16),
-            Text(d.title, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                Chip(label: Text(d.platform)),
-                if (durText != null) Chip(label: Text("משך $durText")),
-              ],
-            ),
-            const SizedBox(height: 22),
-            QualitySelector(
-              formats: d.availableFormats,
-              selectedIndex: FormatOption.clampSelectableIndex(d.availableFormats, _fmtIndex),
-              onChanged: (i) => setState(() => _fmtIndex = i),
-            ),
-            const SizedBox(height: 26),
-            AppPrimaryButton(label: "התחל הורדה", loading: _starting, onPressed: _starting ? null : _startDownload),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          Text(titleLine, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              Chip(label: Text(d.platform)),
+              if (durText != null) Chip(label: Text(l10n.analyzeDurationLabel(durText))),
+            ],
+          ),
+          const SizedBox(height: 22),
+          QualitySelector(
+            formats: d.availableFormats,
+            selectedIndex: FormatOption.clampSelectableIndex(d.availableFormats, _fmtIndex),
+            onChanged: (i) => setState(() => _fmtIndex = i),
+          ),
+          const SizedBox(height: 26),
+          AppPrimaryButton(label: l10n.analyzePrepareDownload, loading: _starting, onPressed: _starting ? null : _startDownload),
+        ],
       ),
     );
   }

@@ -1,7 +1,6 @@
 import "dart:io" show Platform;
 
 import "package:flutter/material.dart";
-import "package:flutter_localizations/flutter_localizations.dart";
 
 import "core/app_scope.dart";
 import "core/config/build_flags.dart";
@@ -10,6 +9,7 @@ import "core/network/api_client.dart";
 import "core/storage/local_session.dart";
 import "core/theme/app_theme.dart";
 import "core/utils/url_utils.dart";
+import "core/widgets/bootstrap_gate.dart";
 import "features/analyze/analyze_screen.dart";
 import "features/home/home_screen.dart";
 import "features/onboarding/auto_register_screen.dart";
@@ -19,6 +19,7 @@ import "services/device_service.dart";
 import "services/download_service.dart";
 import "services/file_download_service.dart";
 import "services/share_intent_service.dart";
+import "l10n/app_localizations.dart";
 
 final class BootstrapCoordinator {
   BootstrapCoordinator({required this.navigatorKey});
@@ -79,12 +80,20 @@ class _PrivateDownloaderAppState extends State<PrivateDownloaderApp> {
   bool _autoBusy = false;
   bool _autoRunning = false;
   Object? _autoErr;
+  bool _coordinatorBootstrapped = false;
 
   @override
   void initState() {
     super.initState();
     c.session.addListener(_onSessionChange);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _onSessionChange());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!_coordinatorBootstrapped) {
+        _coordinatorBootstrapped = true;
+        await c.bootstrap();
+      }
+      if (!mounted) return;
+      _onSessionChange();
+    });
   }
 
   @override
@@ -165,7 +174,7 @@ class _PrivateDownloaderAppState extends State<PrivateDownloaderApp> {
   Widget _homeGate() {
     final s = c.session;
     if (!s.hydrated) {
-      return const Center(key: ValueKey("loading"), child: CircularProgressIndicator());
+      return BootstrapGate(key: const ValueKey("bootstrap_gate"), session: s);
     }
     if (s.isRegistered) {
       return const HomeScreen(key: ValueKey("home"));
@@ -207,23 +216,10 @@ class _PrivateDownloaderAppState extends State<PrivateDownloaderApp> {
           child: MaterialApp(
             navigatorKey: c.navigatorKey,
             debugShowCheckedModeBanner: false,
-            title: "Private Video Downloader",
-            locale: const Locale("he", "IL"),
-            localizationsDelegates: const [
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            supportedLocales: const [
-              Locale("he", "IL"),
-              Locale("en", "US"),
-            ],
-            builder: (context, child) {
-              return Directionality(
-                textDirection: TextDirection.rtl,
-                child: child ?? const SizedBox.shrink(),
-              );
-            },
+            onGenerateTitle: (ctx) => AppLocalizations.of(ctx).appTitle,
+            locale: c.session.locale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             themeMode: ThemeMode.system,
             theme: AppTheme.theme(Brightness.light),
             darkTheme: AppTheme.theme(Brightness.dark),

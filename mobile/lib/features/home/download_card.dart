@@ -1,6 +1,8 @@
 import "package:flutter/material.dart";
 import "package:intl/intl.dart" hide TextDirection;
 
+import "../../core/l10n/context_l10n.dart";
+import "../../core/l10n/download_status_localizations.dart";
 import "../../core/models/download_models.dart";
 
 class DownloadCard extends StatelessWidget {
@@ -38,98 +40,182 @@ class DownloadCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final st = item.statusParsed;
-    final dateStr = DateFormat.yMMMd("he_IL").add_Hm().format(item.createdAt.toLocal());
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final locTag = Localizations.localeOf(context).toString();
+    final dateStr = DateFormat.yMMMd(locTag).add_Hm().format(item.createdAt.toLocal());
     final sizeStr = item.file != null ? _fmtBytes(item.file!.sizeBytes) : null;
+    final titleLine = item.title.isEmpty ? l10n.untitledVideo : item.title;
+    final platformLine = item.platform.isEmpty ? l10n.unknownPlatform : item.platform;
+    final statusLabel = localizedDownloadJobStatus(l10n, item.status);
+    final done = item.statusParsed.label == DownloadUiStatusLabel.done;
+    final failedOrCanceled = item.status == "failed" || item.status == "canceled";
 
-    return Card(
+    return Material(
+      color: scheme.surface,
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: scheme.outline.withValues(alpha: 0.45)),
+      ),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpenStatus,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Directionality(
-            textDirection: TextDirection.rtl,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _thumb(context),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleSmall),
-                      const SizedBox(height: 6),
-                      Text(item.platform, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Chip(
-                            label: Text(st.hebrew),
-                            visualDensity: VisualDensity.compact,
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: onOpenStatus,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 6, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _thumb(context),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          titleLine,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: scheme.onSurface,
+                            height: 1.25,
                           ),
-                          if (sizeStr != null) ...[
-                            const SizedBox(width: 8),
-                            Text(sizeStr, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: scheme.outline)),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Chip(
+                              label: Text(platformLine),
+                              visualDensity: VisualDensity.compact,
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              labelStyle: theme.textTheme.labelMedium?.copyWith(
+                                color: scheme.onPrimaryContainer,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              backgroundColor: scheme.primaryContainer.withValues(alpha: 0.45),
+                              side: BorderSide.none,
+                            ),
+                            Chip(
+                              label: Text(statusLabel),
+                              visualDensity: VisualDensity.compact,
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              labelStyle: theme.textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
+                              backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.65),
+                              side: BorderSide.none,
+                            ),
                           ],
+                        ),
+                        if (item.active) ...[
+                          const SizedBox(height: 12),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              minHeight: 6,
+                              value: (item.progress.clamp(0, 100)) / 100.0,
+                              backgroundColor: scheme.surfaceContainerHighest,
+                              color: scheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            "${item.progress.clamp(0, 100)}%",
+                            style: theme.textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
                         ],
-                      ),
-                      if (item.active) ...[
-                        const SizedBox(height: 10),
-                        LinearProgressIndicator(value: (item.progress.clamp(0, 100)) / 100.0),
-                        const SizedBox(height: 6),
-                        Text("${item.progress.clamp(0, 100)}%", style: Theme.of(context).textTheme.labelMedium),
+                        const SizedBox(height: 8),
+                        Text(
+                          [
+                            if (sizeStr != null) sizeStr,
+                            dateStr,
+                          ].join(" · "),
+                          style: theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+                        ),
                       ],
-                      const SizedBox(height: 6),
-                      Text(dateStr, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: "",
+                    icon: Icon(Icons.more_vert_rounded, color: scheme.onSurfaceVariant),
+                    onSelected: (k) {
+                      if (k == "status") {
+                        onOpenStatus();
+                      } else if (k == "retry") {
+                        onRetry?.call();
+                      } else if (k == "del") {
+                        onDelete();
+                      } else if (k == "open") {
+                        onOpenLocal?.call();
+                      } else if (k == "share") {
+                        onShareLocal?.call();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(value: "status", child: Text(l10n.downloadCardStatusDetails)),
+                      if (failedOrCanceled && onRetry != null)
+                        PopupMenuItem(value: "retry", child: Text(l10n.downloadCardRetry)),
+                      PopupMenuItem(value: "del", child: Text(l10n.downloadCardDelete)),
+                      if (done && localFileExists && onOpenLocal != null)
+                        PopupMenuItem(value: "open", child: Text(l10n.downloadOpen)),
+                      if (done && localFileExists && onShareLocal != null)
+                        PopupMenuItem(value: "share", child: Text(l10n.downloadShare)),
                     ],
                   ),
-                ),
-                PopupMenuButton<String>(
-                  tooltip: "",
-                  icon: const Icon(Icons.more_vert),
-                  onSelected: (k) {
-                    if (k == "status") {
-                      onOpenStatus();
-                    } else if (k == "retry") {
-                      onRetry?.call();
-                    } else if (k == "del") {
-                      onDelete();
-                    } else if (k == "open") {
-                      onOpenLocal?.call();
-                    } else if (k == "share") {
-                      onShareLocal?.call();
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(value: "status", child: Text("פירוט הסטטוס")),
-                    if ((item.status == "failed" || item.status == "canceled") && onRetry != null)
-                      const PopupMenuItem(value: "retry", child: Text("נסה שוב")),
-                    const PopupMenuItem(value: "del", child: Text("מחק")),
-                    if (item.statusParsed.label == DownloadUiStatusLabel.done && localFileExists && onOpenLocal != null)
-                      const PopupMenuItem(value: "open", child: Text("פתח")),
-                    if (item.statusParsed.label == DownloadUiStatusLabel.done && localFileExists && onShareLocal != null)
-                      const PopupMenuItem(value: "share", child: Text("שתף")),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
+          if (done && !localFileExists)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: FilledButton.icon(
+                onPressed: onOpenStatus,
+                icon: const Icon(Icons.download_rounded, size: 20),
+                label: Text(l10n.downloadSaveToDevice),
+              ),
+            ),
+          if (done && localFileExists && onOpenLocal != null && onShareLocal != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                children: [
+                  TextButton.icon(
+                    onPressed: onOpenLocal,
+                    icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                    label: Text(l10n.downloadOpen),
+                  ),
+                  TextButton.icon(
+                    onPressed: onShareLocal,
+                    icon: const Icon(Icons.share_rounded, size: 18),
+                    label: Text(l10n.downloadShare),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
 
   Widget _thumb(BuildContext context) {
     final thumb = item.thumbnail;
-    const w = 88.0;
-    const h = 66.0;
+    const w = 104.0;
+    const h = 78.0;
     if (thumb != null && thumb.isNotEmpty) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         child: Image.network(
           thumb,
           width: w,
@@ -144,14 +230,20 @@ class DownloadCard extends StatelessWidget {
   }
 
   Widget _ph(BuildContext context, {bool loading = false}) {
-    const w = 88.0;
-    const h = 66.0;
-    final c = Theme.of(context).colorScheme.surfaceContainerHighest;
+    const w = 104.0;
+    const h = 78.0;
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       width: w,
       height: h,
-      decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(10)),
-      child: Icon(loading ? Icons.hourglass_bottom : Icons.ondemand_video_rounded),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(
+        loading ? Icons.hourglass_bottom_rounded : Icons.movie_filter_rounded,
+        color: scheme.onSurfaceVariant,
+      ),
     );
   }
 }

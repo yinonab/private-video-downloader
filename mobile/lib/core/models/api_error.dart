@@ -18,10 +18,15 @@ class ApiError implements Exception {
 
   factory ApiError.fromDio(DioException e) {
     final raw = _parseBody(e.response?.data);
-    final msg = raw.$2 ?? e.message ?? "$e";
+    final msg = raw.$1 == "NETWORK" && raw.$2 == "network" ? _dioMessageFallback(e) : raw.$2;
     final code = raw.$1;
     final heb = raw.$3 ?? hebrewForCode(code, e.response?.statusCode);
     return ApiError(code: code, message: msg, details: raw.$4, httpStatus: e.response?.statusCode, hebrewSummary: heb);
+  }
+
+  static String _dioMessageFallback(DioException e) {
+    final m = (e.message ?? "").trim();
+    return m.isEmpty ? "$e" : m;
   }
 
   final String code;

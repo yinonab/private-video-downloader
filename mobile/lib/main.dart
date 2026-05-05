@@ -13,13 +13,14 @@ Future<void> main() async {
     await MediaStore.ensureInitialized();
     MediaStore.appFolder = "PrivateVideoDownloader";
   }
-  await initializeDateFormatting("he_IL");
+  await Future.wait([
+    initializeDateFormatting("en_US"),
+    initializeDateFormatting("he_IL"),
+  ]);
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   final navigatorKey = GlobalKey<NavigatorState>();
   final bootstrap = BootstrapCoordinator(navigatorKey: navigatorKey);
-
-  await bootstrap.bootstrap();
 
   runApp(PrivateDownloaderApp(controller: bootstrap));
 }

@@ -1,9 +1,11 @@
-/// Maps raw worker/backend messages to readable Hebrew for the main UI.
-String formatDownloadJobError(String raw) {
+import "../../l10n/app_localizations.dart";
+
+/// Maps raw worker/backend messages to readable localized copy for the main UI.
+String formatDownloadJobError(AppLocalizations l10n, String raw) {
   final t = raw.trim();
   if (t.isEmpty) return t;
   if (t.contains("Requested format is not available")) {
-    return "האיכות שנבחרה לא זמינה לסרטון הזה. נסה איכות אחרת או Best MP4.";
+    return l10n.downloadJobErrorQuality;
   }
   return t;
 }

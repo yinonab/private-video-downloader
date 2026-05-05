@@ -48,11 +48,12 @@ class DownloadItem {
     final prog = m["progress"] is num ? (m["progress"] as num).round() : int.tryParse("${m["progress"] ?? ""}");
 
     final titleCandidate = "${m["title"] ?? ""}".trim();
+    final platformCandidate = "${m["platform"] ?? ""}".trim();
     return DownloadItem(
       id: "${m["id"] ?? ""}",
       status: "${m["status"] ?? ""}".trim().isEmpty ? "unknown" : "${m["status"]}",
-      title: titleCandidate.isEmpty ? "ללא כותרת" : titleCandidate,
-      platform: "${m["platform"] ?? ""}".trim().isEmpty ? "לא ידוע" : "${m["platform"]}",
+      title: titleCandidate,
+      platform: platformCandidate,
       thumbnail: m["thumbnail"]?.toString(),
       createdAt: date ?? DateTime.fromMillisecondsSinceEpoch(0),
       progress: prog ?? 0,

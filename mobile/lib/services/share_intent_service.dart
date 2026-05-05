@@ -7,6 +7,7 @@ import "package:receive_sharing_intent/receive_sharing_intent.dart";
 import "../core/config/build_flags.dart";
 import "../core/storage/local_session.dart";
 import "../core/utils/url_utils.dart";
+import "../l10n/app_localizations.dart";
 
 /// Android share target integration (cold + warm paths; text/plain via plugin PATH field).
 final class ShareIntentService {
@@ -39,11 +40,12 @@ final class ShareIntentService {
     return false;
   }
 
-  void _snack(String message) {
+  void _snackLocalized(String Function(AppLocalizations l10n) message) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ctx = navigatorKey.currentContext;
       if (ctx == null) return;
-      ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(SnackBar(content: Text(message)));
+      final l10n = AppLocalizations.of(ctx);
+      ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(SnackBar(content: Text(message(l10n))));
     });
   }
 
@@ -77,7 +79,7 @@ final class ShareIntentService {
 
     if ((url ?? "").isEmpty) {
       shareDebugPrint("no URL found");
-      _snack("לא נמצא קישור לשיתוף");
+      _snackLocalized((l) => l.shareNoLinkInContent);
       return;
     }
     final clean = UrlUtils.stripTrailingJunk(url!.trim());
