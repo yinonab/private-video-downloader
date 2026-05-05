@@ -152,5 +152,27 @@
     }
   },
   "shareAnalyzingVideo": "Analyzing shared video…",
-  "shareLinkFound": "Shared link found"
+  "shareLinkFound": "Shared link found",
+  "loadingAnalyzingDot": "Analyzing…",
+  "loadingPreparingDownloadDot": "Preparing download…",
+  "loadingDownloadingDot": "Downloading…",
+  "loadingSavingToDeviceDot": "Saving to device…",
+  "loadingFinalizingDot": "Finalizing…",
+  "downloadStageQueued": "Queued",
+  "downloadStagePreparing": "Preparing…",
+  "downloadStageDownloading": "Downloading…",
+  "downloadStageFinalizing": "Finalizing…",
+  "downloadStageReadyServer": "Ready — save to your device",
+  "downloadStageFailed": "Failed",
+  "downloadStageCanceled": "Canceled",
+  "downloadStageUnknown": "Working…",
+  "downloadPercentValue": "{percent}%",
+  "@downloadPercentValue": {
+    "placeholders": {
+      "percent": {"type": "int"}
+    }
+  },
+  "downloadStatusSavedOnDeviceTitle": "Saved on device",
+  "downloadStatusLoadingJob": "Loading download…",
+  "bootstrapLoadingShort": "Starting LinkClip…"
 }

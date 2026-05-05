@@ -1,4 +1,6 @@
 import "package:flutter/material.dart";
+import "package:flutter_animate/flutter_animate.dart";
+import "package:lucide_icons_flutter/lucide_icons.dart";
 
 import "../../core/app_scope.dart";
 import "../../core/l10n/api_error_localizations.dart";
@@ -6,6 +8,7 @@ import "../../core/l10n/context_l10n.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
 import "../../core/utils/url_utils.dart";
+import "../../core/widgets/app_button.dart";
 import "../../core/widgets/error_view.dart";
 import "../../core/widgets/loading_view.dart";
 import "../../l10n/app_localizations.dart";
@@ -179,9 +182,13 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text(l10n.homeTitle),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _busy ? null : _load),
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
+            icon: Icon(LucideIcons.refreshCw, color: scheme.onSurface),
+            tooltip: l10n.homeRetry,
+            onPressed: _busy ? null : _load,
+          ),
+          IconButton(
+            icon: Icon(LucideIcons.settings, color: scheme.onSurface),
             tooltip: l10n.settingsTitle,
             onPressed: () async {
               await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
@@ -193,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: hasItems
           ? FloatingActionButton.extended(
               onPressed: _pasteDialog,
-              icon: const Icon(Icons.link_rounded),
+              icon: Icon(LucideIcons.link2, color: scheme.onPrimary),
               label: Text(l10n.homePasteLinkFab),
             )
           : null,
@@ -246,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: _items.length + 1,
         itemBuilder: (context, i) {
           if (i >= _items.length) {
-            return _busy ? const Padding(padding: EdgeInsets.all(22), child: LoadingView()) : const SizedBox(height: 24);
+            return _busy ? const Padding(padding: EdgeInsets.all(22), child: LoadingView(compact: true)) : const SizedBox(height: 24);
           }
           final job = _items[i];
           return Padding(
@@ -298,7 +305,7 @@ class _HomeHeroCard extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return DecoratedBox(
+    final card = DecoratedBox(
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(22),
@@ -319,7 +326,7 @@ class _HomeHeroCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.play_circle_outline_rounded, color: scheme.primary, size: compact ? 26 : 30),
+                Icon(LucideIcons.circlePlay, color: scheme.primary, size: compact ? 28 : 32),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -349,7 +356,7 @@ class _HomeHeroCard extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.tips_and_updates_outlined, size: 20, color: scheme.primary),
+                      Icon(LucideIcons.sparkles, size: 20, color: scheme.primary),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -364,19 +371,20 @@ class _HomeHeroCard extends StatelessWidget {
             ],
             if (showPrimaryButton) ...[
               const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: onPaste,
-                  icon: const Icon(Icons.content_paste_go_rounded),
-                  label: Text(l10n.homePasteLinkButton),
-                ),
+              AppPrimaryButton(
+                label: l10n.homePasteLinkButton,
+                icon: Icon(LucideIcons.clipboardPaste, color: Theme.of(context).colorScheme.onPrimary),
+                onPressed: onPaste,
               ),
             ],
           ],
         ),
       ),
     );
+    return card
+        .animate()
+        .fadeIn(duration: 280.ms, curve: Curves.easeOut)
+        .slideY(begin: 0.06, end: 0, duration: 300.ms, curve: Curves.easeOut);
   }
 }
 
@@ -393,7 +401,7 @@ class _HomeEmptyIllustration extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    final block = Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
@@ -405,7 +413,7 @@ class _HomeEmptyIllustration extends StatelessWidget {
                 color: scheme.primaryContainer.withValues(alpha: 0.35),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.video_library_rounded, size: 52, color: scheme.primary),
+              child: Icon(LucideIcons.video, size: 52, color: scheme.primary),
             ),
             const SizedBox(height: 22),
             Text(
@@ -423,5 +431,9 @@ class _HomeEmptyIllustration extends StatelessWidget {
         ),
       ),
     );
+    return block
+        .animate()
+        .fadeIn(duration: 320.ms, curve: Curves.easeOut)
+        .scale(begin: const Offset(0.97, 0.97), end: const Offset(1, 1), duration: 340.ms, curve: Curves.easeOut);
   }
 }

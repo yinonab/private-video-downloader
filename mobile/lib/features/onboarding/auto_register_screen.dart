@@ -1,12 +1,15 @@
 import "dart:io" show Platform;
 
 import "package:flutter/material.dart";
+import "package:lucide_icons_flutter/lucide_icons.dart";
 
 import "../../core/app_scope.dart";
 import "../../core/config/build_flags.dart";
 import "../../core/l10n/api_error_localizations.dart";
 import "../../core/l10n/context_l10n.dart";
 import "../../core/models/api_error.dart";
+import "../../core/widgets/app_button.dart";
+import "../../core/widgets/branded_loading.dart";
 import "../../core/widgets/language_picker.dart";
 
 /// Shown while the app POSTs `/devices/register` using the baked-in or default server URL.
@@ -67,12 +70,11 @@ class _AutoRegisterScreenState extends State<AutoRegisterScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (widget.busy) ...[
-                const Center(child: CircularProgressIndicator()),
+                BrandedLoadingPanel(message: l10n.autoRegisterConnecting),
                 const SizedBox(height: 24),
-                Text(l10n.autoRegisterConnecting, textAlign: TextAlign.center, style: theme.textTheme.titleMedium),
               ],
               if (!widget.busy && widget.error != null) ...[
-                Icon(Icons.warning_amber_rounded, size: 52, color: theme.colorScheme.error),
+                Icon(LucideIcons.triangleAlert, size: 52, color: theme.colorScheme.error),
                 const SizedBox(height: 16),
                 Text(
                   widget.error is ApiError
@@ -90,7 +92,7 @@ class _AutoRegisterScreenState extends State<AutoRegisterScreen> {
                   ),
                 ],
                 const SizedBox(height: 28),
-                FilledButton(onPressed: widget.onRetry, child: Text(l10n.bootstrapRetry)),
+                AppPrimaryButton(label: l10n.bootstrapRetry, onPressed: widget.onRetry),
                 const SizedBox(height: 12),
                 TextButton(onPressed: widget.onManualSetup, child: Text(l10n.autoRegisterManualSetup)),
               ],

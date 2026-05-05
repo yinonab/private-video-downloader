@@ -2,8 +2,8 @@ import "package:flutter/material.dart";
 
 import "../l10n/context_l10n.dart";
 import "../storage/local_session.dart";
+import "branded_loading.dart";
 import "language_picker.dart";
-import "loading_view.dart";
 
 /// First frame before [LocalSession.bootstrap] completes — English default + language picker.
 class BootstrapGate extends StatelessWidget {
@@ -18,7 +18,7 @@ class BootstrapGate extends StatelessWidget {
       body: SafeArea(
         child: Stack(
           children: [
-            LoadingView(message: l10n.bootstrapPreparingApp),
+            BrandedLoadingPanel(message: l10n.bootstrapLoadingShort),
             PositionedDirectional(
               top: 4,
               end: 4,

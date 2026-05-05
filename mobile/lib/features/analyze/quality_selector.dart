@@ -1,4 +1,6 @@
 import "package:flutter/material.dart";
+import "package:flutter_animate/flutter_animate.dart";
+import "package:lucide_icons_flutter/lucide_icons.dart";
 
 import "../../core/l10n/context_l10n.dart";
 import "../../core/l10n/format_display.dart";
@@ -34,6 +36,11 @@ class QualitySelector extends StatelessWidget {
           final selected = i == selectedIndex;
           final disabled = !f.available;
           final rowLabel = formatOptionDisplayLabel(context, f);
+          final iconData = disabled
+              ? LucideIcons.circleMinus
+              : selected
+                  ? LucideIcons.circleCheck
+                  : LucideIcons.circle;
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Material(
@@ -42,9 +49,9 @@ class QualitySelector extends StatelessWidget {
                   : selected
                       ? scheme.primaryContainer.withValues(alpha: 0.85)
                       : scheme.surfaceContainerHighest.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               child: InkWell(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 onTap: disabled ? null : () => onChanged(i),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -52,11 +59,7 @@ class QualitySelector extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
-                        disabled
-                            ? Icons.block
-                            : selected
-                                ? Icons.radio_button_checked
-                                : Icons.radio_button_off,
+                        iconData,
                         color: disabled ? scheme.outline : scheme.primary,
                       ),
                       const SizedBox(width: 12),
@@ -87,7 +90,10 @@ class QualitySelector extends StatelessWidget {
                 ),
               ),
             ),
-          );
+          )
+              .animate()
+              .fadeIn(delay: (35 * i).ms, duration: 240.ms, curve: Curves.easeOut)
+              .slideX(begin: 0.02, end: 0, duration: 260.ms, curve: Curves.easeOut);
         }),
       ],
     );

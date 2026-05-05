@@ -1,9 +1,12 @@
 import "package:flutter/material.dart";
 import "package:intl/intl.dart" hide TextDirection;
+import "package:lucide_icons_flutter/lucide_icons.dart";
 
 import "../../core/l10n/context_l10n.dart";
+import "../../core/l10n/download_stage_localizations.dart";
 import "../../core/l10n/download_status_localizations.dart";
 import "../../core/models/download_models.dart";
+import "../../core/widgets/branded_progress.dart";
 
 class DownloadCard extends StatelessWidget {
   const DownloadCard({
@@ -57,7 +60,7 @@ class DownloadCard extends StatelessWidget {
       elevation: 0,
       shadowColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(21),
         side: BorderSide(color: scheme.outline.withValues(alpha: 0.45)),
       ),
       clipBehavior: Clip.antiAlias,
@@ -118,19 +121,18 @@ class DownloadCard extends StatelessWidget {
                         ),
                         if (item.active) ...[
                           const SizedBox(height: 12),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: LinearProgressIndicator(
-                              minHeight: 6,
-                              value: (item.progress.clamp(0, 100)) / 100.0,
-                              backgroundColor: scheme.surfaceContainerHighest,
-                              color: scheme.primary,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            "${item.progress.clamp(0, 100)}%",
-                            style: theme.textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
+                          Builder(
+                            builder: (context) {
+                              final indeterminate = item.status == "queued" && item.progress <= 0;
+                              final pct = item.progress.clamp(0, 100);
+                              return BrandedProgressBar(
+                                dense: true,
+                                indeterminate: indeterminate,
+                                value: indeterminate ? null : pct / 100.0,
+                                percentLabel: indeterminate ? null : l10n.downloadPercentValue(pct),
+                                stageLabel: downloadStageTitle(l10n, item.status),
+                              );
+                            },
                           ),
                         ],
                         const SizedBox(height: 8),
@@ -146,7 +148,7 @@ class DownloadCard extends StatelessWidget {
                   ),
                   PopupMenuButton<String>(
                     tooltip: "",
-                    icon: Icon(Icons.more_vert_rounded, color: scheme.onSurfaceVariant),
+                    icon: Icon(LucideIcons.ellipsisVertical, color: scheme.onSurfaceVariant),
                     onSelected: (k) {
                       if (k == "status") {
                         onOpenStatus();
@@ -180,7 +182,7 @@ class DownloadCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
               child: FilledButton.icon(
                 onPressed: onOpenStatus,
-                icon: const Icon(Icons.download_rounded, size: 20),
+                icon: Icon(LucideIcons.smartphone, color: scheme.onPrimary),
                 label: Text(l10n.downloadSaveToDevice),
               ),
             ),
@@ -193,12 +195,12 @@ class DownloadCard extends StatelessWidget {
                 children: [
                   TextButton.icon(
                     onPressed: onOpenLocal,
-                    icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                    icon: Icon(LucideIcons.externalLink, size: 18, color: scheme.primary),
                     label: Text(l10n.downloadOpen),
                   ),
                   TextButton.icon(
                     onPressed: onShareLocal,
-                    icon: const Icon(Icons.share_rounded, size: 18),
+                    icon: Icon(LucideIcons.share2, size: 18, color: scheme.primary),
                     label: Text(l10n.downloadShare),
                   ),
                 ],
@@ -211,11 +213,11 @@ class DownloadCard extends StatelessWidget {
 
   Widget _thumb(BuildContext context) {
     final thumb = item.thumbnail;
-    const w = 104.0;
-    const h = 78.0;
+    const w = 112.0;
+    const h = 84.0;
     if (thumb != null && thumb.isNotEmpty) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Image.network(
           thumb,
           width: w,
@@ -230,20 +232,47 @@ class DownloadCard extends StatelessWidget {
   }
 
   Widget _ph(BuildContext context, {bool loading = false}) {
-    const w = 104.0;
-    const h = 78.0;
+    const w = 112.0;
+    const h = 84.0;
     final scheme = Theme.of(context).colorScheme;
+    final icon = loading ? _LucideSpinner(iconData: LucideIcons.loader, color: scheme.primary) : Icon(LucideIcons.video, color: scheme.onSurfaceVariant);
     return Container(
       width: w,
       height: h,
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: Icon(
-        loading ? Icons.hourglass_bottom_rounded : Icons.movie_filter_rounded,
-        color: scheme.onSurfaceVariant,
-      ),
+      child: Center(child: icon),
+    );
+  }
+}
+
+class _LucideSpinner extends StatefulWidget {
+  const _LucideSpinner({required this.iconData, required this.color});
+
+  final IconData iconData;
+  final Color color;
+
+  @override
+  State<_LucideSpinner> createState() => _LucideSpinnerState();
+}
+
+class _LucideSpinnerState extends State<_LucideSpinner> with SingleTickerProviderStateMixin {
+  late final AnimationController _rot =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 880))..repeat();
+
+  @override
+  void dispose() {
+    _rot.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RotationTransition(
+      turns: _rot,
+      child: Icon(widget.iconData, color: widget.color),
     );
   }
 }

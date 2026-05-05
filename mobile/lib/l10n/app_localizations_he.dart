@@ -427,4 +427,57 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get shareLinkFound => 'נמצא קישור משותף';
+
+  @override
+  String get loadingAnalyzingDot => 'מנתח…';
+
+  @override
+  String get loadingPreparingDownloadDot => 'מכין הורדה…';
+
+  @override
+  String get loadingDownloadingDot => 'מוריד…';
+
+  @override
+  String get loadingSavingToDeviceDot => 'שומר למכשיר…';
+
+  @override
+  String get loadingFinalizingDot => 'מסיים…';
+
+  @override
+  String get downloadStageQueued => 'בתור';
+
+  @override
+  String get downloadStagePreparing => 'מכין…';
+
+  @override
+  String get downloadStageDownloading => 'מוריד…';
+
+  @override
+  String get downloadStageFinalizing => 'מסיים…';
+
+  @override
+  String get downloadStageReadyServer => 'מוכן — שמור במכשיר';
+
+  @override
+  String get downloadStageFailed => 'נכשל';
+
+  @override
+  String get downloadStageCanceled => 'בוטל';
+
+  @override
+  String get downloadStageUnknown => 'מעבד…';
+
+  @override
+  String downloadPercentValue(int percent) {
+    return '$percent%';
+  }
+
+  @override
+  String get downloadStatusSavedOnDeviceTitle => 'נשמר במכשיר';
+
+  @override
+  String get downloadStatusLoadingJob => 'טוען הורדה…';
+
+  @override
+  String get bootstrapLoadingShort => 'מתחילים את LinkClip…';
 }

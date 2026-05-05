@@ -895,6 +895,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Shared link found'**
   String get shareLinkFound;
+
+  /// No description provided for @loadingAnalyzingDot.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyzing…'**
+  String get loadingAnalyzingDot;
+
+  /// No description provided for @loadingPreparingDownloadDot.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing download…'**
+  String get loadingPreparingDownloadDot;
+
+  /// No description provided for @loadingDownloadingDot.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading…'**
+  String get loadingDownloadingDot;
+
+  /// No description provided for @loadingSavingToDeviceDot.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving to device…'**
+  String get loadingSavingToDeviceDot;
+
+  /// No description provided for @loadingFinalizingDot.
+  ///
+  /// In en, this message translates to:
+  /// **'Finalizing…'**
+  String get loadingFinalizingDot;
+
+  /// No description provided for @downloadStageQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued'**
+  String get downloadStageQueued;
+
+  /// No description provided for @downloadStagePreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing…'**
+  String get downloadStagePreparing;
+
+  /// No description provided for @downloadStageDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading…'**
+  String get downloadStageDownloading;
+
+  /// No description provided for @downloadStageFinalizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finalizing…'**
+  String get downloadStageFinalizing;
+
+  /// No description provided for @downloadStageReadyServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready — save to your device'**
+  String get downloadStageReadyServer;
+
+  /// No description provided for @downloadStageFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get downloadStageFailed;
+
+  /// No description provided for @downloadStageCanceled.
+  ///
+  /// In en, this message translates to:
+  /// **'Canceled'**
+  String get downloadStageCanceled;
+
+  /// No description provided for @downloadStageUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Working…'**
+  String get downloadStageUnknown;
+
+  /// No description provided for @downloadPercentValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}%'**
+  String downloadPercentValue(int percent);
+
+  /// No description provided for @downloadStatusSavedOnDeviceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on device'**
+  String get downloadStatusSavedOnDeviceTitle;
+
+  /// No description provided for @downloadStatusLoadingJob.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading download…'**
+  String get downloadStatusLoadingJob;
+
+  /// No description provided for @bootstrapLoadingShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting LinkClip…'**
+  String get bootstrapLoadingShort;
 }
 
 class _AppLocalizationsDelegate

@@ -152,5 +152,27 @@
     }
   },
   "shareAnalyzingVideo": "מנתח סרטון משותף…",
-  "shareLinkFound": "נמצא קישור משותף"
+  "shareLinkFound": "נמצא קישור משותף",
+  "loadingAnalyzingDot": "מנתח…",
+  "loadingPreparingDownloadDot": "מכין הורדה…",
+  "loadingDownloadingDot": "מוריד…",
+  "loadingSavingToDeviceDot": "שומר למכשיר…",
+  "loadingFinalizingDot": "מסיים…",
+  "downloadStageQueued": "בתור",
+  "downloadStagePreparing": "מכין…",
+  "downloadStageDownloading": "מוריד…",
+  "downloadStageFinalizing": "מסיים…",
+  "downloadStageReadyServer": "מוכן — שמור במכשיר",
+  "downloadStageFailed": "נכשל",
+  "downloadStageCanceled": "בוטל",
+  "downloadStageUnknown": "מעבד…",
+  "downloadPercentValue": "{percent}%",
+  "@downloadPercentValue": {
+    "placeholders": {
+      "percent": {"type": "int"}
+    }
+  },
+  "downloadStatusSavedOnDeviceTitle": "נשמר במכשיר",
+  "downloadStatusLoadingJob": "טוען הורדה…",
+  "bootstrapLoadingShort": "מתחילים את LinkClip…"
 }

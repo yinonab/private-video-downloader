@@ -7,6 +7,7 @@ import "../../core/l10n/context_l10n.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/device_models.dart";
 import "../../core/network/api_client.dart";
+import "../../core/widgets/branded_loading.dart";
 import "../../core/widgets/language_picker.dart";
 
 class SettingsScreen extends StatefulWidget {
@@ -168,7 +169,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Row(
               children: [
                 FilledButton.tonal(onPressed: _loading ? null : _refreshMe, child: Text(l10n.settingsRefreshDevice)),
-                if (_loading) ...[const SizedBox(width: 12), const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))],
+                if (_loading) ...[
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 26,
+                    height: 26,
+                    child: BrandedLoadingMark(size: 22),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 22),

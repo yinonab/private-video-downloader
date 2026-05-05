@@ -1,5 +1,7 @@
 import "package:dio/dio.dart";
 import "package:flutter/material.dart";
+import "package:flutter_animate/flutter_animate.dart";
+import "package:lucide_icons_flutter/lucide_icons.dart";
 
 import "../../core/app_scope.dart";
 import "../../core/config/build_flags.dart";
@@ -10,7 +12,7 @@ import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
 import "../../core/widgets/app_button.dart";
 import "../../core/widgets/error_view.dart";
-import "../../core/widgets/loading_view.dart";
+import "../../core/widgets/branded_loading.dart";
 import "../download_status/download_status_screen.dart";
 import "quality_selector.dart";
 
@@ -117,7 +119,9 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
         );
       }
       if (e is ApiError) {
-      downloadDebugPrint("ApiError code=${e.code} httpStatus=${e.httpStatus} localized=${e.localized}");
+        downloadDebugPrint(
+          "ApiError code=${e.code} httpStatus=${e.httpStatus} localized=${e.localized}",
+        );
       }
       downloadDebugStackTrace("analyze_screen._startDownload", st);
       if (!mounted) return;
@@ -139,7 +143,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
 
   Widget _buildBody() {
     final l10n = context.l10n;
-    if (_loading) return LoadingView(message: l10n.analyzeLoading);
+    if (_loading) return BrandedLoadingPanel(message: l10n.loadingAnalyzingDot);
     if (_err != null) {
       return ErrorView(
         title: localizedApiErrorMessage(l10n, _err!),
@@ -163,9 +167,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
 
     final titleLine = d.title.trim().isEmpty ? l10n.untitledVideo : d.title;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(18),
-      child: Column(
+    final column = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(l10n.analyzeVideoFound, style: Theme.of(context).textTheme.headlineSmall),
@@ -202,14 +204,21 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
           const SizedBox(height: 26),
           AppPrimaryButton(label: l10n.analyzePrepareDownload, loading: _starting, onPressed: _starting ? null : _startDownload),
         ],
-      ),
+    );
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(18),
+      child: column
+          .animate()
+          .fadeIn(duration: 280.ms, curve: Curves.easeOut)
+          .slideY(begin: 0.05, end: 0, duration: 300.ms, curve: Curves.easeOut),
     );
   }
 
   Widget _mediaPlaceholder() {
+    final scheme = Theme.of(context).colorScheme;
     return ColoredBox(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: const Center(child: Icon(Icons.movie_filter_rounded, size: 64)),
+      color: scheme.surfaceContainerHighest,
+      child: Center(child: Icon(LucideIcons.video, size: 64, color: scheme.onSurfaceVariant)),
     );
   }
 }

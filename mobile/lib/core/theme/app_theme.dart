@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:google_fonts/google_fonts.dart";
 
 /// LinkClip light palette + Material 3. Dark mode stays seed-based for system theme parity.
 abstract final class AppTheme {
@@ -30,21 +31,28 @@ abstract final class AppTheme {
         surfaceContainerHighest: const Color(0xFFF3F4F6),
       );
 
-      final baseText = ThemeData.light().textTheme.apply(
+      final baseText = GoogleFonts.notoSansTextTheme(ThemeData.light().textTheme).apply(
         bodyColor: textPrimaryLight,
         displayColor: textPrimaryLight,
       );
+
+      final btnShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(17));
 
       return ThemeData(
         useMaterial3: true,
         colorScheme: scheme,
         scaffoldBackgroundColor: scaffoldBgLight,
         textTheme: baseText.copyWith(
-          titleLarge: baseText.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: textPrimaryLight),
-          titleMedium: baseText.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: textPrimaryLight),
-          titleSmall: baseText.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: textPrimaryLight),
-          bodyMedium: baseText.bodyMedium?.copyWith(color: textSecondaryLight),
-          bodySmall: baseText.bodySmall?.copyWith(color: textSecondaryLight),
+          headlineSmall: baseText.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: textPrimaryLight),
+          titleLarge: baseText.titleLarge?.copyWith(fontWeight: FontWeight.w800, color: textPrimaryLight),
+          titleMedium: baseText.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: textPrimaryLight),
+          titleSmall: baseText.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: textPrimaryLight),
+          labelLarge: baseText.labelLarge?.copyWith(fontWeight: FontWeight.w600, color: textSecondaryLight),
+          labelMedium: baseText.labelMedium?.copyWith(fontWeight: FontWeight.w500),
+          labelSmall: baseText.labelSmall?.copyWith(color: textSecondaryLight),
+          bodyLarge: baseText.bodyLarge?.copyWith(color: textPrimaryLight, height: 1.35),
+          bodyMedium: baseText.bodyMedium?.copyWith(color: textSecondaryLight, height: 1.4),
+          bodySmall: baseText.bodySmall?.copyWith(color: textSecondaryLight, height: 1.35),
         ),
         appBarTheme: AppBarTheme(
           scrolledUnderElevation: 0,
@@ -56,25 +64,40 @@ abstract final class AppTheme {
         ),
         cardTheme: CardThemeData(
           elevation: 0,
+          shadowColor: Colors.black.withValues(alpha: 0.06),
+          surfaceTintColor: Colors.transparent,
           margin: EdgeInsets.zero,
           color: surfaceLight,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(21),
             side: BorderSide(color: borderLight.withValues(alpha: 0.9)),
           ),
         ),
         floatingActionButtonTheme: FloatingActionButtonThemeData(
           backgroundColor: brandPrimary,
           foregroundColor: Colors.white,
-          elevation: 3,
-          extendedPadding: const EdgeInsets.symmetric(horizontal: 20),
+          elevation: 4,
+          extendedPadding: const EdgeInsets.symmetric(horizontal: 22),
+          extendedTextStyle: GoogleFonts.notoSans(fontWeight: FontWeight.w700, fontSize: 15),
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
             backgroundColor: brandPrimary,
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            minimumSize: const Size(double.infinity, 54),
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+            shape: btnShape,
+            textStyle: GoogleFonts.notoSans(fontWeight: FontWeight.w700, fontSize: 16),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: brandPrimaryDark,
+            minimumSize: const Size(double.infinity, 54),
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+            shape: btnShape,
+            side: BorderSide(color: borderLight.withValues(alpha: 0.95)),
+            textStyle: GoogleFonts.notoSans(fontWeight: FontWeight.w700, fontSize: 16),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(

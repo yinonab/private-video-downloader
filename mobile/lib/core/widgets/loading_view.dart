@@ -1,23 +1,15 @@
 import "package:flutter/material.dart";
 
+import "branded_loading.dart";
+
 class LoadingView extends StatelessWidget {
-  const LoadingView({super.key, this.message});
+  const LoadingView({super.key, this.message, this.compact = false});
 
   final String? message;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircularProgressIndicator(),
-          if (message != null) ...[
-            const SizedBox(height: 12),
-            Text(message!, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
-          ],
-        ],
-      ),
-    );
+    return BrandedLoadingPanel(message: message, compact: compact);
   }
 }

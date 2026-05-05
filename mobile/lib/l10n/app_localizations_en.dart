@@ -430,4 +430,57 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shareLinkFound => 'Shared link found';
+
+  @override
+  String get loadingAnalyzingDot => 'Analyzing…';
+
+  @override
+  String get loadingPreparingDownloadDot => 'Preparing download…';
+
+  @override
+  String get loadingDownloadingDot => 'Downloading…';
+
+  @override
+  String get loadingSavingToDeviceDot => 'Saving to device…';
+
+  @override
+  String get loadingFinalizingDot => 'Finalizing…';
+
+  @override
+  String get downloadStageQueued => 'Queued';
+
+  @override
+  String get downloadStagePreparing => 'Preparing…';
+
+  @override
+  String get downloadStageDownloading => 'Downloading…';
+
+  @override
+  String get downloadStageFinalizing => 'Finalizing…';
+
+  @override
+  String get downloadStageReadyServer => 'Ready — save to your device';
+
+  @override
+  String get downloadStageFailed => 'Failed';
+
+  @override
+  String get downloadStageCanceled => 'Canceled';
+
+  @override
+  String get downloadStageUnknown => 'Working…';
+
+  @override
+  String downloadPercentValue(int percent) {
+    return '$percent%';
+  }
+
+  @override
+  String get downloadStatusSavedOnDeviceTitle => 'Saved on device';
+
+  @override
+  String get downloadStatusLoadingJob => 'Loading download…';
+
+  @override
+  String get bootstrapLoadingShort => 'Starting LinkClip…';
 }
