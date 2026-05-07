@@ -25,6 +25,7 @@ import {
 } from "../services/jobProgress";
 import {
   buildDownloadArgs,
+  classifyYtDlpStderr,
   extractFormatArg,
   formatDownloadFailureMessage,
   LINKCLIP_ERR_UNSUPPORTED_OR_PRIVATE,
@@ -225,7 +226,10 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
             deviceId,
             level: "error",
             message: "download failed",
-            meta: { code },
+            meta: {
+              code,
+              stderrClassification: classifyYtDlpStderr(lastStderr),
+            },
           },
         });
         logger.warn(
@@ -236,6 +240,7 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
             primaryYtDlpFormat: primaryFormatStr,
             fallbackAttempted,
             finalFormatString: finalFormatStr,
+            stderrClassification: classifyYtDlpStderr(lastStderr),
             stderrTail: lastStderr.trim().slice(-2000),
           },
           "download failed"
