@@ -425,6 +425,24 @@ class AppLocalizationsHe extends AppLocalizations {
       'לא ניתן להכין את הסרטון לפורמט נתמך.';
 
   @override
+  String get downloadErrorInstagramRestricted =>
+      'לא ניתן להוריד את הסרטון הזה מאינסטגרם כרגע. ייתכן שהתוכן מוגבל, דורש התחברות, או חסום זמנית. נסה קישור אחר.';
+
+  @override
+  String get downloadErrorGeneric =>
+      'ההורדה נכשלה. נסה שוב או השתמש בקישור אחר.';
+
+  @override
+  String get downloadErrorUnsupportedOrPrivate =>
+      'לא ניתן להוריד את הקישור הזה. ייתכן שהתוכן פרטי, הוסר, או לא נתמך.';
+
+  @override
+  String get openDescription => 'פתח תיאור';
+
+  @override
+  String get hideDescription => 'הסתר תיאור';
+
+  @override
   String get shareNoLinkInContent => 'לא נמצא קישור לשיתוף';
 
   @override

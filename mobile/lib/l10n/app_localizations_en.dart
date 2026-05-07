@@ -429,6 +429,24 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not prepare the video in a supported format.';
 
   @override
+  String get downloadErrorInstagramRestricted =>
+      'This Instagram video can\'t be downloaded right now. It may be restricted, require login, or be temporarily blocked. Try another link.';
+
+  @override
+  String get downloadErrorGeneric =>
+      'Download failed. Please try again or use another link.';
+
+  @override
+  String get downloadErrorUnsupportedOrPrivate =>
+      'This link can\'t be downloaded. The content may be private, removed, or unsupported.';
+
+  @override
+  String get openDescription => 'Open description';
+
+  @override
+  String get hideDescription => 'Hide description';
+
+  @override
   String get shareNoLinkInContent => 'No shared link was found.';
 
   @override

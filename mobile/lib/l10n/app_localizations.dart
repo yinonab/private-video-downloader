@@ -890,6 +890,36 @@ abstract class AppLocalizations {
   /// **'Could not prepare the video in a supported format.'**
   String get downloadJobErrorNormalizeFailed;
 
+  /// No description provided for @downloadErrorInstagramRestricted.
+  ///
+  /// In en, this message translates to:
+  /// **'This Instagram video can\'t be downloaded right now. It may be restricted, require login, or be temporarily blocked. Try another link.'**
+  String get downloadErrorInstagramRestricted;
+
+  /// No description provided for @downloadErrorGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Download failed. Please try again or use another link.'**
+  String get downloadErrorGeneric;
+
+  /// No description provided for @downloadErrorUnsupportedOrPrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'This link can\'t be downloaded. The content may be private, removed, or unsupported.'**
+  String get downloadErrorUnsupportedOrPrivate;
+
+  /// No description provided for @openDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Open description'**
+  String get openDescription;
+
+  /// No description provided for @hideDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide description'**
+  String get hideDescription;
+
   /// No description provided for @shareNoLinkInContent.
   ///
   /// In en, this message translates to:

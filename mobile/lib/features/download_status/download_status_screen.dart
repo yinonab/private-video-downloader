@@ -17,9 +17,11 @@ import "../../core/models/download_models.dart";
 import "../../core/theme/linkclip_palette.dart";
 import "../../core/utils/download_error_display.dart";
 import "../../core/utils/format_bytes_ui.dart";
+import "../../core/utils/video_title_split.dart";
 import "../../core/widgets/app_button.dart";
 import "../../core/widgets/branded_loading.dart";
 import "../../core/widgets/branded_progress.dart";
+import "../../core/widgets/expandable_description.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
 import "../../services/saved_media_actions.dart";
 
@@ -331,12 +333,25 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                         ),
                       ),
                       const SizedBox(height: 14),
-                      Text(
-                        (() {
-                          final t = (d.title ?? "").trim();
-                          return t.isEmpty ? l10n.untitledVideo : t;
-                        })(),
-                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                      Builder(
+                        builder: (context) {
+                          final split = splitVideoTitleForDisplay(d.title);
+                          final headline = split.headlineTitle.trim().isEmpty ? l10n.untitledVideo : split.headlineTitle.trim();
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                headline,
+                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                              if (split.expandableDescription != null &&
+                                  split.expandableDescription!.trim().isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                ExpandableDescription(text: split.expandableDescription!.trim()),
+                              ],
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 10),
                       AnimatedSwitcher(

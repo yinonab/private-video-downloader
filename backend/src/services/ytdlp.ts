@@ -190,17 +190,60 @@ export function stderrMeansUnavailableFormat(stderr: string): boolean {
   return /requested format is not available/i.test(stderr);
 }
 
-const MSG_QUALITY_UNAVAILABLE_HE =
-  "האיכות שנבחרה לא זמינה לסרטון הזה. נסה איכות אחרת או Best MP4.";
-const MSG_FALLBACK_FAILED_HE = "לא ניתן להוריד את הסרטון הזה בפורמט זמין.";
+/** Stored on [DownloadJob.error]; Flutter maps to localized copy. */
+export const LINKCLIP_ERR_QUALITY_UNAVAILABLE = "LINKCLIP_ERR_QUALITY_UNAVAILABLE";
+export const LINKCLIP_ERR_QUALITY_FALLBACK_FAILED = "LINKCLIP_ERR_QUALITY_FALLBACK_FAILED";
+export const LINKCLIP_ERR_INSTAGRAM_RESTRICTED = "LINKCLIP_ERR_INSTAGRAM_RESTRICTED";
+export const LINKCLIP_ERR_UNSUPPORTED_OR_PRIVATE = "LINKCLIP_ERR_UNSUPPORTED_OR_PRIVATE";
+export const LINKCLIP_ERR_GENERIC = "LINKCLIP_ERR_GENERIC";
 
-/** User-facing job error (DB); raw stderr should stay in logs only. */
-export function formatDownloadFailureMessage(stderrTail: string, attemptedFallback: boolean): string {
+function platformLooksInstagram(platformLabel: string): boolean {
+  return platformLabel.toLowerCase().includes("instagram");
+}
+
+/** Instagram / reel flows that surface yt-dlp login, csrf, cookie hints, etc. */
+export function stderrIndicatesInstagramRestricted(stderr: string): boolean {
+  const s = stderr.toLowerCase();
+  const needles = [
+    "login required",
+    "rate-limit reached",
+    "no csrf token",
+    "main webpage is locked behind the login page",
+    "requested content is not available",
+    "use --cookies",
+    "cookies-from-browser",
+  ];
+  return needles.some((n) => s.includes(n));
+}
+
+export function stderrIndicatesUnsupportedOrPrivate(stderr: string): boolean {
+  const s = stderr.toLowerCase();
+  return (
+    /private video|members only|video unavailable|this video is no longer available|removed by uploader|deleted/.test(s) ||
+    /not available in your country|geo.?blocked|blocked in your region/.test(s)
+  );
+}
+
+/**
+ * Stable machine-readable job error for the DB/API. Never returns raw yt-dlp stderr;
+ * callers must log stderr separately (e.g. worker `stderrTail` field).
+ */
+export function formatDownloadFailureMessage(
+  stderrTail: string,
+  attemptedFallback: boolean,
+  platformLabel: string
+): string {
   const tail = stderrTail.trim();
   if (stderrMeansUnavailableFormat(tail)) {
-    return attemptedFallback ? MSG_FALLBACK_FAILED_HE : MSG_QUALITY_UNAVAILABLE_HE;
+    return attemptedFallback ? LINKCLIP_ERR_QUALITY_FALLBACK_FAILED : LINKCLIP_ERR_QUALITY_UNAVAILABLE;
   }
-  return tail.slice(0, 4000) || "Download failed";
+  if (platformLooksInstagram(platformLabel) && stderrIndicatesInstagramRestricted(tail)) {
+    return LINKCLIP_ERR_INSTAGRAM_RESTRICTED;
+  }
+  if (stderrIndicatesUnsupportedOrPrivate(tail)) {
+    return LINKCLIP_ERR_UNSUPPORTED_OR_PRIVATE;
+  }
+  return LINKCLIP_ERR_GENERIC;
 }
 
 export async function getYtDlpVersion(): Promise<string> {

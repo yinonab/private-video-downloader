@@ -12,9 +12,11 @@ import "../../core/models/analyze_models.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
 import "../../core/theme/linkclip_palette.dart";
+import "../../core/utils/video_title_split.dart";
 import "../../core/widgets/app_button.dart";
 import "../../core/widgets/error_view.dart";
 import "../../core/widgets/branded_loading.dart";
+import "../../core/widgets/expandable_description.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
 import "../../core/widgets/linkclip_chips.dart";
 import "../download_status/download_status_screen.dart";
@@ -191,8 +193,6 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
           : "$m:${s.toString().padLeft(2, '0')}";
     }
 
-    final titleLine = d.title.trim().isEmpty ? l10n.untitledVideo : d.title;
-
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final palette = context.lcPalette;
@@ -241,9 +241,29 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Text(
-                    titleLine,
-                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.35),
+                  Builder(
+                    builder: (context) {
+                      final split = splitVideoTitleForDisplay(d.title);
+                      final headline =
+                          split.headlineTitle.trim().isEmpty ? l10n.untitledVideo : split.headlineTitle.trim();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            headline,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.35,
+                            ),
+                          ),
+                          if (split.expandableDescription != null &&
+                              split.expandableDescription!.trim().isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            ExpandableDescription(text: split.expandableDescription!.trim()),
+                          ],
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                   Wrap(

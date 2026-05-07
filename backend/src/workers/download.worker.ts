@@ -27,6 +27,7 @@ import {
   buildDownloadArgs,
   extractFormatArg,
   formatDownloadFailureMessage,
+  LINKCLIP_ERR_UNSUPPORTED_OR_PRIVATE,
   parseYtDlpProgress,
   runYtDlpStreaming,
   stderrMeansUnavailableFormat,
@@ -45,8 +46,6 @@ function mimeForExt(ext: string): string {
 }
 
 const VIDEO_QUALITY_FORMATS: DownloadFormatKind[] = ["1080p", "720p", "480p", "tiktok_ready"];
-
-const OUTPUT_INVALID_MSG = "לא ניתן להוריד את הסרטון הזה בפורמט זמין.";
 
 function stageForStrategy(s: NormalizeStrategy): string {
   switch (s) {
@@ -206,7 +205,7 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
       const finalFormatStr = extractFormatArg(lastArgs) ?? primaryFormatStr;
 
       if (code !== 0) {
-        const userMsg = formatDownloadFailureMessage(lastStderr, fallbackAttempted);
+        const userMsg = formatDownloadFailureMessage(lastStderr, fallbackAttempted, platformLabel);
         await updateDownloadJobProgress(
           prisma,
           jobId,
@@ -253,7 +252,7 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
           status: "failed",
           processingStage: "failed",
           progress: null,
-          error: OUTPUT_INVALID_MSG,
+          error: LINKCLIP_ERR_UNSUPPORTED_OR_PRIVATE,
         });
         return;
       }
@@ -264,7 +263,7 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
           status: "failed",
           processingStage: "failed",
           progress: null,
-          error: OUTPUT_INVALID_MSG,
+          error: LINKCLIP_ERR_UNSUPPORTED_OR_PRIVATE,
         });
         logger.warn({ jobId, dir }, "download output file missing");
         return;
@@ -287,7 +286,7 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
           status: "failed",
           processingStage: "failed",
           progress: null,
-          error: OUTPUT_INVALID_MSG,
+          error: LINKCLIP_ERR_UNSUPPORTED_OR_PRIVATE,
         });
         logger.warn(
           {
