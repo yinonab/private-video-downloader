@@ -21,14 +21,26 @@ import "../../core/utils/video_title_split.dart";
 import "../../core/widgets/app_button.dart";
 import "../../core/widgets/branded_loading.dart";
 import "../../core/widgets/branded_progress.dart";
+import "widgets/download_progress_hero_animation.dart";
+import "widgets/initial_download_loading_animation.dart";
 import "../../core/widgets/expandable_description.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
 import "../../services/saved_media_actions.dart";
 
 class DownloadStatusScreen extends StatefulWidget {
-  const DownloadStatusScreen({super.key, required this.jobId});
+  /// Poll an existing job (opened from history / after creation resolved elsewhere).
+  DownloadStatusScreen({super.key, required this.jobId})
+      : pendingCreateRequest = null,
+        assert(jobId.trim().isNotEmpty);
+
+  /// Navigate here immediately; creates the job via API then polls like [DownloadStatusScreen].
+  // ignore: prefer_const_constructors_in_immutables — [CreateDownloadRequest] is never a const value.
+  DownloadStatusScreen.pendingCreate({super.key, required CreateDownloadRequest request})
+      : jobId = "",
+        pendingCreateRequest = request;
 
   final String jobId;
+  final CreateDownloadRequest? pendingCreateRequest;
 
   @override
   State<DownloadStatusScreen> createState() => _DownloadStatusScreenState();
@@ -38,6 +50,8 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   Timer? _timer;
   DownloadDetailResponse? _detail;
   ApiError? _err;
+  /// Job id once [DownloadStatusScreen.pendingCreate] finishes POST /downloads.
+  String? _resolvedJobId;
   bool _polling = false;
   bool _fileBusy = false;
   int _receiveBytes = 0;
@@ -45,31 +59,110 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   bool _localSaved = false;
   bool _localLookupDone = false;
 
-  @override
-  void initState() {
-    super.initState();
+  String get _pollJobId {
+    if (widget.pendingCreateRequest != null) {
+      return (_resolvedJobId ?? "").trim();
+    }
+    return widget.jobId.trim();
+  }
+
+  void _startPollingTimer() {
+    _timer?.cancel();
+    final id = _pollJobId;
+    if (id.isEmpty) return;
     assert(() {
-      if (kDebugMode) debugPrint("### JOB_STATUS_DEBUG ### polling start jobId=${widget.jobId}");
+      if (kDebugMode) debugPrint("### JOB_STATUS_DEBUG ### polling start jobId=$id");
       return true;
     }());
     _tickOnce();
     _timer = Timer.periodic(const Duration(seconds: 2), (_) => _tickOnce());
-    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.pendingCreateRequest != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrapPendingCreate());
+    } else {
+      _startPollingTimer();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
+    }
   }
 
   @override
   void dispose() {
     assert(() {
-      if (kDebugMode) debugPrint("### JOB_STATUS_DEBUG ### polling dispose jobId=${widget.jobId}");
+      if (kDebugMode) debugPrint("### JOB_STATUS_DEBUG ### polling dispose jobId=$_pollJobId");
       return true;
     }());
     _timer?.cancel();
     super.dispose();
   }
 
+  Future<void> _bootstrapPendingCreate() async {
+    final req = widget.pendingCreateRequest;
+    if (req == null || !mounted) return;
+    final svc = AppScope.read(context).downloadService;
+    downloadDebugPrint("POST /downloads (pending screen) body=${req.toJson()}");
+    try {
+      final res = await svc.create(req);
+      downloadDebugPrint(
+        "POST /downloads response selectedJobId=${res.jobId} status=${res.status} cached=${res.cached}",
+      );
+      if (!mounted) return;
+      setState(() {
+        _resolvedJobId = res.jobId.trim();
+        _err = null;
+      });
+      if (_pollJobId.isEmpty) {
+        if (!mounted) return;
+        setState(() => _err = ApiError(code: "MISSING_JOB", message: "empty job id"));
+        return;
+      }
+      _startPollingTimer();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
+    } catch (e, st) {
+      downloadDebugPrint("catch download_status_screen._bootstrapPendingCreate type=${e.runtimeType} message=$e");
+      if (e is DioException) {
+        downloadDebugPrint(
+          "DioException dioType=${e.type} responseStatus=${e.response?.statusCode} "
+          "cancelTokenCancelled=${e.requestOptions.cancelToken?.isCancelled}",
+        );
+      }
+      if (e is ApiError) {
+        downloadDebugPrint(
+          "ApiError code=${e.code} httpStatus=${e.httpStatus} localized=${e.localized}",
+        );
+      }
+      downloadDebugStackTrace("download_status_screen._bootstrapPendingCreate", st);
+      if (!mounted) return;
+      if (e is ApiError && e.code == "CONFLICT") {
+        final existingId = e.existingJobId?.trim();
+        if (existingId != null && existingId.isNotEmpty) {
+          assert(() {
+            if (kDebugMode) {
+              debugPrint("### JOB_STATUS_DEBUG ### pendingCreate CONFLICT — using existing jobId=$existingId");
+            }
+            return true;
+          }());
+          setState(() {
+            _resolvedJobId = existingId;
+            _err = null;
+          });
+          _startPollingTimer();
+          WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
+          return;
+        }
+      }
+      setState(() => _err = e is ApiError ? e : ApiError.fromUnknown(e));
+    }
+  }
+
   Future<void> _refreshLocalSaved() async {
+    final id = _pollJobId;
+    if (id.isEmpty) return;
     final session = AppScope.read(context).session;
-    final desc = await session.savedDownloadForJob(widget.jobId);
+    final desc = await session.savedDownloadForJob(id);
     if (!mounted) return;
     setState(() {
       _localSaved = desc != null && desc.internalPath.trim().isNotEmpty;
@@ -79,10 +172,12 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
 
   Future<void> _tickOnce() async {
     if (_polling) return;
+    final id = _pollJobId;
+    if (id.isEmpty) return;
     _polling = true;
     try {
       final svc = AppScope.read(context).downloadService;
-      final next = await svc.detail(widget.jobId);
+      final next = await svc.detail(id);
       if (!mounted) return;
       setState(() {
         _detail = next;
@@ -91,7 +186,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       assert(() {
         if (kDebugMode) {
           debugPrint(
-            "### JOB_STATUS_DEBUG ### poll tick jobId=${widget.jobId} "
+            "### JOB_STATUS_DEBUG ### poll tick jobId=$id "
             "status=${next.status} stage=${next.processingStage} progress=${next.progressPercent} terminal=${next.terminal}",
           );
         }
@@ -101,7 +196,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         assert(() {
           if (kDebugMode) {
             debugPrint(
-              "### JOB_STATUS_DEBUG ### polling stop jobId=${widget.jobId} reason=terminal status=${next.status}",
+              "### JOB_STATUS_DEBUG ### polling stop jobId=$id reason=terminal status=${next.status}",
             );
           }
           return true;
@@ -126,8 +221,8 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
     if (d == null || d.status != "done") return;
     final scope = AppScope.read(context);
     downloadDebugPrint(
-      "pressed הורד למכשיר jobId=${widget.jobId} "
-      "baseUrl=${scope.session.serverUrl.trim()} finalFileUrl=${scope.api.downloadFileUrl(widget.jobId)} "
+      "pressed הורד למכשיר jobId=$_pollJobId "
+      "baseUrl=${scope.session.serverUrl.trim()} finalFileUrl=${scope.api.downloadFileUrl(_pollJobId)} "
       "tokenExists=${scope.session.deviceToken.trim().isNotEmpty}",
     );
     setState(() {
@@ -138,7 +233,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
     try {
       final files = scope.files;
       final outcome = await files.downloadJobMedia(
-        jobId: widget.jobId,
+        jobId: _pollJobId,
         detail: d,
         onProgress: (r, t) {
           if (!mounted) return;
@@ -187,7 +282,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
     await openSavedDownload(
       context: context,
       session: AppScope.read(context).session,
-      jobId: widget.jobId,
+      jobId: _pollJobId,
     );
   }
 
@@ -195,7 +290,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
     await shareSavedDownload(
       context: context,
       session: AppScope.read(context).session,
-      jobId: widget.jobId,
+      jobId: _pollJobId,
       title: _detail?.title,
     );
   }
@@ -203,12 +298,14 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   Future<void> _retry() async {
     final l10n = context.l10n;
     setState(() => _err = null);
+    if (widget.pendingCreateRequest != null && _pollJobId.isEmpty) {
+      await _bootstrapPendingCreate();
+      return;
+    }
     try {
-      await AppScope.read(context).downloadService.retry(widget.jobId);
+      await AppScope.read(context).downloadService.retry(_pollJobId);
       if (!mounted) return;
-      _timer?.cancel();
-      _timer = Timer.periodic(const Duration(seconds: 2), (_) => _tickOnce());
-      await _tickOnce();
+      _startPollingTimer();
     } catch (e) {
       if (!mounted) return;
       final msg = e is ApiError ? localizedApiErrorMessage(l10n, e) : "$e";
@@ -273,8 +370,10 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
               AppPrimaryButton(label: l10n.downloadRetry, loading: false, onPressed: _retry),
             ],
             if (d == null && _err == null) ...[
-              const SizedBox(height: 72),
-              BrandedLoadingPanel(message: l10n.downloadStatusLoadingJob),
+              InitialDownloadLoadingAnimation(
+                title: l10n.downloadStatusLoadingJob,
+                subtitle: l10n.downloadLoadingSubtitle,
+              ),
             ],
             if (d != null) ...[
               if (_err != null) ...[
@@ -388,6 +487,14 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                       ),
                       const SizedBox(height: 14),
                       if (_showServerProgress(d)) ...[
+                        DownloadProgressHeroAnimation(
+                          processingStage: progressUi?.effectiveStageKey ?? (d.processingStage ?? ""),
+                          status: d.status,
+                          subtitle: l10n.downloadProcessingSubtitle,
+                          progressPercent: d.progressPercent,
+                          isTikTokReady: (d.requestedFormat ?? "").trim().toLowerCase() == "tiktok_ready",
+                        ),
+                        const SizedBox(height: 14),
                         if (progressUi != null) ...[
                           BrandedProgressBar(
                             indeterminate: progressUi.showIndeterminateProgress,

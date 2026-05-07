@@ -1,5 +1,3 @@
-import "package:dio/dio.dart";
-import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_animate/flutter_animate.dart";
 import "package:lucide_icons_flutter/lucide_icons.dart";
@@ -15,7 +13,7 @@ import "../../core/theme/linkclip_palette.dart";
 import "../../core/utils/video_title_split.dart";
 import "../../core/widgets/app_button.dart";
 import "../../core/widgets/error_view.dart";
-import "../../core/widgets/branded_loading.dart";
+import "widgets/analyze_processing_animation.dart";
 import "../../core/widgets/expandable_description.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
 import "../../core/widgets/linkclip_chips.dart";
@@ -35,7 +33,6 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
   AnalyzeResponse? _data;
   ApiError? _err;
   bool _loading = true;
-  bool _starting = false;
   int _fmtIndex = 0;
 
   @override
@@ -85,7 +82,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     }
   }
 
-  Future<void> _startDownload() async {
+  void _startDownload() {
     final l10n = context.l10n;
     final d = _data;
     if (d == null) return;
@@ -94,66 +91,19 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     final idx = FormatOption.clampSelectableIndex(fmtList, _fmtIndex);
     final fmt = fmtList[idx];
     if (!fmt.available) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.analyzeQualityUnavailableSnack)),
       );
       return;
     }
-    setState(() => _starting = true);
-    final scope = AppScope.read(context);
-    final svc = scope.downloadService;
     final req = CreateDownloadRequest(url: d.url, format: fmt.value, quality: fmt.value);
-    final base = scope.session.serverUrl.trim().replaceAll(RegExp(r"/+$"), "");
-    downloadDebugPrint("POST /downloads request url=$base/downloads body=${req.toJson()}");
-    try {
-      final res = await svc.create(req);
-      downloadDebugPrint(
-        "POST /downloads response selectedJobId=${res.jobId} status=${res.status} cached=${res.cached}",
-      );
-      if (!mounted) return;
-      await Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => DownloadStatusScreen(jobId: res.jobId)),
-      );
-    } catch (e, st) {
-      downloadDebugPrint("catch analyze_screen._startDownload type=${e.runtimeType} message=$e");
-      if (e is DioException) {
-        downloadDebugPrint(
-          "DioException dioType=${e.type} responseStatus=${e.response?.statusCode} "
-          "cancelTokenCancelled=${e.requestOptions.cancelToken?.isCancelled}",
-        );
-      }
-      if (e is ApiError) {
-        downloadDebugPrint(
-          "ApiError code=${e.code} httpStatus=${e.httpStatus} localized=${e.localized}",
-        );
-      }
-      downloadDebugStackTrace("analyze_screen._startDownload", st);
-      if (!mounted) return;
-      if (e is ApiError && e.code == "CONFLICT") {
-        final existingId = e.existingJobId?.trim();
-        if (existingId != null && existingId.isNotEmpty) {
-          assert(() {
-            if (kDebugMode) {
-              debugPrint(
-                "### JOB_STATUS_DEBUG ### analyze CONFLICT — navigating to existing jobId=$existingId",
-              );
-            }
-            return true;
-          }());
-          await Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => DownloadStatusScreen(jobId: existingId)),
-          );
-          return;
-        }
-      }
-      final msg = e is ApiError ? localizedApiErrorMessage(l10n, e) : "$e";
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-    } finally {
-      if (mounted) setState(() => _starting = false);
-    }
+    downloadDebugPrint("Navigate pending download screen; POST /downloads will run there body=${req.toJson()}");
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DownloadStatusScreen.pendingCreate(request: req),
+      ),
+    );
   }
 
   @override
@@ -171,7 +121,12 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
 
   Widget _buildBody() {
     final l10n = context.l10n;
-    if (_loading) return BrandedLoadingPanel(message: l10n.loadingAnalyzingDot);
+    if (_loading) {
+      return AnalyzeProcessingAnimation(
+        title: l10n.loadingAnalyzingDot,
+        subtitle: l10n.analyzeProcessingSubtitle,
+      );
+    }
     if (_err != null) {
       return ErrorView(
         title: localizedApiErrorMessage(l10n, _err!),
@@ -298,7 +253,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
           onChanged: (i) => setState(() => _fmtIndex = i),
         ),
         const SizedBox(height: 26),
-        AppPrimaryButton(label: l10n.analyzePrepareDownload, loading: _starting, onPressed: _starting ? null : _startDownload),
+        AppPrimaryButton(label: l10n.analyzePrepareDownload, loading: false, onPressed: _startDownload),
       ],
     );
     return SingleChildScrollView(

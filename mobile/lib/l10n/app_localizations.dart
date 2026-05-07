@@ -998,6 +998,24 @@ abstract class AppLocalizations {
   /// **'Analyzing…'**
   String get loadingAnalyzingDot;
 
+  /// No description provided for @analyzeProcessingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the video and preparing available formats.'**
+  String get analyzeProcessingSubtitle;
+
+  /// No description provided for @downloadProcessingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading and processing your video.'**
+  String get downloadProcessingSubtitle;
+
+  /// No description provided for @downloadLoadingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing your download and connecting to the server.'**
+  String get downloadLoadingSubtitle;
+
   /// No description provided for @loadingPreparingDownloadDot.
   ///
   /// In en, this message translates to:

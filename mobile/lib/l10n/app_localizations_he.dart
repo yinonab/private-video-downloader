@@ -485,6 +485,16 @@ class AppLocalizationsHe extends AppLocalizations {
   String get loadingAnalyzingDot => 'מנתח…';
 
   @override
+  String get analyzeProcessingSubtitle =>
+      'בודק את הסרטון ומכין את אפשרויות ההורדה.';
+
+  @override
+  String get downloadProcessingSubtitle => 'מוריד ומעבד את הסרטון שלך.';
+
+  @override
+  String get downloadLoadingSubtitle => 'מכין את ההורדה שלך ומתחבר לשרת.';
+
+  @override
   String get loadingPreparingDownloadDot => 'מכין הורדה…';
 
   @override

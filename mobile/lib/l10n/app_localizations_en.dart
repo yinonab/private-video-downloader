@@ -490,6 +490,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loadingAnalyzingDot => 'Analyzing…';
 
   @override
+  String get analyzeProcessingSubtitle =>
+      'Checking the video and preparing available formats.';
+
+  @override
+  String get downloadProcessingSubtitle =>
+      'Downloading and processing your video.';
+
+  @override
+  String get downloadLoadingSubtitle =>
+      'Preparing your download and connecting to the server.';
+
+  @override
   String get loadingPreparingDownloadDot => 'Preparing download…';
 
   @override
