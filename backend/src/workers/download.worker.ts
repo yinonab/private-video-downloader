@@ -32,6 +32,7 @@ import {
   parseYtDlpProgress,
   runYtDlpStreaming,
   stderrMeansUnavailableFormat,
+  withYtDlpCookiesArgs,
   type DownloadFormatKind,
 } from "../services/ytdlp";
 import { logger } from "../services/logger";
@@ -147,61 +148,68 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
       };
 
       const primaryBuilt = buildDownloadArgs({ url, deviceId, jobId, format });
-      lastArgs = primaryBuilt.args;
       primaryFormatStr = extractFormatArg(primaryBuilt.args) ?? "(unknown)";
 
-      await updateDownloadJobProgress(
-        prisma,
-        jobId,
-        { processingStage: "downloading", progress: null },
-        { platform: platformLabel, requestedQuality: format }
-      );
+      const code = await withYtDlpCookiesArgs(async (cookiesArgs) => {
+        const prefixArgs = (base: string[]) => [...cookiesArgs, ...base];
 
-      let code = await runYtDlpOnce(primaryBuilt.args);
+        lastArgs = prefixArgs(primaryBuilt.args);
 
-      if (
-        code !== 0 &&
-        stderrMeansUnavailableFormat(lastStderr) &&
-        VIDEO_QUALITY_FORMATS.includes(format)
-      ) {
-        fallbackAttempted = true;
-        const fbBuilt = buildDownloadArgs({ url, deviceId, jobId, format: "best" });
-        lastArgs = fbBuilt.args;
-        logger.warn(
-          {
-            jobId,
-            platform: platformLabel,
-            requestedQuality: format,
-            primaryYtDlpFormat: primaryFormatStr,
-            fallbackAttempted: true,
-            fallbackFormatString: extractFormatArg(fbBuilt.args),
-          },
-          "yt-dlp retrying with best fallback after unavailable format"
+        await updateDownloadJobProgress(
+          prisma,
+          jobId,
+          { processingStage: "downloading", progress: null },
+          { platform: platformLabel, requestedQuality: format }
         );
-        code = await runYtDlpOnce(fbBuilt.args);
-      }
 
-      if (
-        code !== 0 &&
-        stderrMeansUnavailableFormat(lastStderr) &&
-        format === "audio_mp3"
-      ) {
-        fallbackAttempted = true;
-        const again = buildDownloadArgs({ url, deviceId, jobId, format: "audio_mp3" });
-        lastArgs = again.args;
-        logger.warn(
-          {
-            jobId,
-            platform: platformLabel,
-            requestedQuality: format,
-            primaryYtDlpFormat: primaryFormatStr,
-            fallbackAttempted: true,
-            fallbackFormatString: extractFormatArg(again.args),
-          },
-          "yt-dlp retrying audio pipeline once after unavailable format"
-        );
-        code = await runYtDlpOnce(again.args);
-      }
+        let innerCode = await runYtDlpOnce(prefixArgs(primaryBuilt.args));
+
+        if (
+          innerCode !== 0 &&
+          stderrMeansUnavailableFormat(lastStderr) &&
+          VIDEO_QUALITY_FORMATS.includes(format)
+        ) {
+          fallbackAttempted = true;
+          const fbBuilt = buildDownloadArgs({ url, deviceId, jobId, format: "best" });
+          lastArgs = prefixArgs(fbBuilt.args);
+          logger.warn(
+            {
+              jobId,
+              platform: platformLabel,
+              requestedQuality: format,
+              primaryYtDlpFormat: primaryFormatStr,
+              fallbackAttempted: true,
+              fallbackFormatString: extractFormatArg(fbBuilt.args),
+            },
+            "yt-dlp retrying with best fallback after unavailable format"
+          );
+          innerCode = await runYtDlpOnce(prefixArgs(fbBuilt.args));
+        }
+
+        if (
+          innerCode !== 0 &&
+          stderrMeansUnavailableFormat(lastStderr) &&
+          format === "audio_mp3"
+        ) {
+          fallbackAttempted = true;
+          const again = buildDownloadArgs({ url, deviceId, jobId, format: "audio_mp3" });
+          lastArgs = prefixArgs(again.args);
+          logger.warn(
+            {
+              jobId,
+              platform: platformLabel,
+              requestedQuality: format,
+              primaryYtDlpFormat: primaryFormatStr,
+              fallbackAttempted: true,
+              fallbackFormatString: extractFormatArg(again.args),
+            },
+            "yt-dlp retrying audio pipeline once after unavailable format"
+          );
+          innerCode = await runYtDlpOnce(prefixArgs(again.args));
+        }
+
+        return innerCode;
+      });
 
       const finalFormatStr = extractFormatArg(lastArgs) ?? primaryFormatStr;
 

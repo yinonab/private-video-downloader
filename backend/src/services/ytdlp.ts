@@ -1,5 +1,8 @@
+import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
+import fsPromises from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { config } from "../config";
 import { logger } from "./logger";
@@ -31,7 +34,8 @@ const YT_DLP = process.env.YT_DLP_PATH || "yt-dlp";
 /** Skip re-reading / re-validating on hot paths; invalidate when mtime changes. */
 const MAX_COOKIES_FILE_BYTES = 512 * 1024;
 
-let cookiesArgsMemo: { path: string; mtimeMs: number; args: string[] } | null = null;
+/** Memo: same resolved secrets path + mtime → same validation outcome (readable absolute path or unusable). */
+let cookiesValidationMemo: { resolvedPath: string; mtimeMs: number; usableSourcePath: string | null } | null = null;
 
 const warnedCookiesKeys = new Set<string>();
 
@@ -73,13 +77,13 @@ export function looksLikeNetscapeCookiesFileContent(content: string): boolean {
 }
 
 /**
- * Returns `["--cookies", path]` only when COOKIES_FILE is set and the file exists, is non-empty,
- * and looks like Netscape format. Otherwise returns [] and logs at most once per failure mode per process.
+ * Absolute path to the validated read-only cookies source, or `null` to omit `--cookies`.
+ * Does not return a path yt-dlp should write to — use [withYtDlpCookiesArgs] for invocations.
  */
-export function getValidatedCookiesArgs(): string[] {
+function resolveValidatedCookiesSourcePathSync(): string | null {
   const configured = config.cookiesFile?.trim();
   if (!configured) {
-    return [];
+    return null;
   }
 
   const p = configured;
@@ -90,7 +94,7 @@ export function getValidatedCookiesArgs(): string[] {
       { cookiesFile: p },
       "COOKIES_FILE configured but file does not exist; continuing without cookies"
     );
-    return [];
+    return null;
   }
 
   let st: fs.Stats;
@@ -102,11 +106,15 @@ export function getValidatedCookiesArgs(): string[] {
       { cookiesFile: p },
       "COOKIES_FILE configured but file cannot be accessed; continuing without cookies"
     );
-    return [];
+    return null;
   }
 
-  if (cookiesArgsMemo && cookiesArgsMemo.path === p && cookiesArgsMemo.mtimeMs === st.mtimeMs) {
-    return cookiesArgsMemo.args;
+  if (
+    cookiesValidationMemo &&
+    cookiesValidationMemo.resolvedPath === p &&
+    cookiesValidationMemo.mtimeMs === st.mtimeMs
+  ) {
+    return cookiesValidationMemo.usableSourcePath;
   }
 
   let buf: Buffer;
@@ -118,14 +126,14 @@ export function getValidatedCookiesArgs(): string[] {
       { cookiesFile: p },
       "COOKIES_FILE configured but file cannot be read; continuing without cookies"
     );
-    cookiesArgsMemo = { path: p, mtimeMs: st.mtimeMs, args: [] };
-    return [];
+    cookiesValidationMemo = { resolvedPath: p, mtimeMs: st.mtimeMs, usableSourcePath: null };
+    return null;
   }
 
   if (buf.length === 0) {
     cookiesWarnOnce(`empty:${p}`, { cookiesFile: p }, "COOKIES_FILE is empty; continuing without cookies");
-    cookiesArgsMemo = { path: p, mtimeMs: st.mtimeMs, args: [] };
-    return [];
+    cookiesValidationMemo = { resolvedPath: p, mtimeMs: st.mtimeMs, usableSourcePath: null };
+    return null;
   }
 
   if (buf.length > MAX_COOKIES_FILE_BYTES) {
@@ -134,15 +142,15 @@ export function getValidatedCookiesArgs(): string[] {
       { cookiesFile: p, bytes: buf.length, maxBytes: MAX_COOKIES_FILE_BYTES },
       "COOKIES_FILE exceeds maximum allowed size; continuing without cookies"
     );
-    cookiesArgsMemo = { path: p, mtimeMs: st.mtimeMs, args: [] };
-    return [];
+    cookiesValidationMemo = { resolvedPath: p, mtimeMs: st.mtimeMs, usableSourcePath: null };
+    return null;
   }
 
   const text = buf.toString("utf8");
   if (!text.trim()) {
     cookiesWarnOnce(`empty:${p}`, { cookiesFile: p }, "COOKIES_FILE is empty; continuing without cookies");
-    cookiesArgsMemo = { path: p, mtimeMs: st.mtimeMs, args: [] };
-    return [];
+    cookiesValidationMemo = { resolvedPath: p, mtimeMs: st.mtimeMs, usableSourcePath: null };
+    return null;
   }
 
   if (!looksLikeNetscapeCookiesFileContent(text)) {
@@ -151,13 +159,43 @@ export function getValidatedCookiesArgs(): string[] {
       { cookiesFile: p },
       "COOKIES_FILE is not a valid Netscape cookies file; continuing without cookies"
     );
-    cookiesArgsMemo = { path: p, mtimeMs: st.mtimeMs, args: [] };
-    return [];
+    cookiesValidationMemo = { resolvedPath: p, mtimeMs: st.mtimeMs, usableSourcePath: null };
+    return null;
   }
 
-  const args = ["--cookies", p];
-  cookiesArgsMemo = { path: p, mtimeMs: st.mtimeMs, args };
-  return args;
+  cookiesValidationMemo = { resolvedPath: p, mtimeMs: st.mtimeMs, usableSourcePath: p };
+  return p;
+}
+
+/**
+ * Runs `fn` with `--cookies` pointing at a writable temp copy of the validated secrets file.
+ * yt-dlp may update the cookie jar on exit; the read-only mount must never be passed directly.
+ * Temp files are unique per call (pid + random) and removed in `finally`.
+ */
+export async function withYtDlpCookiesArgs<T>(fn: (cookiesArgs: string[]) => Promise<T>): Promise<T> {
+  const source = resolveValidatedCookiesSourcePathSync();
+  if (!source) {
+    return fn([]);
+  }
+
+  const tmpDir = process.platform === "win32" ? os.tmpdir() : "/tmp";
+  const tmpPath = path.join(
+    tmpDir,
+    `linkclip-cookies-${process.pid}-${randomBytes(8).toString("hex")}.txt`
+  );
+
+  try {
+    await fsPromises.copyFile(source, tmpPath);
+  } catch (e) {
+    logger.warn({ err: e instanceof Error ? e.message : String(e) }, "failed to copy cookies to temp; continuing without cookies");
+    return fn([]);
+  }
+
+  try {
+    return await fn(["--cookies", tmpPath]);
+  } finally {
+    await fsPromises.unlink(tmpPath).catch(() => {});
+  }
 }
 
 export type YtdlpStderrKind =
@@ -207,19 +245,21 @@ export function parseYtDlpProgress(line: string): { progress: number; speedText:
 }
 
 export async function fetchMetadataJson(url: string): Promise<YtdlpVideoInfo> {
-  const args = [...getValidatedCookiesArgs(), "--dump-json", "--no-playlist", "--no-warnings", url];
-  const { stdout, stderr, code } = await runYtDlp(args, { timeoutMs: 120_000 });
-  if (code !== 0) {
-    const classification = classifyYtDlpStderr(stderr ?? "");
-    logger.warn(
-      { code, classification, stderrTail: stderr?.slice(-2000) },
-      "yt-dlp metadata failed"
-    );
-    throw new Error(stderr?.slice(0, 2000) || "yt-dlp failed");
-  }
-  const line = stdout.trim().split("\n").filter(Boolean).pop();
-  if (!line) throw new Error("Empty yt-dlp output");
-  return JSON.parse(line) as YtdlpVideoInfo;
+  return withYtDlpCookiesArgs(async (cookiesArgs) => {
+    const args = [...cookiesArgs, "--dump-json", "--no-playlist", "--no-warnings", url];
+    const { stdout, stderr, code } = await runYtDlp(args, { timeoutMs: 120_000 });
+    if (code !== 0) {
+      const classification = classifyYtDlpStderr(stderr ?? "");
+      logger.warn(
+        { code, classification, stderrTail: stderr?.slice(-2000) },
+        "yt-dlp metadata failed"
+      );
+      throw new Error("yt-dlp metadata failed");
+    }
+    const line = stdout.trim().split("\n").filter(Boolean).pop();
+    if (!line) throw new Error("Empty yt-dlp output");
+    return JSON.parse(line) as YtdlpVideoInfo;
+  });
 }
 
 export type DownloadFormatKind = "best" | "1080p" | "720p" | "480p" | "audio_mp3" | "tiktok_ready";
@@ -244,6 +284,7 @@ export function extractFormatArg(args: string[]): string | undefined {
   return undefined;
 }
 
+/** yt-dlp args without `--cookies` — prefix via [withYtDlpCookiesArgs] at invocation time. */
 export function buildDownloadArgs(opts: {
   url: string;
   deviceId: string;
@@ -259,7 +300,6 @@ export function buildDownloadArgs(opts: {
       subdir: "audio",
       pattern: path.join(baseOut, "audio", `${opts.jobId}.%(ext)s`),
       args: [
-        ...getValidatedCookiesArgs(),
         "-f",
         formatSelector,
         "--extract-audio",
@@ -283,7 +323,6 @@ export function buildDownloadArgs(opts: {
     subdir: "videos",
     pattern: path.join(baseOut, "videos", `${opts.jobId}.%(ext)s`),
     args: [
-      ...getValidatedCookiesArgs(),
       "-f",
       formatSelector,
       "--merge-output-format",
