@@ -39,4 +39,6 @@ export const codes = {
   /** Threads / unsupported extractor URLs — Flutter maps to friendly copy. */
   LINKCLIP_ERR_THREADS_UNSUPPORTED: "LINKCLIP_ERR_THREADS_UNSUPPORTED",
   LINKCLIP_ERR_PLATFORM_UNSUPPORTED: "LINKCLIP_ERR_PLATFORM_UNSUPPORTED",
+  /** Analyze could not obtain format metadata (e.g. yt-dlp format resolution failure). */
+  LINKCLIP_ERR_ANALYZE_METADATA_UNAVAILABLE: "LINKCLIP_ERR_ANALYZE_METADATA_UNAVAILABLE",
 } as const;

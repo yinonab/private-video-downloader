@@ -43,7 +43,17 @@ export function hostnameIsThreads(hostname: string): boolean {
 }
 
 export function normalizeUrl(urlString: string): string {
-  const u = new URL(urlString.trim());
+  const trimmed = urlString.trim();
+  if (!trimmed) {
+    throw new AppError(codes.INVALID_URL, "Invalid URL", 400);
+  }
+  const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  let u: URL;
+  try {
+    u = new URL(candidate);
+  } catch {
+    throw new AppError(codes.INVALID_URL, "Invalid URL", 400);
+  }
   if (u.protocol !== "http:" && u.protocol !== "https:") {
     throw new AppError(codes.INVALID_URL, "Only http(s) URLs are allowed", 400);
   }

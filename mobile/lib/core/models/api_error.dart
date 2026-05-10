@@ -98,6 +98,8 @@ class ApiError implements Exception {
         return "קישורי Threads עדיין לא נתמכים להורדה. נסה קישור מאינסטגרם, טיקטוק, פייסבוק או יוטיוב.";
       case "LINKCLIP_ERR_PLATFORM_UNSUPPORTED":
         return "קישור זה עדיין לא נתמך להורדה. נסה קישור מאינסטגרם, טיקטוק, פייסבוק או יוטיוב.";
+      case "LINKCLIP_ERR_ANALYZE_METADATA_UNAVAILABLE":
+        return "לא ניתן לטעון אפשרויות פורמט לווידאו. ייתכן שהקישור מוגבל או לא זמין זמנית.";
       case "NETWORK":
         return http != null ? "שגיאת רשת (קוד $http)" : "שגיאת רשת";
       default:

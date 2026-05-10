@@ -108,6 +108,7 @@
   "errorAnalyzeFailed": "לא ניתן לנתח את הקישור.",
   "errorThreadsUnsupported": "קישורי Threads עדיין לא נתמכים להורדה. נסה קישור מאינסטגרם, טיקטוק, פייסבוק או יוטיוב.",
   "errorPlatformUnsupported": "קישור זה עדיין לא נתמך להורדה. נסה קישור מאינסטגרם, טיקטוק, פייסבוק או יוטיוב.",
+  "errorAnalyzeMetadataUnavailable": "לא ניתן לטעון אפשרויות פורמט לווידאו. ייתכן שהקישור מוגבל או לא זמין זמנית.",
   "settingsTitle": "הגדרות",
   "settingsServerUrl": "כתובת שרת",
   "settingsDeviceId": "מזהה מכשיר",

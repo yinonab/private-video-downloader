@@ -218,14 +218,27 @@ export class YtdlpMetadataError extends Error {
   }
 }
 
-/** Avoid inherited `-f` / opts from deployment yt-dlp config breaking `--dump-json`. */
+/**
+ * Avoid inherited `-f` / opts from deployment yt-dlp config breaking `--dump-json`.
+ * Strips any env var whose name looks like a yt-dlp / youtube-dl options carrier.
+ */
 export function ytDlpMetadataEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
-  delete env.YTDLP_OPTS;
-  delete env.YOUTUBE_DL_OPTS;
-  delete env.YTDL_OPTS;
+  for (const key of Object.keys(env)) {
+    if (/^(YTDLP|YT_DLP|YOUTUBE_DL|YTDL)/i.test(key)) {
+      delete env[key];
+    }
+  }
   return env;
 }
+
+/** Metadata-only: broad fallbacks if default format resolution fails (still `--skip-download`, no real download). */
+const YTDLP_METADATA_FORMAT_FALLBACKS: string[][] = [
+  ["-f", "best/bestvideo+bestaudio/best"],
+  ["-f", "worst/worstvideo+worstaudio/worst"],
+  ["-f", "bv*+ba/b"],
+  ["-f", "*"],
+];
 
 /** Case-insensitive substring classification for logs / telemetry (not shown raw to clients). */
 export function classifyYtDlpStderr(stderr: string): YtdlpStderrKind {
@@ -278,23 +291,41 @@ export function parseYtDlpProgress(line: string): { progress: number; speedText:
 export async function fetchMetadataJson(url: string): Promise<YtdlpVideoInfo> {
   return withYtDlpCookiesArgs(async (cookiesArgs) => {
     const env = ytDlpMetadataEnv();
-    const basePrefix = [...cookiesArgs, "--no-config", "--dump-json", "--no-playlist", "--no-warnings"];
+    /** `--skip-download`: metadata-only; avoids failing format merges that only matter when downloading. */
+    const metaCore = [
+      ...cookiesArgs,
+      "--no-config",
+      "--skip-download",
+      "--dump-json",
+      "--no-playlist",
+      "--no-warnings",
+    ];
+
+    const parseStdout = (stdout: string): YtdlpVideoInfo => {
+      const line = stdout.trim().split("\n").filter(Boolean).pop();
+      if (!line) {
+        throw new YtdlpMetadataError("unknown", "empty yt-dlp stdout");
+      }
+      try {
+        return JSON.parse(line) as YtdlpVideoInfo;
+      } catch {
+        throw new YtdlpMetadataError("unknown", "invalid yt-dlp json");
+      }
+    };
 
     const runAttempt = (formatExtra: string[]) =>
-      runYtDlp([...basePrefix, ...formatExtra, url], { timeoutMs: 120_000, env });
+      runYtDlp([...metaCore, ...formatExtra, url], { timeoutMs: 120_000, env });
 
     let { stdout, stderr, code } = await runAttempt([]);
-    if (code !== 0) {
-      const c1 = classifyYtDlpStderr(stderr ?? "");
-      const fmtMiss =
-        c1 === "format_unavailable" || stderrMeansUnavailableFormat(stderr ?? "");
-      if (fmtMiss) {
-        ({ stdout, stderr, code } = await runAttempt(["-f", "bestvideo+bestaudio/best"]));
-      }
+    if (code === 0) {
+      return parseStdout(stdout);
     }
 
-    if (code !== 0) {
-      const classification = classifyYtDlpStderr(stderr ?? "");
+    let classification = classifyYtDlpStderr(stderr ?? "");
+    const fmtMiss =
+      classification === "format_unavailable" || stderrMeansUnavailableFormat(stderr ?? "");
+
+    if (!fmtMiss) {
       logger.warn(
         { code, classification, stderrTail: (stderr ?? "").slice(-2000) },
         "yt-dlp metadata failed"
@@ -302,15 +333,28 @@ export async function fetchMetadataJson(url: string): Promise<YtdlpVideoInfo> {
       throw new YtdlpMetadataError(classification, (stderr ?? "").slice(-2000));
     }
 
-    const line = stdout.trim().split("\n").filter(Boolean).pop();
-    if (!line) {
-      throw new YtdlpMetadataError("unknown", "empty yt-dlp stdout");
+    for (const fmt of YTDLP_METADATA_FORMAT_FALLBACKS) {
+      ({ stdout, stderr, code } = await runAttempt(fmt));
+      if (code === 0) {
+        return parseStdout(stdout);
+      }
+      classification = classifyYtDlpStderr(stderr ?? "");
+      const stillFmt =
+        classification === "format_unavailable" || stderrMeansUnavailableFormat(stderr ?? "");
+      if (!stillFmt) {
+        logger.warn(
+          { code, classification, stderrTail: (stderr ?? "").slice(-2000) },
+          "yt-dlp metadata failed"
+        );
+        throw new YtdlpMetadataError(classification, (stderr ?? "").slice(-2000));
+      }
     }
-    try {
-      return JSON.parse(line) as YtdlpVideoInfo;
-    } catch {
-      throw new YtdlpMetadataError("unknown", "invalid yt-dlp json");
-    }
+
+    logger.warn(
+      { code, classification, stderrTail: (stderr ?? "").slice(-2000) },
+      "yt-dlp metadata failed after format fallbacks"
+    );
+    throw new YtdlpMetadataError(classification, (stderr ?? "").slice(-2000));
   });
 }
 

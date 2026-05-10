@@ -656,6 +656,12 @@ abstract class AppLocalizations {
   /// **'This link is not supported for download yet. Try an Instagram, TikTok, Facebook, or YouTube link.'**
   String get errorPlatformUnsupported;
 
+  /// No description provided for @errorAnalyzeMetadataUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load format options for this video. The link may be restricted or temporarily unavailable.'**
+  String get errorAnalyzeMetadataUnavailable;
+
   /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:

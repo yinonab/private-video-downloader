@@ -61,6 +61,13 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
           400
         );
       }
+      if (err.classification === "format_unavailable") {
+        throw new AppError(
+          codes.LINKCLIP_ERR_ANALYZE_METADATA_UNAVAILABLE,
+          "Could not load video format information for this link.",
+          422
+        );
+      }
       throw new AppError(codes.ANALYZE_FAILED, "Could not analyze URL", 502);
     }
     logger.warn({ err }, "analyze unexpected failure");

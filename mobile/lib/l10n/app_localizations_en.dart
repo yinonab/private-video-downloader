@@ -307,6 +307,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This link is not supported for download yet. Try an Instagram, TikTok, Facebook, or YouTube link.';
 
   @override
+  String get errorAnalyzeMetadataUnavailable =>
+      'Could not load format options for this video. The link may be restricted or temporarily unavailable.';
+
+  @override
   String get settingsTitle => 'Settings';
 
   @override

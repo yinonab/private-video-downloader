@@ -302,6 +302,10 @@ class AppLocalizationsHe extends AppLocalizations {
       'קישור זה עדיין לא נתמך להורדה. נסה קישור מאינסטגרם, טיקטוק, פייסבוק או יוטיוב.';
 
   @override
+  String get errorAnalyzeMetadataUnavailable =>
+      'לא ניתן לטעון אפשרויות פורמט לווידאו. ייתכן שהקישור מוגבל או לא זמין זמנית.';
+
+  @override
   String get settingsTitle => 'הגדרות';
 
   @override
