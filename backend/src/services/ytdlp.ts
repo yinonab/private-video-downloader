@@ -31,6 +31,12 @@ export interface YtdlpVideoInfo {
 
 const YT_DLP = process.env.YT_DLP_PATH || "yt-dlp";
 
+/**
+ * yt-dlp enables **only Deno** for JS challenges by default (`options.py` default js_runtimes).
+ * Our Docker/API image ships Node + yt-dlp-ejs; Deno is not installed → no runtime enabled unless we opt into Node.
+ */
+export const YTDLP_JS_RUNTIME_ARGS = ["--no-js-runtimes", "--js-runtimes", "node"] as const;
+
 /** Skip re-reading / re-validating on hot paths; invalidate when mtime changes. */
 const MAX_COOKIES_FILE_BYTES = 512 * 1024;
 
@@ -294,6 +300,7 @@ export async function fetchMetadataJson(url: string): Promise<YtdlpVideoInfo> {
     /** `--skip-download`: metadata-only; avoids failing format merges that only matter when downloading. */
     const metaCore = [
       ...cookiesArgs,
+      ...YTDLP_JS_RUNTIME_ARGS,
       "--no-config",
       "--skip-download",
       "--dump-json",
@@ -396,6 +403,7 @@ export function buildDownloadArgs(opts: {
       subdir: "audio",
       pattern: path.join(baseOut, "audio", `${opts.jobId}.%(ext)s`),
       args: [
+        ...YTDLP_JS_RUNTIME_ARGS,
         "-f",
         formatSelector,
         "--extract-audio",
@@ -419,6 +427,7 @@ export function buildDownloadArgs(opts: {
     subdir: "videos",
     pattern: path.join(baseOut, "videos", `${opts.jobId}.%(ext)s`),
     args: [
+      ...YTDLP_JS_RUNTIME_ARGS,
       "-f",
       formatSelector,
       "--merge-output-format",

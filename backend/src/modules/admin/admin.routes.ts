@@ -255,7 +255,7 @@ const adminRoutes: FastifyPluginAsync = async (app) => {
       "install",
       "--break-system-packages",
       "-U",
-      "yt-dlp",
+      "yt-dlp[default,curl-cffi]",
     ]);
     const version = await getYtDlpVersion();
     return { exitCode: code, version, stderrTail: stderr.slice(-2000) };
