@@ -644,6 +644,18 @@ abstract class AppLocalizations {
   /// **'Could not analyze the link.'**
   String get errorAnalyzeFailed;
 
+  /// No description provided for @errorThreadsUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Threads links are not supported for download yet. Try an Instagram, TikTok, Facebook, or YouTube link.'**
+  String get errorThreadsUnsupported;
+
+  /// No description provided for @errorPlatformUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This link is not supported for download yet. Try an Instagram, TikTok, Facebook, or YouTube link.'**
+  String get errorPlatformUnsupported;
+
   /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:

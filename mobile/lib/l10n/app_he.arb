@@ -106,6 +106,8 @@
   "errorJobNotFound": "ההורדה לא נמצאה.",
   "errorFileNotFound": "הקובץ לא נמצא.",
   "errorAnalyzeFailed": "לא ניתן לנתח את הקישור.",
+  "errorThreadsUnsupported": "קישורי Threads עדיין לא נתמכים להורדה. נסה קישור מאינסטגרם, טיקטוק, פייסבוק או יוטיוב.",
+  "errorPlatformUnsupported": "קישור זה עדיין לא נתמך להורדה. נסה קישור מאינסטגרם, טיקטוק, פייסבוק או יוטיוב.",
   "settingsTitle": "הגדרות",
   "settingsServerUrl": "כתובת שרת",
   "settingsDeviceId": "מזהה מכשיר",

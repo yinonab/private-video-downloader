@@ -204,11 +204,40 @@ export type YtdlpStderrKind =
   | "private_content"
   | "not_available"
   | "network_error"
+  | "unsupported_url"
+  | "format_unavailable"
   | "unknown";
+
+export class YtdlpMetadataError extends Error {
+  constructor(
+    readonly classification: YtdlpStderrKind,
+    readonly stderrTail: string
+  ) {
+    super("yt-dlp metadata failed");
+    this.name = "YtdlpMetadataError";
+  }
+}
+
+/** Avoid inherited `-f` / opts from deployment yt-dlp config breaking `--dump-json`. */
+export function ytDlpMetadataEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  delete env.YTDLP_OPTS;
+  delete env.YOUTUBE_DL_OPTS;
+  delete env.YTDL_OPTS;
+  return env;
+}
 
 /** Case-insensitive substring classification for logs / telemetry (not shown raw to clients). */
 export function classifyYtDlpStderr(stderr: string): YtdlpStderrKind {
   const s = stderr.toLowerCase();
+
+  if (/requested format is not available/i.test(s)) {
+    return "format_unavailable";
+  }
+  if (/\bunsupported url\b/i.test(s)) {
+    return "unsupported_url";
+  }
+
   if (
     /\b(connection refused|connection reset|connection aborted|econnreset|econnrefused|enetunreach|network unreachable|failed to establish)\b/.test(
       s
@@ -228,7 +257,9 @@ export function classifyYtDlpStderr(stderr: string): YtdlpStderrKind {
   if (/friends only|members only|private video|\bprivate\b/.test(s)) {
     return "private_content";
   }
-  if (/not available|does not exist|removed|unavailable|no longer available|video unavailable/.test(s)) {
+  if (
+    /no longer available|video unavailable|does not exist|removed by|removed|this video is unavailable/.test(s)
+  ) {
     return "not_available";
   }
   return "unknown";
@@ -246,19 +277,40 @@ export function parseYtDlpProgress(line: string): { progress: number; speedText:
 
 export async function fetchMetadataJson(url: string): Promise<YtdlpVideoInfo> {
   return withYtDlpCookiesArgs(async (cookiesArgs) => {
-    const args = [...cookiesArgs, "--dump-json", "--no-playlist", "--no-warnings", url];
-    const { stdout, stderr, code } = await runYtDlp(args, { timeoutMs: 120_000 });
+    const env = ytDlpMetadataEnv();
+    const basePrefix = [...cookiesArgs, "--no-config", "--dump-json", "--no-playlist", "--no-warnings"];
+
+    const runAttempt = (formatExtra: string[]) =>
+      runYtDlp([...basePrefix, ...formatExtra, url], { timeoutMs: 120_000, env });
+
+    let { stdout, stderr, code } = await runAttempt([]);
+    if (code !== 0) {
+      const c1 = classifyYtDlpStderr(stderr ?? "");
+      const fmtMiss =
+        c1 === "format_unavailable" || stderrMeansUnavailableFormat(stderr ?? "");
+      if (fmtMiss) {
+        ({ stdout, stderr, code } = await runAttempt(["-f", "bestvideo+bestaudio/best"]));
+      }
+    }
+
     if (code !== 0) {
       const classification = classifyYtDlpStderr(stderr ?? "");
       logger.warn(
-        { code, classification, stderrTail: stderr?.slice(-2000) },
+        { code, classification, stderrTail: (stderr ?? "").slice(-2000) },
         "yt-dlp metadata failed"
       );
-      throw new Error("yt-dlp metadata failed");
+      throw new YtdlpMetadataError(classification, (stderr ?? "").slice(-2000));
     }
+
     const line = stdout.trim().split("\n").filter(Boolean).pop();
-    if (!line) throw new Error("Empty yt-dlp output");
-    return JSON.parse(line) as YtdlpVideoInfo;
+    if (!line) {
+      throw new YtdlpMetadataError("unknown", "empty yt-dlp stdout");
+    }
+    try {
+      return JSON.parse(line) as YtdlpVideoInfo;
+    } catch {
+      throw new YtdlpMetadataError("unknown", "invalid yt-dlp json");
+    }
   });
 }
 
@@ -366,10 +418,13 @@ export function runYtDlpStreaming(
 
 function runYtDlp(
   args: string[],
-  opts: { timeoutMs: number }
+  opts: { timeoutMs: number; env?: NodeJS.ProcessEnv }
 ): Promise<{ stdout: string; stderr: string; code: number | null }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(YT_DLP, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(YT_DLP, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: opts.env ?? process.env,
+    });
     let stdout = "";
     let stderr = "";
     const t = setTimeout(() => {

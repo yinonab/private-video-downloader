@@ -94,6 +94,10 @@ class ApiError implements Exception {
         return "בקשה לא תקינה";
       case "UNSUPPORTED_QUALITY":
         return "האיכות שנבחרה אינה נתמכת. נסה לבחור איכות אחרת.";
+      case "LINKCLIP_ERR_THREADS_UNSUPPORTED":
+        return "קישורי Threads עדיין לא נתמכים להורדה. נסה קישור מאינסטגרם, טיקטוק, פייסבוק או יוטיוב.";
+      case "LINKCLIP_ERR_PLATFORM_UNSUPPORTED":
+        return "קישור זה עדיין לא נתמך להורדה. נסה קישור מאינסטגרם, טיקטוק, פייסבוק או יוטיוב.";
       case "NETWORK":
         return http != null ? "שגיאת רשת (קוד $http)" : "שגיאת רשת";
       default:

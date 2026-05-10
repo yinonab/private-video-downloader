@@ -77,6 +77,7 @@ export function computeAvailableQualities(
     : [];
 
   const heights = collectVideoHeights(formats);
+  const maxVideoHeight = heights.length > 0 ? Math.max(...heights) : 0;
   const hasMp4 = formats.some(rowHasMp4Video);
   const anyVideo = formats.some(isVideoRow);
   const hasAudioOnly = formats.some(isAudioOnlyRow);
@@ -100,9 +101,9 @@ export function computeAvailableQualities(
   } else {
     bestAvail = anyVideo || metaLooksDownloadable(meta);
     tiktokReadyAvail = bestAvail;
-    v1080 = hasHeightInRange(formats, 900, 1080);
-    v720 = hasHeightInRange(formats, 600, 720);
-    v480 = has480Tier(formats);
+    v1080 = maxVideoHeight >= 1080 || hasHeightInRange(formats, 900, 1080);
+    v720 = maxVideoHeight >= 720 || hasHeightInRange(formats, 600, 720);
+    v480 = maxVideoHeight >= 480 || has480Tier(formats);
     audioAvail = hasAudioOnly || formats.some(isAudioCapableRow);
   }
 
@@ -128,6 +129,7 @@ export function computeAvailableQualities(
       platform: opts.platform,
       urlHost: opts.urlHost,
       formatCount: formats.length,
+      maxVideoHeight,
       videoHeights: heights,
       hasMp4,
       hasAudioTrackGuess: anyAudio,

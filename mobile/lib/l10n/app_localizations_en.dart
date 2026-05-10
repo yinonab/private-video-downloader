@@ -299,6 +299,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorAnalyzeFailed => 'Could not analyze the link.';
 
   @override
+  String get errorThreadsUnsupported =>
+      'Threads links are not supported for download yet. Try an Instagram, TikTok, Facebook, or YouTube link.';
+
+  @override
+  String get errorPlatformUnsupported =>
+      'This link is not supported for download yet. Try an Instagram, TikTok, Facebook, or YouTube link.';
+
+  @override
   String get settingsTitle => 'Settings';
 
   @override

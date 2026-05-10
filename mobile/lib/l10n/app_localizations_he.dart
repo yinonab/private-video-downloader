@@ -294,6 +294,14 @@ class AppLocalizationsHe extends AppLocalizations {
   String get errorAnalyzeFailed => 'לא ניתן לנתח את הקישור.';
 
   @override
+  String get errorThreadsUnsupported =>
+      'קישורי Threads עדיין לא נתמכים להורדה. נסה קישור מאינסטגרם, טיקטוק, פייסבוק או יוטיוב.';
+
+  @override
+  String get errorPlatformUnsupported =>
+      'קישור זה עדיין לא נתמך להורדה. נסה קישור מאינסטגרם, טיקטוק, פייסבוק או יוטיוב.';
+
+  @override
   String get settingsTitle => 'הגדרות';
 
   @override

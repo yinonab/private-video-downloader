@@ -1,7 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import { computeAvailableQualities } from "../../services/availableQualities";
-import { fetchMetadataJson } from "../../services/ytdlp";
-import { assertUrlSafeForFetch, normalizeUrl } from "../../services/urlSafety";
+import { fetchMetadataJson, YtdlpMetadataError } from "../../services/ytdlp";
+import { assertUrlSafeForFetch, hostnameIsThreads, normalizeUrl } from "../../services/urlSafety";
+import { logger } from "../../services/logger";
 import { extractorToPlatform } from "../../services/platform";
 import { AppError, codes } from "../../types/errors";
 import { hashUrl } from "../../services/hashing";
@@ -25,23 +26,49 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
 
   await assertUrlSafeForFetch(normalized);
 
+  let urlHost = "unknown";
+  try {
+    urlHost = new URL(normalized).hostname.toLowerCase();
+  } catch {
+    /* ignore */
+  }
+
+  if (hostnameIsThreads(urlHost)) {
+    throw new AppError(
+      codes.LINKCLIP_ERR_THREADS_UNSUPPORTED,
+      "Threads links are not supported for download yet.",
+      400
+    );
+  }
+
   let meta;
   try {
     meta = await fetchMetadataJson(normalized);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new AppError(codes.ANALYZE_FAILED, "Could not analyze URL", 502, msg.slice(0, 500));
+    if (err instanceof YtdlpMetadataError) {
+      logger.warn({ classification: err.classification, urlHost }, "analyze yt-dlp metadata failed");
+      if (err.classification === "unsupported_url") {
+        if (hostnameIsThreads(urlHost)) {
+          throw new AppError(
+            codes.LINKCLIP_ERR_THREADS_UNSUPPORTED,
+            "Threads links are not supported for download yet.",
+            400
+          );
+        }
+        throw new AppError(
+          codes.LINKCLIP_ERR_PLATFORM_UNSUPPORTED,
+          "This link is not supported for download yet.",
+          400
+        );
+      }
+      throw new AppError(codes.ANALYZE_FAILED, "Could not analyze URL", 502);
+    }
+    logger.warn({ err }, "analyze unexpected failure");
+    throw new AppError(codes.ANALYZE_FAILED, "Could not analyze URL", 502);
   }
 
   const platform = extractorToPlatform(meta.extractor);
   const urlHash = hashUrl(normalized);
-
-  let urlHost = "unknown";
-  try {
-    urlHost = new URL(normalized).hostname;
-  } catch {
-    /* ignore */
-  }
 
   const availableQualities = computeAvailableQualities(meta, {
     platform: platform ?? meta.extractor ?? "unknown",

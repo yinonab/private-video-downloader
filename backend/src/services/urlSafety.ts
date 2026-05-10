@@ -30,6 +30,18 @@ function isPrivateIPv6(addr: string): boolean {
   return false;
 }
 
+/** threads.com / threads.net (and subdomains) — not supported by yt-dlp for download. */
+export function hostnameIsThreads(hostname: string): boolean {
+  const h = hostname.trim().toLowerCase();
+  return (
+    h === "threads.com" ||
+    h === "www.threads.com" ||
+    h.endsWith(".threads.com") ||
+    h === "threads.net" ||
+    h.endsWith(".threads.net")
+  );
+}
+
 export function normalizeUrl(urlString: string): string {
   const u = new URL(urlString.trim());
   if (u.protocol !== "http:" && u.protocol !== "https:") {

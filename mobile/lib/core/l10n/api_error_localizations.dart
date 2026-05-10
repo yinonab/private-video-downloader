@@ -31,6 +31,10 @@ String localizedApiErrorMessage(AppLocalizations l10n, ApiError e) {
       return l10n.errorFileNotFound;
     case "ANALYZE_FAILED":
       return l10n.errorAnalyzeFailed;
+    case "LINKCLIP_ERR_THREADS_UNSUPPORTED":
+      return l10n.errorThreadsUnsupported;
+    case "LINKCLIP_ERR_PLATFORM_UNSUPPORTED":
+      return l10n.errorPlatformUnsupported;
     case "DOWNLOAD_FAILED":
       return l10n.downloadJobErrorGeneric;
     case "UNKNOWN":

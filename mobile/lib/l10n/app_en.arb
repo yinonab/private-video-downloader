@@ -106,6 +106,8 @@
   "errorJobNotFound": "Download not found.",
   "errorFileNotFound": "File not found.",
   "errorAnalyzeFailed": "Could not analyze the link.",
+  "errorThreadsUnsupported": "Threads links are not supported for download yet. Try an Instagram, TikTok, Facebook, or YouTube link.",
+  "errorPlatformUnsupported": "This link is not supported for download yet. Try an Instagram, TikTok, Facebook, or YouTube link.",
   "settingsTitle": "Settings",
   "settingsServerUrl": "Server URL",
   "settingsDeviceId": "Device ID",
