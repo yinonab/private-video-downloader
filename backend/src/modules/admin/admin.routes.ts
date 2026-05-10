@@ -6,6 +6,7 @@ import { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { authAdmin } from "../../middleware/authAdmin";
 import { config } from "../../config";
+import { diagnosticsToText, runDiagnostics } from "./diagnostics.service";
 import { getYtDlpVersion, type DownloadFormatKind } from "../../services/ytdlp";
 import { DOWNLOAD_ALLOWED_FORMATS } from "../../modules/downloads/download.service";
 import { logger } from "../../services/logger";
@@ -51,6 +52,18 @@ function runCmd(argv: string[]): Promise<{ code: number | null; stdout: string; 
 
 const adminRoutes: FastifyPluginAsync = async (app) => {
   app.addHook("preHandler", authAdmin);
+
+  app.get("/diagnostics", async (request, reply) => {
+    const q = request.query as { format?: string; deep?: string };
+    const asText = q.format === "text";
+    const deep = q.deep === "true" || q.deep === "1";
+    const payload = await runDiagnostics(app, { deep });
+    if (asText) {
+      reply.type("text/plain; charset=utf-8").send(`${diagnosticsToText(payload)}\n`);
+      return;
+    }
+    reply.send(payload);
+  });
 
   app.get("/health", async () => {
     let postgresOk = false;
