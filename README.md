@@ -49,3 +49,7 @@ flutter run
 ### iOS (שלב מתקדם)
 
 שיתוף מממשק השיתוף ב־iOS דורש Share Extension כפי שבאיפיון (Phase 4). עד השלמת ההרחבה, ניתן להדביק קישור מהמשבצת או מלוח ההעתקה מתוך האפליקציה.
+
+## עריכת וידאו מהירה (Quick Edit) — תכנון עתידי
+
+תכונה זו **טרם מומשה** (זרימה מתוכננת: הורדה ← ייצוא עותק ערוך). מסמך ארכיטקטורה יחיד: [`backend/docs/QUICK_EDIT_ARCHITECTURE.md`](backend/docs/QUICK_EDIT_ARCHITECTURE.md).

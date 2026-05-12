@@ -18,10 +18,15 @@ export function getThumbDir(deviceId: string): string {
   return path.join(getDeviceBaseDir(deviceId), "thumbs");
 }
 
+export function getEditsDir(deviceId: string): string {
+  return path.join(getDeviceBaseDir(deviceId), "edits");
+}
+
 export async function ensureDeviceDirs(deviceId: string): Promise<void> {
   await fs.mkdir(getVideoDir(deviceId), { recursive: true });
   await fs.mkdir(getAudioDir(deviceId), { recursive: true });
   await fs.mkdir(getThumbDir(deviceId), { recursive: true });
+  await fs.mkdir(getEditsDir(deviceId), { recursive: true });
 }
 
 export function resolveAbsoluteFromStorageKey(storageKey: string): string {

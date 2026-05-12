@@ -1,5 +1,148 @@
 # LinkClip Quick Edit Architecture Plan
 
+**Status:** planning source of truth · **Scope:** post-download Quick Edit only · **Implementation:** none yet (see §19 guardrails)
+
+**Navigate:** **§0** — planning Q&A · **§1** — product goal · **§2–20** — detailed design
+
+### Doc map (by section number)
+
+| § | Topic |
+|---|--------|
+| **0** | Planning checklist (answers product/architecture questions first) |
+| **1** | Product goal |
+| **2** | Hard architectural rules |
+| **3** | Operation-based edit pipeline |
+| **4** | MVP feature scope |
+| **5** | Future caption system (conceptual) |
+| **6** | Backend architecture |
+| **7** | Queue strategy |
+| **8** | Data model strategy |
+| **9** | Storage strategy |
+| **10** | ffmpeg strategy |
+| **11** | Mobile architecture |
+| **12** | API client |
+| **13** | Progress reporting |
+| **14** | Security and validation |
+| **15** | Risks and mitigations |
+| **16** | Phased implementation plan |
+| **17** | Likely files to add later |
+| **18** | Files to minimally touch later |
+| **19** | Cursor implementation guardrails |
+| **20** | Documentation improvements & maintenance |
+
+---
+
+## 0. Planning checklist — explicit answers (TL;DR)
+
+This section answers the architecture review questions in one place; deeper rationale lives in **§6–17**, phased rollout in **§16**, integration touchpoints in **§18**, guardrails in **§19**, and doc upkeep in **§20**.
+
+### 1. Where should the Quick Edit module live in the backend?
+
+**`backend/src/modules/edit/`**, mirroring existing modules (`downloads`, `analyze`, `devices`):
+
+- `edit.routes.ts`, `edit.service.ts`, `edit.schemas.ts`, `edit.types.ts`
+- Isolated ffmpeg planning/building (e.g. `ffmpegEditBuilder.ts`) — **no** coupling to `services/ytdlp.ts` or download paths beyond “resolve source file from download job id”
+
+Worker execution lives **outside** `download.worker.ts`: e.g. **`backend/src/workers/edit.worker.ts`** with its own entrypoint (`npm run worker:edit` or separate Docker command), or a second consumer registered only for the edit queue — **same Redis**, **different queue name**, **no edits to download consumer logic**.
+
+### 2. What new backend endpoints should exist later?
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/edits` | Create edit job (device auth); body = `sourceDownloadJobId` + validated `operations[]` |
+| `GET` | `/edits/:id` | Job status: `status`, `stage`, `progressPercent`, errors, `outputReady`, metadata |
+| `GET` | `/edits/:id/file` | Binary stream when status is `done` (same auth model as download file route) |
+| `POST` | `/edits/:id/retry` | Re-queue failed job with same or sanitized ops (optional MVP+) |
+| `DELETE` | `/edits/:id` | Optional cancel + cleanup artifacts |
+
+**Later (captions):** e.g. `GET /edits/:id/captions/:lang.srt` | `.vtt` | `.json` for non–burn-in assets.
+
+### 3. Edit jobs: separate queue/worker or reuse existing queue infrastructure?
+
+**Reuse:** Redis + BullMQ (same pattern as `DOWNLOAD_QUEUE_NAME` in `plugins/queues.ts`).
+
+**Separate:** new queue constant e.g. **`EDIT_QUEUE_NAME = "edit"`**, new `Queue` decoration or parallel plugin — **additive registration** in `app.ts` only when implementing.
+
+**Critical:** do **not** modify **`backend/src/workers/download.worker.ts`** or merge edit jobs into the download processor. Prefer a **separate worker binary/process** so production can scale/restart edits without touching downloads.
+
+### 4. Minimal data model later — DB change or not?
+
+| Approach | Pros | Cons |
+|---------|------|------|
+| **No Prisma change (MVP experiment)** | Zero migration | Jobs only in Redis/fs; weak audit, retry, listing |
+| **Additive `EditJob` (+ future `CaptionTrack`)** *(recommended when building)* | Fits job lifecycle, retries, admin/diagnostics | Requires migration |
+
+**Recommendation:** plan on **`EditJob`** as soon as Phase 1 backend starts; keep **`DownloadJob` untouched**. Optional **`CaptionTrack`** (or JSON blob on `EditJob` short-term) when captions land.
+
+### 5. Where should edited files be stored?
+
+- **Source (immutable):** `…/devices/<deviceId>/videos/<downloadJobId>.%(ext)s` (existing layout)
+- **Outputs:** `…/devices/<deviceId>/edits/<editJobId>.mp4` (and sidecars: `.srt`, `.vtt`, `.json`, `.ass`)
+- **Scratch:** job-scoped temp dir under storage `tmp/` or `/tmp/linkclip-edit-<editJobId>/` — **atomic rename** to final path after success
+
+**Never overwrite** the original download artifact.
+
+### 6. ffmpeg strategies (trim, crop/resize, mute, compress, combined, future burn-in)
+
+- **Trim:** stream-copy trim **only** when standalone and keyframe-safe; otherwise **re-encode** for accuracy or when combined with filters (**`-ss` after `-i`** when filtering).
+- **Crop / resize:** `crop` + `scale` + optional `pad` for letterboxing; **center-crop MVP**; explicit pixel ladders per aspect (§10).
+- **Mute:** `-an` or drop audio stream.
+- **Compress:** `libx264` + `aac`, preset + CRF tiers (§10); preserve SAR/DAR where needed.
+- **Combined:** prefer **single** `ffmpeg` invocation with **one** filter graph (`-filter_complex`) chaining trim window → crop/scale/pad → optional subtitles → encode once.
+- **Future burn-in:** `subtitles=` or **`ass=`** filter for styling; **Hebrew/RTL** prefers **ASS** (explicit direction/font) over naive SRT burn-in; embed Unicode fonts in container or mount known font dir.
+
+### 7. What mobile screens/widgets should be added later?
+
+Under **`mobile/lib/features/edit/`**:
+
+- **`edit_video_screen.dart`** — entry with `downloadJobId`, loads source metadata/thumbnail
+- Controls: **trim**, **aspect ratio chips**, **mute**, **compression preset**, **export**
+- **`edit_export_progress.dart`** — poll edit job, mirror download status UX patterns **without** refactoring download code
+- **`data/edit_api.dart`**, **`models/edit_job.dart`**
+- Optional widgets: `edit_trim_control.dart`, `aspect_ratio_selector.dart`, `compression_selector.dart`
+
+### 8. Minimum safe integration with existing `DownloadStatusScreen`
+
+**Preferred:** one **“Edit video”** button when:
+
+- Job **`done`**, asset is **video**, and (if applicable) **local/server file is known** — purely **navigate** to `EditVideoScreen(downloadJobId)` with **no changes** to create/poll/download/share internals.
+
+### 9. How should future captions work architecturally?
+
+End-to-end pipeline (operations added later):
+
+1. **Extract audio** — `ffmpeg` → WAV/FLAC segment(s)
+2. **Speech-to-text** — pluggable **`TranscriptionProvider`** (Whisper-class API or self-hosted); output **word/segment timestamps**
+3. **Canonical transcript** — internal **JSON timeline** (segments with `startMs`, `endMs`, `text`, optional `confidence`)
+4. **Translation** — pluggable **`TranslationProvider`** per target locale (**he**, **en**, others)
+5. **Exports** — **SRT**, **WebVTT**, **JSON** sidecars stored next to edit output; versioning per language
+6. **Burn-in** — optional operation **`burnSubtitles`** reading ASS/SRT + style preset (RTL, font, outline, safe margins)
+7. **RTL Hebrew** — ASS with `\rtl` / Unicode bidi + verified fonts; test on-device preview before shipping burn-in defaults
+
+### 10. Risks and mitigations
+
+(See §15.) Additional items:
+
+- **Long encode / CPU** — queue isolation, concurrency caps, timeouts, user-visible stage text
+- **STT/translation cost & privacy** — provider abstraction, retention policy, optional on-prem/open-source path
+- **Legal/content** — editing user-owned downloads only; terms unchanged until product asks otherwise
+- **Font/licensing for subtitles** — ship approved fonts or system-font fallback documented per platform
+
+### 11. Recommended implementation sequence
+
+Align with **§16 (Phased implementation plan)**:
+
+| Phase | Focus |
+|-------|--------|
+| **0** | This document only |
+| **1** | Backend: routes, validation, edit queue + **edit worker only**, ffmpeg single-pass MVP ops, storage |
+| **2** | Mobile: Edit screen + API client + minimal DownloadStatus hook |
+| **3** | Polish: progress, errors, retry, presets |
+| **4–6** | Captions: assets → translation → burn-in RTL |
+| **7** | Advanced creator ops |
+
+---
+
 ## 1. Product Goal
 
 LinkClip is currently a downloader-first app.
@@ -260,10 +403,12 @@ Possible files:
 backend/src/modules/edit/edit.routes.ts
 backend/src/modules/edit/edit.service.ts
 backend/src/modules/edit/edit.schemas.ts
-backend/src/modules/edit/edit.worker.ts
 backend/src/modules/edit/edit.queue.ts
 backend/src/modules/edit/edit.types.ts
+backend/src/workers/edit.worker.ts
 ```
+
+Worker stays alongside **`download.worker.ts`**, not inside the module folder (mirrors existing worker layout).
 
 Alternative: if the project structure differs, follow existing module conventions.
 
@@ -540,7 +685,9 @@ small:        crf 28
 
 ### Combined operations
 
-Prefer building one ffmpeg command where possible instead of multiple re-encodes.
+Prefer building **one** ffmpeg command where possible instead of multiple re-encodes.
+
+**Filter graph order (conceptual):** decode → **[trim window]** → crop/scale/pad → optional subtitles/ASS → encode audio/video once. When **both** accurate trim and filters are required, prefer **`-ss` / `-to` or `trim` filter after `-i`** per ffmpeg semantics (avoid `-c copy` with filter graphs).
 
 Example:
 
@@ -848,9 +995,9 @@ backend/src/modules/edit/edit.routes.ts
 backend/src/modules/edit/edit.service.ts
 backend/src/modules/edit/edit.schemas.ts
 backend/src/modules/edit/edit.queue.ts
-backend/src/modules/edit/edit.worker.ts
 backend/src/modules/edit/edit.types.ts
 backend/src/modules/edit/ffmpegEditBuilder.ts
+backend/src/workers/edit.worker.ts
 ```
 
 ### Mobile
@@ -888,7 +1035,14 @@ mobile/lib/features/download_status/download_status_screen.dart
 
 Only to add an `Edit video` button when a completed video file exists.
 
-Potential backend route registration file may need one line to register edit routes, depending on current architecture.
+**Backend wiring (additive lines only when registering routes/queues):**
+
+```text
+backend/src/app.ts                      # register edit routes plugin (one register call)
+backend/src/plugins/queues.ts          # optional: second Queue for EDIT_QUEUE_NAME (do not alter download queue setup semantics)
+backend/package.json                   # optional: "worker:edit" script
+backend/docker-compose.prod.yml        # optional: second worker service or command override
+```
 
 Do not modify:
 
@@ -915,3 +1069,13 @@ When implementing later phases, Cursor must follow these rules:
 6. Run backend lint/build after backend changes.
 7. Run Flutter analyze after mobile changes.
 8. Summarize touched files and confirm existing download behavior was not changed.
+
+---
+
+## 20. Documentation improvements & maintenance
+
+- Keep **`backend/docs/QUICK_EDIT_ARCHITECTURE.md`** as the **single source of truth** for Quick Edit until an implementation README exists.
+- When phases ship, add a short **`CHANGELOG`** snippet per phase (what endpoints/jobs exist).
+- Root **`README.md`** includes a short **Quick Edit (future)** subsection linking here; update that blurb if the planned flow or MVP scope changes.
+- **§0 / §1** should stay aligned if product scope shifts (e.g. new MVP operation types).
+- Renumber sections only when doing a deliberate doc refactor to avoid broken cross-references.

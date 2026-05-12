@@ -8,6 +8,7 @@ import queuesPlugin from "./plugins/queues";
 import deviceRoutes from "./modules/devices/device.routes";
 import analyzeRoutes from "./modules/analyze/analyze.routes";
 import downloadRoutes from "./modules/downloads/download.routes";
+import editRoutes from "./modules/edit/edit.routes";
 import adminRoutes from "./modules/admin/admin.routes";
 
 export async function buildApp(): Promise<FastifyInstance> {
@@ -23,6 +24,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(deviceRoutes);
   await app.register(analyzeRoutes);
   await app.register(downloadRoutes);
+  await app.register(editRoutes);
   await app.register(adminRoutes, { prefix: "/admin" });
 
   return app;

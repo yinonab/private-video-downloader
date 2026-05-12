@@ -19,6 +19,7 @@ model Device {
 
   downloads DownloadJob[]
   files     FileAsset[]
+  editJobs  EditJob[]
 }
 
 model InviteCode {
@@ -105,4 +106,32 @@ model AppSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+/// Post-download Quick Edit job (separate lifecycle from DownloadJob).
+model EditJob {
+  id                    String    @id @default(uuid())
+  deviceId              String
+  sourceDownloadJobId   String
+  /// queued | running | done | failed
+  status                String
+  /// queued | validating_source | probing | processing | finalizing | done | failed
+  stage                 String?
+  progressPercent       Int?
+  operationsJson        Json
+  outputStorageKey      String?
+  outputFilename        String?
+  outputMimeType        String?
+  outputSizeBytes       BigInt?
+  errorCode             String?
+  errorMessage          String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  completedAt           DateTime?
+
+  device Device @relation(fields: [deviceId], references: [id])
+
+  @@index([deviceId, status])
+  @@index([deviceId, createdAt])
+  @@index([deviceId, sourceDownloadJobId])
 }

@@ -13,7 +13,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
-    "lint": "tsc --noEmit"
+    "lint": "prisma generate && tsc --noEmit"
   },
   "engines": {
     "node": ">=20"
