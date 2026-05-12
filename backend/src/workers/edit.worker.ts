@@ -71,7 +71,7 @@ export function createEditWorker(prisma: PrismaClient): Worker {
     EDIT_QUEUE_NAME,
     async (bullJob) => {
       const { editJobId, deviceId } = bullJob.data as EditQueuePayload;
-      const tmpOut = path.join(getEditsDir(deviceId), `${editJobId}.mp4.part`);
+      const tmpOut = path.join(getEditsDir(deviceId), `${editJobId}.part.mp4`);
       const finalOut = path.join(getEditsDir(deviceId), `${editJobId}.mp4`);
 
       const cleanupTmp = async (): Promise<void> => {
