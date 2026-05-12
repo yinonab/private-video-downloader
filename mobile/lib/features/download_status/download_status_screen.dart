@@ -47,7 +47,13 @@ class DownloadStatusScreen extends StatefulWidget {
 }
 
 class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
+  static const Duration _minimumInitialLoadingDuration = Duration(seconds: 3);
+
   Timer? _timer;
+  Timer? _pendingCreateMinLoadingTimer;
+  /// While true (pending-create only), UI keeps [InitialDownloadLoadingAnimation] even if [_detail]/[_err] already arrived.
+  bool _pendingCreateRevealHeld = false;
+
   DownloadDetailResponse? _detail;
   ApiError? _err;
   /// Job id once [DownloadStatusScreen.pendingCreate] finishes POST /downloads.
@@ -58,6 +64,15 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   int _totalBytes = 0;
   bool _localSaved = false;
   bool _localLookupDone = false;
+
+  bool get _pendingCreateMinHoldActive =>
+      widget.pendingCreateRequest != null && _pendingCreateRevealHeld;
+
+  /// Values shown in [build]; gated only for UX minimum splash on [pendingCreate].
+  DownloadDetailResponse? get _displayDetail =>
+      _pendingCreateMinHoldActive ? null : _detail;
+
+  ApiError? get _displayErr => _pendingCreateMinHoldActive ? null : _err;
 
   String get _pollJobId {
     if (widget.pendingCreateRequest != null) {
@@ -82,6 +97,11 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   void initState() {
     super.initState();
     if (widget.pendingCreateRequest != null) {
+      _pendingCreateRevealHeld = true;
+      _pendingCreateMinLoadingTimer = Timer(_minimumInitialLoadingDuration, () {
+        if (!mounted) return;
+        setState(() => _pendingCreateRevealHeld = false);
+      });
       WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrapPendingCreate());
     } else {
       _startPollingTimer();
@@ -95,6 +115,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       if (kDebugMode) debugPrint("### JOB_STATUS_DEBUG ### polling dispose jobId=$_pollJobId");
       return true;
     }());
+    _pendingCreateMinLoadingTimer?.cancel();
     _timer?.cancel();
     super.dispose();
   }
@@ -320,7 +341,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final d = _detail;
+    final d = _displayDetail;
 
     DownloadJobUiState? headlineUi;
     DownloadJobUiState? progressUi;
@@ -362,14 +383,14 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
           padding: const EdgeInsets.all(18),
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            if (_err != null && d == null) ...[
+            if (_displayErr != null && d == null) ...[
               Icon(LucideIcons.triangleAlert, size: 48, color: scheme.error),
               const SizedBox(height: 10),
-              Text(localizedApiErrorMessage(l10n, _err!), style: theme.textTheme.titleMedium),
+              Text(localizedApiErrorMessage(l10n, _displayErr!), style: theme.textTheme.titleMedium),
               const SizedBox(height: 14),
               AppPrimaryButton(label: l10n.downloadRetry, loading: false, onPressed: _retry),
             ],
-            if (d == null && _err == null) ...[
+            if (d == null && _displayErr == null) ...[
               InitialDownloadLoadingAnimation(
                 title: l10n.downloadStatusLoadingJob,
                 subtitle: l10n.downloadLoadingSubtitle,
