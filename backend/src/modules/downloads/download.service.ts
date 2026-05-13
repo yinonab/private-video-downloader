@@ -86,6 +86,8 @@ export async function createDownload(opts: {
     );
     throw e;
   }
+  const forceNew = opts.body.forceNew === true;
+
   logger.info(
     {
       downloadFormatNormalize: true,
@@ -93,6 +95,7 @@ export async function createDownload(opts: {
       normalizedFormat: kind,
       formatReceived: opts.body.format,
       qualityReceived: opts.body.quality,
+      forceNew,
       isTikTokReady: kind === "tiktok_ready",
       normalizationEnabled: kind === "tiktok_ready",
     },
@@ -122,7 +125,7 @@ export async function createDownload(opts: {
 
   let link = await opts.prisma.link.findUnique({ where: { urlHash } });
 
-  if (link) {
+  if (link && !forceNew) {
     const cached = await opts.prisma.downloadJob.findFirst({
       where: {
         deviceId: opts.deviceId,
@@ -134,13 +137,18 @@ export async function createDownload(opts: {
       include: { files: true },
       orderBy: { createdAt: "desc" },
     });
-  const primary =
+    const primary =
       cached?.files.find((f: FileAsset) => f.type === "video") ??
       cached?.files.find((f: FileAsset) => f.type === "audio");
     if (cached && primary) {
       logger.info({ jobId: cached.id, deviceId: opts.deviceId }, "download cache hit");
       return { jobId: cached.id, status: "done", cached: true };
     }
+  } else if (link && forceNew) {
+    logger.info(
+      { deviceId: opts.deviceId, urlHash, format: pair.format },
+      "POST /downloads forceNew: skipping done-job cache, creating new DownloadJob"
+    );
   }
 
   link = await opts.prisma.link.upsert({

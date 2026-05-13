@@ -11,6 +11,8 @@ export const createDownloadSchema = z.object({
     if (typeof s === "string" && s === "") return undefined;
     return s;
   }, z.string().min(1).optional()),
+  /** When true, skip per-device "done" cache reuse so a new DownloadJob is queued (e.g. Quick Edit source re-fetch after retention). */
+  forceNew: z.boolean().optional(),
 });
 
 export type CreateDownloadBody = z.infer<typeof createDownloadSchema>;

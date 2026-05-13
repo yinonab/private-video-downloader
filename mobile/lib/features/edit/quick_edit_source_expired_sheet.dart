@@ -1,3 +1,4 @@
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 
 import "../../core/app_scope.dart";
@@ -128,9 +129,24 @@ Future<void> _startRedownloadAfterExpiryResolved(
     );
     return;
   }
+  final freshReq = CreateDownloadRequest(
+    url: req.url,
+    format: req.format,
+    quality: req.quality,
+    forceNew: true,
+  );
+  assert(() {
+    if (kDebugMode) {
+      debugPrint("expired_redownload_navigate oldJobId=$jobId forceNew=true");
+    }
+    return true;
+  }());
   await Navigator.of(parentContext).push<void>(
     MaterialPageRoute<void>(
-      builder: (_) => DownloadStatusScreen.pendingCreate(request: req),
+      builder: (_) => DownloadStatusScreen.pendingCreate(
+        request: freshReq,
+        expiredRedownloadPriorJobId: jobId.trim(),
+      ),
     ),
   );
 }

@@ -36,16 +36,23 @@ class DownloadStatusScreen extends StatefulWidget {
   /// Poll an existing job (opened from history / after creation resolved elsewhere).
   DownloadStatusScreen({super.key, required this.jobId})
       : pendingCreateRequest = null,
+        expiredRedownloadPriorJobId = null,
         assert(jobId.trim().isNotEmpty);
 
   /// Navigate here immediately; creates the job via API then polls like [DownloadStatusScreen].
   // ignore: prefer_const_constructors_in_immutables — [CreateDownloadRequest] is never a const value.
-  DownloadStatusScreen.pendingCreate({super.key, required CreateDownloadRequest request})
-      : jobId = "",
+  DownloadStatusScreen.pendingCreate({
+    super.key,
+    required CreateDownloadRequest request,
+    this.expiredRedownloadPriorJobId,
+  })  : jobId = "",
         pendingCreateRequest = request;
 
   final String jobId;
   final CreateDownloadRequest? pendingCreateRequest;
+
+  /// When non-null, [pendingCreate] was opened from Quick Edit expired-sheet redownload (debug only).
+  final String? expiredRedownloadPriorJobId;
 
   @override
   State<DownloadStatusScreen> createState() => _DownloadStatusScreenState();
@@ -128,6 +135,14 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   Future<void> _bootstrapPendingCreate() async {
     final req = widget.pendingCreateRequest;
     if (req == null || !mounted) return;
+    assert(() {
+      if (kDebugMode && widget.expiredRedownloadPriorJobId != null) {
+        debugPrint(
+          "expired_redownload_start priorJobId=${widget.expiredRedownloadPriorJobId} forceNew=${req.forceNew}",
+        );
+      }
+      return true;
+    }());
     final svc = AppScope.read(context).downloadService;
     downloadDebugPrint("POST /downloads (pending screen) body=${req.toJson()}");
     try {
@@ -135,6 +150,21 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       downloadDebugPrint(
         "POST /downloads response selectedJobId=${res.jobId} status=${res.status} cached=${res.cached}",
       );
+      assert(() {
+        if (kDebugMode && widget.expiredRedownloadPriorJobId != null) {
+          debugPrint(
+            "expired_redownload_response priorJobId=${widget.expiredRedownloadPriorJobId} "
+            "responseJobId=${res.jobId} cached=${res.cached}",
+          );
+          if (widget.expiredRedownloadPriorJobId == res.jobId) {
+            debugPrint(
+              "WARNING: expired redownload returned original expired job id "
+              "(prior=${widget.expiredRedownloadPriorJobId} response=${res.jobId})",
+            );
+          }
+        }
+        return true;
+      }());
       if (!mounted) return;
       setState(() {
         _resolvedJobId = res.jobId.trim();

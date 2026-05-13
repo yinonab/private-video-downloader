@@ -152,7 +152,12 @@ class DownloadStatusParsed {
 }
 
 class CreateDownloadRequest {
-  CreateDownloadRequest({required this.url, required this.format, required this.quality});
+  CreateDownloadRequest({
+    required this.url,
+    required this.format,
+    required this.quality,
+    this.forceNew = false,
+  });
 
   /// Removes bidi marks; normalizes case (matches backend [sanitizeQualityToken]).
   static String sanitizeQualityId(String raw) {
@@ -165,12 +170,25 @@ class CreateDownloadRequest {
     final f = sanitizeQualityId(format);
     final qRaw = quality.trim().isEmpty ? format : quality;
     final q = sanitizeQualityId(qRaw);
-    return {"url": url.trim(), "format": f, "quality": q};
+    final map = <String, dynamic>{
+      "url": url.trim(),
+      "format": f,
+      "quality": q,
+    };
+    if (forceNew) {
+      map["forceNew"] = true;
+    }
+    return map;
   }
+
+  /// For prefs storage — never persists [forceNew].
+  CreateDownloadRequest copyWithoutForceNew() =>
+      CreateDownloadRequest(url: url, format: format, quality: quality);
 
   final String url;
   final String format;
   final String quality;
+  final bool forceNew;
 }
 
 class CreateDownloadResponse {

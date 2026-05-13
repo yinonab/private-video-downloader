@@ -195,6 +195,7 @@ const downloadRoutes: FastifyPluginAsync = async (app) => {
         acceptedShape: true,
         formatReceived: parsed.data.format,
         qualityReceived: parsed.data.quality,
+        forceNew: parsed.data.forceNew === true,
       },
       "POST /downloads body shape ok"
     );

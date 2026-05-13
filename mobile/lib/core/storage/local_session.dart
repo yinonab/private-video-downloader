@@ -374,7 +374,7 @@ class LocalSession extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       "$_prefsDlCreatePrefix$id",
-      jsonEncode(req.toJson()),
+      jsonEncode(req.copyWithoutForceNew().toJson()),
     );
   }
 
