@@ -19,6 +19,8 @@ class DownloadCard extends StatelessWidget {
     required this.onOpenLocal,
     required this.onShareLocal,
     required this.localFileExists,
+    this.showQuickEdit = false,
+    this.onQuickEdit,
   });
 
   final DownloadItem item;
@@ -28,6 +30,10 @@ class DownloadCard extends StatelessWidget {
   final VoidCallback? onOpenLocal;
   final VoidCallback? onShareLocal;
   final bool localFileExists;
+
+  /// When true and [onQuickEdit] is set, offers Quick Edit for finished jobs (no local file required).
+  final bool showQuickEdit;
+  final VoidCallback? onQuickEdit;
 
   static String? _fmtBytes(int? b) {
     if (b == null || b <= 0) return null;
@@ -164,6 +170,8 @@ class DownloadCard extends StatelessWidget {
                           onOpenLocal?.call();
                         } else if (k == "share") {
                           onShareLocal?.call();
+                        } else if (k == "edit") {
+                          onQuickEdit?.call();
                         }
                       },
                       itemBuilder: (context) => [
@@ -171,6 +179,8 @@ class DownloadCard extends StatelessWidget {
                         if (failedOrCanceled && onRetry != null)
                           PopupMenuItem(value: "retry", child: Text(l10n.downloadCardRetry)),
                         PopupMenuItem(value: "del", child: Text(l10n.downloadCardDelete)),
+                        if (done && showQuickEdit && onQuickEdit != null)
+                          PopupMenuItem(value: "edit", child: Text(l10n.downloadCardEdit)),
                         if (done && localFileExists && onOpenLocal != null)
                           PopupMenuItem(value: "open", child: Text(l10n.downloadOpen)),
                         if (done && localFileExists && onShareLocal != null)
@@ -184,14 +194,31 @@ class DownloadCard extends StatelessWidget {
             if (done && !localFileExists)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  ),
-                  onPressed: onOpenStatus,
-                  icon: Icon(LucideIcons.smartphone, color: scheme.onPrimary),
-                  label: Text(l10n.downloadSaveToDevice),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (showQuickEdit && onQuickEdit != null) ...[
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        onPressed: onQuickEdit,
+                        icon: Icon(LucideIcons.scissors, color: scheme.primary),
+                        label: Text(l10n.downloadCardEdit),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      onPressed: onOpenStatus,
+                      icon: Icon(LucideIcons.smartphone, color: scheme.onPrimary),
+                      label: Text(l10n.downloadSaveToDevice),
+                    ),
+                  ],
                 ),
               ),
             if (done && localFileExists && onOpenLocal != null && onShareLocal != null)
@@ -204,16 +231,29 @@ class DownloadCard extends StatelessWidget {
                         icon: LucideIcons.externalLink,
                         label: l10n.downloadOpen,
                         onTap: onOpenLocal!,
+                        dense: showQuickEdit && onQuickEdit != null,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: showQuickEdit && onQuickEdit != null ? 8 : 10),
                     Expanded(
                       child: _InlinePremiumAction(
                         icon: LucideIcons.share2,
                         label: l10n.downloadShare,
                         onTap: onShareLocal!,
+                        dense: showQuickEdit && onQuickEdit != null,
                       ),
                     ),
+                    if (showQuickEdit && onQuickEdit != null) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _InlinePremiumAction(
+                          icon: LucideIcons.scissors,
+                          label: l10n.downloadCardEdit,
+                          onTap: onQuickEdit!,
+                          dense: true,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -269,11 +309,13 @@ class _InlinePremiumAction extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.dense = false,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -288,20 +330,22 @@ class _InlinePremiumAction extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          padding: EdgeInsets.symmetric(vertical: dense ? 10 : 12, horizontal: dense ? 5 : 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 18, color: scheme.primary),
-              const SizedBox(width: 8),
+              Icon(icon, size: dense ? 16 : 18, color: scheme.primary),
+              SizedBox(width: dense ? 5 : 8),
               Flexible(
                 child: Text(
                   label,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         color: scheme.primary,
                         fontWeight: FontWeight.w700,
+                        fontSize: dense ? 12.5 : null,
                       ),
                   overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
             ],

@@ -342,6 +342,156 @@ final class FileDownloadService {
     return DownloadSaveOutcome(internalPath: targetPath, publicUri: null, mediaStorePublished: false);
   }
 
+  /// Downloads edited MP4 into app documents (`edits/`). Does not register a download-job descriptor.
+  Future<String> downloadEditedOutput({
+    required String editJobId,
+    String? suggestedBasename,
+    void Function(int received, int total)? onProgress,
+  }) async {
+    var base = suggestedBasename?.trim();
+    if (base == null || base.isEmpty) {
+      base = "edit_$editJobId.mp4";
+    }
+    base = FileUtils.sanitizeFileName(base);
+    if (!base.toLowerCase().endsWith(".mp4")) {
+      base = FileUtils.sanitizeFileName("${p.basenameWithoutExtension(base)}.mp4");
+    }
+
+    final docs = await getApplicationDocumentsDirectory();
+    final dirPath = p.join(docs.path, "edits");
+    final tmpDir = p.join(dirPath, "tmp");
+    await Directory(dirPath).create(recursive: true);
+    await Directory(tmpDir).create(recursive: true);
+
+    var attempt = 0;
+    late String targetPath;
+    while (true) {
+      targetPath = FileUtils.nextCandidate(dirPath, base, attempt);
+      if (!await File(targetPath).exists()) break;
+      attempt++;
+      if (attempt > 2000) {
+        throw ApiError(code: "IO", message: "collision", hebrewSummary: "לא ניתן לשמור את הקובץ");
+      }
+    }
+
+    final partPath = p.join(tmpDir, "$editJobId.part");
+    await _tryDelete(partPath);
+
+    JobFileDownloadResult httpMeta;
+    try {
+      httpMeta = await _api.downloadEditFileToPath(
+        editJobId: editJobId,
+        absolutePath: partPath,
+        onReceiveProgress: onProgress,
+      );
+    } catch (e, st) {
+      await _tryDelete(partPath);
+      dev.log("file_download: edit download threw editJobId=$editJobId", error: e);
+      _downloadDebugCatch("downloadEditedOutput.http editJobId=$editJobId", e, st);
+      rethrow;
+    }
+
+    if (httpMeta.statusCode != 200) {
+      await _tryDelete(partPath);
+      throw ApiError(
+        code: "DEVICE_FILE_DOWNLOAD",
+        message: "HTTP ${httpMeta.statusCode}",
+        hebrewSummary: _downloadFailedHebrew,
+        httpStatus: httpMeta.statusCode,
+      );
+    }
+
+    final partFile = File(partPath);
+    final partLen = await partFile.exists() ? await partFile.length() : 0;
+    if (partLen <= 0) {
+      await _tryDelete(partPath);
+      throw ApiError(code: "DEVICE_FILE_DOWNLOAD", message: "empty_part", hebrewSummary: _downloadFailedHebrew);
+    }
+
+    final expected = httpMeta.contentLength;
+    if (expected != null && expected > 0 && partLen != expected) {
+      await _tryDelete(partPath);
+      throw ApiError(code: "DEVICE_FILE_DOWNLOAD", message: "length_mismatch", hebrewSummary: _downloadFailedHebrew);
+    }
+
+    try {
+      try {
+        await partFile.rename(targetPath);
+      } catch (e, st) {
+        dev.log("file_download: edit rename failed, copy instead", error: e);
+        _downloadDebugCatch("edit partFile.rename", e, st);
+        await partFile.copy(targetPath);
+        await partFile.delete();
+      }
+    } catch (e, st) {
+      await _tryDelete(partPath);
+      await _tryDelete(targetPath);
+      dev.log("file_download: edit finalize failed", error: e);
+      _downloadDebugCatch("downloadEditedOutput.finalize editJobId=$editJobId", e, st);
+      throw ApiError(code: "DEVICE_FILE_DOWNLOAD", message: "move_failed", hebrewSummary: _downloadFailedHebrew);
+    }
+
+    final internalLen = await File(targetPath).length();
+    if (internalLen <= 0) {
+      await _tryDelete(targetPath);
+      throw ApiError(code: "IO", message: "empty_final", hebrewSummary: _downloadFailedHebrew);
+    }
+
+    return targetPath;
+  }
+
+  /// Publishes an existing MP4 on disk to Android public Downloads via MediaStore (no session descriptor).
+  Future<bool> publishMp4ToAndroidDownloads({
+    required String internalAbsolutePath,
+    required String shareDisplayName,
+  }) async {
+    if (!Platform.isAndroid) return false;
+
+    final internalFile = File(internalAbsolutePath);
+    final internalExists = await internalFile.exists();
+    final internalLen = internalExists ? await internalFile.length() : 0;
+    if (!internalExists || internalLen <= 0) return false;
+
+    final shareName = FileUtils.sanitizeFileName(shareDisplayName.trim().isEmpty ? p.basename(internalAbsolutePath) : shareDisplayName.trim());
+
+    final tmpRoot = await getTemporaryDirectory();
+    final exportTmpPath = p.join(tmpRoot.path, shareName);
+    await _tryDelete(exportTmpPath);
+
+    final bytes = await internalFile.readAsBytes();
+    if (bytes.isEmpty || bytes.length != internalLen) return false;
+
+    final exportFile = File(exportTmpPath);
+    await exportFile.writeAsBytes(bytes, flush: true);
+    final exportLen = await exportFile.length();
+    if (exportLen <= 0 || exportLen != bytes.length) {
+      await _tryDelete(exportTmpPath);
+      return false;
+    }
+
+    SaveInfo? info;
+    try {
+      info = await MediaStore().saveFile(
+        tempFilePath: exportTmpPath,
+        dirType: DirType.download,
+        dirName: DirName.download,
+      );
+    } catch (e, st) {
+      dev.log("file_download: edit MediaStore.saveFile error", error: e, stackTrace: st);
+      _downloadDebugCatch("publishMp4ToAndroidDownloads.saveFile", e, st);
+      info = null;
+    }
+
+    try {
+      await exportFile.delete();
+    } catch (e, st) {
+      _downloadDebugCatch("publishMp4ToAndroidDownloads cleanup tmp", e, st);
+    }
+
+    final uriStr = info?.uri.toString();
+    return info != null && uriStr != null && uriStr.isNotEmpty;
+  }
+
   Future<void> deleteCached(String jobId) async {
     final desc = await _session.savedDownloadForJob(jobId);
     if (desc == null) return;

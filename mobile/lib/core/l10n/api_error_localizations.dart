@@ -37,6 +37,12 @@ String localizedApiErrorMessage(AppLocalizations l10n, ApiError e) {
       return l10n.errorPlatformUnsupported;
     case "LINKCLIP_ERR_ANALYZE_METADATA_UNAVAILABLE":
       return l10n.errorAnalyzeMetadataUnavailable;
+    case "EDIT_JOB_NOT_FOUND":
+      return l10n.errorEditJobNotFound;
+    case "EDIT_INVALID_SOURCE":
+      return l10n.errorEditInvalidSource;
+    case "EDIT_FAILED":
+      return l10n.errorEditFailed;
     case "DOWNLOAD_FAILED":
       return l10n.downloadJobErrorGeneric;
     case "UNKNOWN":

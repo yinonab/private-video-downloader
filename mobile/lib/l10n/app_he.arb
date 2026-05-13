@@ -89,8 +89,25 @@
   "downloadSaveToDevice": "שמור למכשיר",
   "downloadOpen": "פתח",
   "downloadShare": "שתף",
-  "downloadSavedToDownloads": "הקובץ נשמר בתיקיית ההורדות",
-  "downloadSavedInAppOnly": "הקובץ נשמר באפליקציה, אך לא ניתן לשמור לתיקיית ההורדות",
+  "mediaExportDownloadsWord": "הורדות",
+  "downloadSavedToDownloads": "הסרטון נשמר בתיקייה:\n{path}",
+  "@downloadSavedToDownloads": {
+    "placeholders": {
+      "path": {
+        "type": "String",
+        "example": "הורדות > PrivateVideoDownloader"
+      }
+    }
+  },
+  "downloadSavedInAppOnly": "נשמר בתוך האפליקציה.\nלא הצלחנו להעתיק כרגע להורדות הציבוריות:\n{path}",
+  "@downloadSavedInAppOnly": {
+    "placeholders": {
+      "path": {
+        "type": "String",
+        "example": "הורדות > PrivateVideoDownloader"
+      }
+    }
+  },
   "downloadSavedGeneric": "הקובץ נשמר",
   "untitledVideo": "ללא כותרת",
   "unknownPlatform": "לא ידוע",
@@ -215,5 +232,97 @@
     }
   },
   "downloadUnknownProgress": "עובדים על זה...",
-  "bootstrapLoadingShort": "מתחילים את LinkClip…"
+  "bootstrapLoadingShort": "מתחילים את LinkClip…",
+  "editScreenTitle": "עריכת וידאו",
+  "editExit": "יציאה",
+  "editSave": "שמירה",
+  "editTrimSectionTitle": "חיתוך",
+  "editTrimVideoDuration": "משך הסרטון",
+  "editTrimSelectedClip": "הקטע שנבחר",
+  "editTrimRemoved": "הוסר",
+  "editTrimStart": "התחלה",
+  "editTrimEnd": "סיום",
+  "editTrimReset": "איפוס",
+  "editCropSectionTitle": "יחס גובה־רוחב",
+  "editCropOriginal": "מקורי",
+  "editMuteLabel": "השתק קול",
+  "editCompressSectionTitle": "דחיסה",
+  "editCompressOriginal": "איכות מקורית",
+  "editCompressSocial": "מותאם לרשתות",
+  "editCompressSmall": "קובץ קטן",
+  "editChooseAtLeastOneChange": "בחר לפחות שינוי אחד לעריכה",
+  "editPreviewLoading": "טוען תצוגה מקדימה…",
+  "editPreviewError": "לא ניתן לטעון פרטי הסרטון.",
+  "editDurationApproxHint": "משך משוער עד לטעינה.",
+  "editLocalVideoComingSoon": "עריכת סרטון מהמכשיר תתווסף בקרוב",
+  "downloadCardEdit": "ערוך",
+  "editSourceExpiredTitle": "פג זמן הסרטון בשרת",
+  "editSourceExpiredBody": "כדי לערוך את הסרטון צריך להוריד אותו מחדש. לאחר ההורדה תוכל לערוך אותו מיד.",
+  "editSourceExpiredDownloadNow": "הורד כעת",
+  "editSourceExpiredCancel": "ביטול",
+  "editSourceMissingOriginalUrl": "לא נמצא קישור המקור. הדבק את הקישור מחדש כדי להוריד ולערוך.",
+  "editProcessingTitle": "שומר את העריכה…",
+  "editProcessingSubtitle": "הקובץ הערוך יישמר במכשיר שלך",
+  "editProcessingServerSubtitle": "העריכה מתבצעת בשרת LinkClip. זה בדרך כלל לוקח רק כמה שניות.",
+  "editProcessingDontClose": "אל תצא מהאפליקציה",
+  "editProcessingSecondsHint": "התהליך יימשך מספר שניות",
+  "editProcessingDownloading": "מוריד את הקובץ הערוך…",
+  "editDoneTitle": "העריכה מוכנה",
+  "editDoneSubtitle": "הקובץ הערוך מוכן.\nהסרטון נשמר בתיקייה:\n{path}",
+  "@editDoneSubtitle": {
+    "placeholders": {
+      "path": {
+        "type": "String",
+        "example": "הורדות > PrivateVideoDownloader"
+      }
+    }
+  },
+  "editExportOpen": "פתח",
+  "editExportShare": "שתף",
+  "editExportSave": "שמור",
+  "editFailedTitle": "העריכה נכשלה",
+  "editTryAgain": "נסה שוב",
+  "editSavedToDownloads": "הסרטון נשמר בתיקייה:\n{path}",
+  "@editSavedToDownloads": {
+    "placeholders": {
+      "path": {
+        "type": "String",
+        "example": "הורדות > PrivateVideoDownloader"
+      }
+    }
+  },
+  "editSaveFailed": "לא ניתן לשמור את הסרטון כרגע.",
+  "errorEditJobNotFound": "משימת העריכה לא נמצאה.",
+  "errorEditInvalidSource": "לא ניתן לערוך את הסרטון כרגע.",
+  "errorEditFailed": "עיבוד העריכה נכשל.",
+  "editStageQueued": "ממתין להתחלה…",
+  "editStageValidating": "בודק את הסרטון…",
+  "editStageProbing": "מכין את הסרטון לעריכה…",
+  "editStageProcessing": "עורך את הסרטון…",
+  "editStageFinalizing": "מסיים ושומר…",
+  "editStageDone": "העריכה מוכנה",
+  "editStageFailed": "העריכה נכשלה",
+  "editLeaveWhileProcessingTitle": "לצאת מהעריכה?",
+  "editLeaveWhileProcessingBody": "העריכה עדיין בתהליך. יציאה עכשיו לא תבטל את העיבוד בשרת, אבל תצטרך לפתוח את המסך שוב כדי לראות את ההתקדמות.",
+  "editTabTrim": "חיתוך",
+  "editTabAspectRatio": "יחס גובה־רוחב",
+  "editTabCompression": "דחיסה",
+  "editTabAudio": "קול",
+  "editCompressHelperHint": "בחר כמה לדחוס את הסרטון הסופי",
+  "editMuteDescription": "הסר את פס הקול מהסרטון הערוך",
+  "editCropTabHint": "התצוגה מדגימה את האזור שישמר (חיתוך ממורכז).",
+  "editTrimFieldStart": "התחלה",
+  "editTrimFieldEnd": "סיום",
+  "editTrimTimeExample": "לדוגמה: 02:04",
+  "editTrimInvalidStartTime": "זמן התחלה לא תקין",
+  "editTrimInvalidEndTime": "זמן סיום לא תקין",
+  "editTrimEndMustBeAfterStart": "הסיום חייב להיות אחרי ההתחלה",
+  "editTrimRangeFrom": "מ",
+  "editTrimRangeTo": "עד",
+  "editLeaveWhileProcessingStay": "הישאר",
+  "editLeaveWhileProcessingExit": "צא",
+  "editTrimSheetTitleStart": "זמן התחלה",
+  "editTrimSheetTitleEnd": "זמן סיום",
+  "editTrimSheetApply": "החל",
+  "editTrimTapToEditHint": "הקש להזנה מדויקת"
 }

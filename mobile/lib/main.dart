@@ -5,13 +5,14 @@ import "package:flutter/services.dart";
 import "package:intl/date_symbol_data_local.dart";
 import "package:media_store_plus/media_store_plus.dart";
 
+import "core/config/media_export_constants.dart";
 import "app.dart";
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (Platform.isAndroid) {
     await MediaStore.ensureInitialized();
-    MediaStore.appFolder = "PrivateVideoDownloader";
+    MediaStore.appFolder = kLinkClipMediaStoreFolderName;
   }
   await Future.wait([
     initializeDateFormatting("en_US"),

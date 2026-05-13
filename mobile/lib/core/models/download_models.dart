@@ -23,6 +23,14 @@ class DownloadFile {
   final String? downloadRelativePath;
 }
 
+String? _coerceSourceUrl(Map<String, dynamic> m) {
+  for (final key in ["sourceUrl", "originalUrl", "inputUrl"]) {
+    final v = m[key]?.toString().trim();
+    if (v != null && v.isNotEmpty) return v;
+  }
+  return null;
+}
+
 class DownloadItem {
   DownloadItem({
     required this.id,
@@ -34,6 +42,8 @@ class DownloadItem {
     this.processingStage,
     this.progressPercent,
     this.requestedFormat,
+    this.requestedQuality,
+    this.sourceUrl,
     this.speedText,
     this.etaText,
     this.error,
@@ -64,6 +74,7 @@ class DownloadItem {
     if (!terminal && prog != null && prog <= 0) prog = null;
     final stageTrimmed = m["processingStage"]?.toString().trim() ?? "";
     final fmtTrimmed = m["format"]?.toString().trim() ?? "";
+    final qualTrimmed = m["quality"]?.toString().trim() ?? "";
 
     return DownloadItem(
       id: "${m["id"] ?? ""}",
@@ -75,6 +86,8 @@ class DownloadItem {
       processingStage: stageTrimmed.isEmpty ? null : stageTrimmed,
       progressPercent: prog,
       requestedFormat: fmtTrimmed.isEmpty ? null : fmtTrimmed,
+      requestedQuality: qualTrimmed.isEmpty ? null : qualTrimmed,
+      sourceUrl: _coerceSourceUrl(m),
       speedText: m["speedText"]?.toString(),
       etaText: m["etaText"]?.toString(),
       error: m["error"]?.toString(),
@@ -95,6 +108,12 @@ class DownloadItem {
 
   /// Canonical download format id (`tiktok_ready`, `best`, …).
   final String? requestedFormat;
+
+  /// Normalized quality token from the server, when provided.
+  final String? requestedQuality;
+
+  /// Original submitted URL for this job when returned by the API.
+  final String? sourceUrl;
   final String? speedText;
   final String? etaText;
   final String? error;
@@ -179,12 +198,16 @@ class DownloadDetailResponse {
     this.processingStage,
     this.progressPercent,
     this.requestedFormat,
+    this.requestedQuality,
+    this.sourceUrl,
     this.speedText,
     this.etaText,
     this.title,
     this.thumbnail,
+    this.platform,
     this.error,
     this.file,
+    this.createdAt,
   });
 
   factory DownloadDetailResponse.fromJson(Map<String, dynamic>? j) {
@@ -203,22 +226,28 @@ class DownloadDetailResponse {
     if (!terminal && prog != null && prog <= 0) prog = null;
     final stageTrimmed = m["processingStage"]?.toString().trim() ?? "";
     final fmtTrimmed = m["format"]?.toString().trim() ?? "";
+    final qualTrimmed = m["quality"]?.toString().trim() ?? "";
     DownloadFile? fileObj;
     if (m["file"] is Map) {
       fileObj = DownloadFile.fromJson(Map<String, dynamic>.from(m["file"] as Map));
     }
+    final platTrimmed = m["platform"]?.toString().trim() ?? "";
     return DownloadDetailResponse(
       id: "${m["id"] ?? ""}",
       status: "${m["status"] ?? ""}",
       processingStage: stageTrimmed.isEmpty ? null : stageTrimmed,
       progressPercent: prog,
       requestedFormat: fmtTrimmed.isEmpty ? null : fmtTrimmed,
+      requestedQuality: qualTrimmed.isEmpty ? null : qualTrimmed,
+      sourceUrl: _coerceSourceUrl(m),
       speedText: m["speedText"]?.toString(),
       etaText: m["etaText"]?.toString(),
       title: m["title"]?.toString(),
       thumbnail: m["thumbnail"]?.toString(),
+      platform: platTrimmed.isEmpty ? null : platTrimmed,
       error: m["error"]?.toString(),
       file: fileObj,
+      createdAt: DateTime.tryParse("${m["createdAt"] ?? ""}"),
     );
   }
 
@@ -233,12 +262,24 @@ class DownloadDetailResponse {
 
   /// Canonical download format id (`tiktok_ready`, `best`, …).
   final String? requestedFormat;
+
+  /// Same semantics as [DownloadItem.requestedQuality].
+  final String? requestedQuality;
+
+  /// Original submitted URL when returned by the API.
+  final String? sourceUrl;
   final String? speedText;
   final String? etaText;
   final String? title;
   final String? thumbnail;
+
+  /// Platform / extractor hint from the server (optional).
+  final String? platform;
   final String? error;
   final DownloadFile? file;
+
+  /// Job creation time from server (`createdAt`), when provided — used for Quick Edit retention heuristic.
+  final DateTime? createdAt;
 }
 
 class DownloadsListResponse {

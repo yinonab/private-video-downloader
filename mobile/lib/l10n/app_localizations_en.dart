@@ -246,11 +246,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get downloadShare => 'Share';
 
   @override
-  String get downloadSavedToDownloads => 'Saved to Downloads';
+  String get mediaExportDownloadsWord => 'Downloads';
 
   @override
-  String get downloadSavedInAppOnly =>
-      'Saved in the app, but could not save to Downloads.';
+  String downloadSavedToDownloads(String path) {
+    return 'The video was saved to:\n$path';
+  }
+
+  @override
+  String downloadSavedInAppOnly(String path) {
+    return 'Saved inside the app.\nCouldn\'t copy to public Downloads right now:\n$path';
+  }
 
   @override
   String get downloadSavedGeneric => 'Saved';
@@ -607,4 +613,246 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bootstrapLoadingShort => 'Starting LinkClip…';
+
+  @override
+  String get editScreenTitle => 'Edit video';
+
+  @override
+  String get editExit => 'Exit';
+
+  @override
+  String get editSave => 'Save';
+
+  @override
+  String get editTrimSectionTitle => 'Trim';
+
+  @override
+  String get editTrimVideoDuration => 'Video duration';
+
+  @override
+  String get editTrimSelectedClip => 'Selected clip';
+
+  @override
+  String get editTrimRemoved => 'Removed';
+
+  @override
+  String get editTrimStart => 'Start';
+
+  @override
+  String get editTrimEnd => 'End';
+
+  @override
+  String get editTrimReset => 'Reset';
+
+  @override
+  String get editCropSectionTitle => 'Aspect ratio';
+
+  @override
+  String get editCropOriginal => 'Original';
+
+  @override
+  String get editMuteLabel => 'Mute audio';
+
+  @override
+  String get editCompressSectionTitle => 'Compression';
+
+  @override
+  String get editCompressOriginal => 'Original quality';
+
+  @override
+  String get editCompressSocial => 'Social optimized';
+
+  @override
+  String get editCompressSmall => 'Small file';
+
+  @override
+  String get editChooseAtLeastOneChange =>
+      'Choose at least one edit to continue';
+
+  @override
+  String get editPreviewLoading => 'Loading preview…';
+
+  @override
+  String get editPreviewError => 'Could not load video info.';
+
+  @override
+  String get editDurationApproxHint => 'Duration is approximate until loaded.';
+
+  @override
+  String get editLocalVideoComingSoon =>
+      'Editing a video from your device is coming soon';
+
+  @override
+  String get downloadCardEdit => 'Edit';
+
+  @override
+  String get editSourceExpiredTitle => 'The video expired on the server';
+
+  @override
+  String get editSourceExpiredBody =>
+      'To edit this video, download it again. After the download finishes, you\'ll be able to edit it right away.';
+
+  @override
+  String get editSourceExpiredDownloadNow => 'Download now';
+
+  @override
+  String get editSourceExpiredCancel => 'Cancel';
+
+  @override
+  String get editSourceMissingOriginalUrl =>
+      'The original link is missing. Paste the link again to download and edit it.';
+
+  @override
+  String get editProcessingTitle => 'Saving your edit…';
+
+  @override
+  String get editProcessingSubtitle =>
+      'The edited file will be saved on your device';
+
+  @override
+  String get editProcessingServerSubtitle =>
+      'We\'re editing your video on LinkClip. This usually takes a few seconds.';
+
+  @override
+  String get editProcessingDontClose => 'Do not close the app';
+
+  @override
+  String get editProcessingSecondsHint => 'This should only take a few seconds';
+
+  @override
+  String get editProcessingDownloading => 'Downloading edited file…';
+
+  @override
+  String get editDoneTitle => 'Your edit is ready';
+
+  @override
+  String editDoneSubtitle(String path) {
+    return 'The edited file is ready.\nThe video was saved to:\n$path';
+  }
+
+  @override
+  String get editExportOpen => 'Open';
+
+  @override
+  String get editExportShare => 'Share';
+
+  @override
+  String get editExportSave => 'Save';
+
+  @override
+  String get editFailedTitle => 'Editing failed';
+
+  @override
+  String get editTryAgain => 'Try again';
+
+  @override
+  String editSavedToDownloads(String path) {
+    return 'The video was saved to:\n$path';
+  }
+
+  @override
+  String get editSaveFailed => 'We couldn\'t save the video right now.';
+
+  @override
+  String get errorEditJobNotFound => 'Edit job not found.';
+
+  @override
+  String get errorEditInvalidSource => 'This video cannot be edited right now.';
+
+  @override
+  String get errorEditFailed => 'Edit processing failed.';
+
+  @override
+  String get editStageQueued => 'Waiting to start…';
+
+  @override
+  String get editStageValidating => 'Checking the video…';
+
+  @override
+  String get editStageProbing => 'Preparing the video for editing…';
+
+  @override
+  String get editStageProcessing => 'Editing the video…';
+
+  @override
+  String get editStageFinalizing => 'Finalizing and saving…';
+
+  @override
+  String get editStageDone => 'Your edit is ready';
+
+  @override
+  String get editStageFailed => 'Editing failed';
+
+  @override
+  String get editLeaveWhileProcessingTitle => 'Leave editing?';
+
+  @override
+  String get editLeaveWhileProcessingBody =>
+      'Your edit is still processing. Leaving now will not cancel the server job, but you will need to reopen this screen to see progress.';
+
+  @override
+  String get editTabTrim => 'Trim';
+
+  @override
+  String get editTabAspectRatio => 'Aspect ratio';
+
+  @override
+  String get editTabCompression => 'Compression';
+
+  @override
+  String get editTabAudio => 'Audio';
+
+  @override
+  String get editCompressHelperHint =>
+      'Choose how much to compress the final video';
+
+  @override
+  String get editMuteDescription =>
+      'Remove the audio track from the edited video';
+
+  @override
+  String get editCropTabHint =>
+      'Preview shows the framed area that will be kept (center crop).';
+
+  @override
+  String get editTrimFieldStart => 'Start';
+
+  @override
+  String get editTrimFieldEnd => 'End';
+
+  @override
+  String get editTrimTimeExample => 'Example: 02:04';
+
+  @override
+  String get editTrimInvalidStartTime => 'Invalid start time';
+
+  @override
+  String get editTrimInvalidEndTime => 'Invalid end time';
+
+  @override
+  String get editTrimEndMustBeAfterStart => 'End must be after start';
+
+  @override
+  String get editTrimRangeFrom => 'From';
+
+  @override
+  String get editTrimRangeTo => 'To';
+
+  @override
+  String get editLeaveWhileProcessingStay => 'Stay';
+
+  @override
+  String get editLeaveWhileProcessingExit => 'Leave';
+
+  @override
+  String get editTrimSheetTitleStart => 'Start time';
+
+  @override
+  String get editTrimSheetTitleEnd => 'End time';
+
+  @override
+  String get editTrimSheetApply => 'Apply';
+
+  @override
+  String get editTrimTapToEditHint => 'Tap to enter exactly';
 }

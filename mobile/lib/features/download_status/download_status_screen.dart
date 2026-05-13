@@ -8,12 +8,16 @@ import "package:flutter_animate/flutter_animate.dart";
 import "package:lucide_icons_flutter/lucide_icons.dart";
 
 import "../../core/app_scope.dart";
+import "../../core/downloads/redownload_request_resolution.dart";
+import "../../core/config/media_export_constants.dart";
 import "../../core/config/build_flags.dart";
 import "../../core/l10n/api_error_localizations.dart";
 import "../../core/l10n/context_l10n.dart";
 import "../../core/l10n/download_job_ui_state.dart";
+import "../../core/l10n/media_export_display_path.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
+import "../../core/models/quick_edit_models.dart";
 import "../../core/theme/linkclip_palette.dart";
 import "../../core/utils/download_error_display.dart";
 import "../../core/utils/format_bytes_ui.dart";
@@ -26,6 +30,7 @@ import "widgets/initial_download_loading_animation.dart";
 import "../../core/widgets/expandable_description.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
 import "../../services/saved_media_actions.dart";
+import "../edit/quick_edit_launch.dart";
 
 class DownloadStatusScreen extends StatefulWidget {
   /// Poll an existing job (opened from history / after creation resolved elsewhere).
@@ -140,6 +145,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         setState(() => _err = ApiError(code: "MISSING_JOB", message: "empty job id"));
         return;
       }
+      await AppScope.read(context).session.rememberDownloadCreateRequest(_pollJobId, req);
       _startPollingTimer();
       WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
     } catch (e, st) {
@@ -204,6 +210,9 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         _detail = next;
         _err = null;
       });
+      unawaited(
+        tryBackfillStoredRequestFromDetail(AppScope.read(context).session, next),
+      );
       assert(() {
         if (kDebugMode) {
           debugPrint(
@@ -270,9 +279,13 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         "mediaStorePublished=${outcome.mediaStorePublished} publicUri=${outcome.publicUri}",
       );
       await _refreshLocalSaved();
+      final displayPath = MediaExportDisplayPath.downloadsThenFolder(
+          l10n, kLinkClipMediaStoreFolderName);
       final msg = outcome.mediaStorePublished == true && outcome.publicUri != null
-          ? l10n.downloadSavedToDownloads
-          : (Platform.isAndroid ? l10n.downloadSavedInAppOnly : l10n.downloadSavedGeneric);
+          ? l10n.downloadSavedToDownloads(displayPath)
+          : (Platform.isAndroid
+              ? l10n.downloadSavedInAppOnly(displayPath)
+              : l10n.downloadSavedGeneric);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e, st) {
@@ -608,6 +621,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                                     ],
                                   ),
                           ),
+                          ],
                           if (_fileBusy) ...[
                             BrandedProgressBar(
                               indeterminate: _totalBytes <= 0,
@@ -641,7 +655,24 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                             icon: Icon(LucideIcons.share2, color: scheme.primary),
                             onPressed: _shareLocal,
                           ),
-                        ],
+                          if (downloadDetailEligibleForQuickEdit(d)) ...[
+                            const SizedBox(height: 10),
+                            AppOutlinedButton(
+                              label: l10n.downloadCardEdit,
+                              icon: Icon(LucideIcons.scissors, color: scheme.primary),
+                              onPressed: () async {
+                                await launchQuickEditForJob(
+                                  context,
+                                  jobId: _pollJobId,
+                                  serverRetentionReferenceUtc: d.createdAt,
+                                  prefetchDetail: d,
+                                );
+                                if (!context.mounted) return;
+                                await _tickOnce();
+                                await _refreshLocalSaved();
+                              },
+                            ),
+                          ],
                       ],
                     ],
                   ),

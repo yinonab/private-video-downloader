@@ -241,11 +241,17 @@ class AppLocalizationsHe extends AppLocalizations {
   String get downloadShare => 'שתף';
 
   @override
-  String get downloadSavedToDownloads => 'הקובץ נשמר בתיקיית ההורדות';
+  String get mediaExportDownloadsWord => 'הורדות';
 
   @override
-  String get downloadSavedInAppOnly =>
-      'הקובץ נשמר באפליקציה, אך לא ניתן לשמור לתיקיית ההורדות';
+  String downloadSavedToDownloads(String path) {
+    return 'הסרטון נשמר בתיקייה:\n$path';
+  }
+
+  @override
+  String downloadSavedInAppOnly(String path) {
+    return 'נשמר בתוך האפליקציה.\nלא הצלחנו להעתיק כרגע להורדות הציבוריות:\n$path';
+  }
 
   @override
   String get downloadSavedGeneric => 'הקובץ נשמר';
@@ -600,4 +606,240 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get bootstrapLoadingShort => 'מתחילים את LinkClip…';
+
+  @override
+  String get editScreenTitle => 'עריכת וידאו';
+
+  @override
+  String get editExit => 'יציאה';
+
+  @override
+  String get editSave => 'שמירה';
+
+  @override
+  String get editTrimSectionTitle => 'חיתוך';
+
+  @override
+  String get editTrimVideoDuration => 'משך הסרטון';
+
+  @override
+  String get editTrimSelectedClip => 'הקטע שנבחר';
+
+  @override
+  String get editTrimRemoved => 'הוסר';
+
+  @override
+  String get editTrimStart => 'התחלה';
+
+  @override
+  String get editTrimEnd => 'סיום';
+
+  @override
+  String get editTrimReset => 'איפוס';
+
+  @override
+  String get editCropSectionTitle => 'יחס גובה־רוחב';
+
+  @override
+  String get editCropOriginal => 'מקורי';
+
+  @override
+  String get editMuteLabel => 'השתק קול';
+
+  @override
+  String get editCompressSectionTitle => 'דחיסה';
+
+  @override
+  String get editCompressOriginal => 'איכות מקורית';
+
+  @override
+  String get editCompressSocial => 'מותאם לרשתות';
+
+  @override
+  String get editCompressSmall => 'קובץ קטן';
+
+  @override
+  String get editChooseAtLeastOneChange => 'בחר לפחות שינוי אחד לעריכה';
+
+  @override
+  String get editPreviewLoading => 'טוען תצוגה מקדימה…';
+
+  @override
+  String get editPreviewError => 'לא ניתן לטעון פרטי הסרטון.';
+
+  @override
+  String get editDurationApproxHint => 'משך משוער עד לטעינה.';
+
+  @override
+  String get editLocalVideoComingSoon => 'עריכת סרטון מהמכשיר תתווסף בקרוב';
+
+  @override
+  String get downloadCardEdit => 'ערוך';
+
+  @override
+  String get editSourceExpiredTitle => 'פג זמן הסרטון בשרת';
+
+  @override
+  String get editSourceExpiredBody =>
+      'כדי לערוך את הסרטון צריך להוריד אותו מחדש. לאחר ההורדה תוכל לערוך אותו מיד.';
+
+  @override
+  String get editSourceExpiredDownloadNow => 'הורד כעת';
+
+  @override
+  String get editSourceExpiredCancel => 'ביטול';
+
+  @override
+  String get editSourceMissingOriginalUrl =>
+      'לא נמצא קישור המקור. הדבק את הקישור מחדש כדי להוריד ולערוך.';
+
+  @override
+  String get editProcessingTitle => 'שומר את העריכה…';
+
+  @override
+  String get editProcessingSubtitle => 'הקובץ הערוך יישמר במכשיר שלך';
+
+  @override
+  String get editProcessingServerSubtitle =>
+      'העריכה מתבצעת בשרת LinkClip. זה בדרך כלל לוקח רק כמה שניות.';
+
+  @override
+  String get editProcessingDontClose => 'אל תצא מהאפליקציה';
+
+  @override
+  String get editProcessingSecondsHint => 'התהליך יימשך מספר שניות';
+
+  @override
+  String get editProcessingDownloading => 'מוריד את הקובץ הערוך…';
+
+  @override
+  String get editDoneTitle => 'העריכה מוכנה';
+
+  @override
+  String editDoneSubtitle(String path) {
+    return 'הקובץ הערוך מוכן.\nהסרטון נשמר בתיקייה:\n$path';
+  }
+
+  @override
+  String get editExportOpen => 'פתח';
+
+  @override
+  String get editExportShare => 'שתף';
+
+  @override
+  String get editExportSave => 'שמור';
+
+  @override
+  String get editFailedTitle => 'העריכה נכשלה';
+
+  @override
+  String get editTryAgain => 'נסה שוב';
+
+  @override
+  String editSavedToDownloads(String path) {
+    return 'הסרטון נשמר בתיקייה:\n$path';
+  }
+
+  @override
+  String get editSaveFailed => 'לא ניתן לשמור את הסרטון כרגע.';
+
+  @override
+  String get errorEditJobNotFound => 'משימת העריכה לא נמצאה.';
+
+  @override
+  String get errorEditInvalidSource => 'לא ניתן לערוך את הסרטון כרגע.';
+
+  @override
+  String get errorEditFailed => 'עיבוד העריכה נכשל.';
+
+  @override
+  String get editStageQueued => 'ממתין להתחלה…';
+
+  @override
+  String get editStageValidating => 'בודק את הסרטון…';
+
+  @override
+  String get editStageProbing => 'מכין את הסרטון לעריכה…';
+
+  @override
+  String get editStageProcessing => 'עורך את הסרטון…';
+
+  @override
+  String get editStageFinalizing => 'מסיים ושומר…';
+
+  @override
+  String get editStageDone => 'העריכה מוכנה';
+
+  @override
+  String get editStageFailed => 'העריכה נכשלה';
+
+  @override
+  String get editLeaveWhileProcessingTitle => 'לצאת מהעריכה?';
+
+  @override
+  String get editLeaveWhileProcessingBody =>
+      'העריכה עדיין בתהליך. יציאה עכשיו לא תבטל את העיבוד בשרת, אבל תצטרך לפתוח את המסך שוב כדי לראות את ההתקדמות.';
+
+  @override
+  String get editTabTrim => 'חיתוך';
+
+  @override
+  String get editTabAspectRatio => 'יחס גובה־רוחב';
+
+  @override
+  String get editTabCompression => 'דחיסה';
+
+  @override
+  String get editTabAudio => 'קול';
+
+  @override
+  String get editCompressHelperHint => 'בחר כמה לדחוס את הסרטון הסופי';
+
+  @override
+  String get editMuteDescription => 'הסר את פס הקול מהסרטון הערוך';
+
+  @override
+  String get editCropTabHint => 'התצוגה מדגימה את האזור שישמר (חיתוך ממורכז).';
+
+  @override
+  String get editTrimFieldStart => 'התחלה';
+
+  @override
+  String get editTrimFieldEnd => 'סיום';
+
+  @override
+  String get editTrimTimeExample => 'לדוגמה: 02:04';
+
+  @override
+  String get editTrimInvalidStartTime => 'זמן התחלה לא תקין';
+
+  @override
+  String get editTrimInvalidEndTime => 'זמן סיום לא תקין';
+
+  @override
+  String get editTrimEndMustBeAfterStart => 'הסיום חייב להיות אחרי ההתחלה';
+
+  @override
+  String get editTrimRangeFrom => 'מ';
+
+  @override
+  String get editTrimRangeTo => 'עד';
+
+  @override
+  String get editLeaveWhileProcessingStay => 'הישאר';
+
+  @override
+  String get editLeaveWhileProcessingExit => 'צא';
+
+  @override
+  String get editTrimSheetTitleStart => 'זמן התחלה';
+
+  @override
+  String get editTrimSheetTitleEnd => 'זמן סיום';
+
+  @override
+  String get editTrimSheetApply => 'החל';
+
+  @override
+  String get editTrimTapToEditHint => 'הקש להזנה מדויקת';
 }

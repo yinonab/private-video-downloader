@@ -26,6 +26,7 @@ dependencies:
   google_fonts: ^6.2.1
   flutter_animate: ^4.5.2
   lucide_icons_flutter: ^3.0.5
+  video_player: ^2.9.5
 
 dev_dependencies:
   flutter_test:

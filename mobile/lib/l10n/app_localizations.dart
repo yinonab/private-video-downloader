@@ -542,17 +542,23 @@ abstract class AppLocalizations {
   /// **'Share'**
   String get downloadShare;
 
+  /// No description provided for @mediaExportDownloadsWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
+  String get mediaExportDownloadsWord;
+
   /// No description provided for @downloadSavedToDownloads.
   ///
   /// In en, this message translates to:
-  /// **'Saved to Downloads'**
-  String get downloadSavedToDownloads;
+  /// **'The video was saved to:\n{path}'**
+  String downloadSavedToDownloads(String path);
 
   /// No description provided for @downloadSavedInAppOnly.
   ///
   /// In en, this message translates to:
-  /// **'Saved in the app, but could not save to Downloads.'**
-  String get downloadSavedInAppOnly;
+  /// **'Saved inside the app.\nCouldn\'t copy to public Downloads right now:\n{path}'**
+  String downloadSavedInAppOnly(String path);
 
   /// No description provided for @downloadSavedGeneric.
   ///
@@ -1213,6 +1219,462 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Starting LinkClip…'**
   String get bootstrapLoadingShort;
+
+  /// No description provided for @editScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit video'**
+  String get editScreenTitle;
+
+  /// No description provided for @editExit.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit'**
+  String get editExit;
+
+  /// No description provided for @editSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get editSave;
+
+  /// No description provided for @editTrimSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trim'**
+  String get editTrimSectionTitle;
+
+  /// No description provided for @editTrimVideoDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Video duration'**
+  String get editTrimVideoDuration;
+
+  /// No description provided for @editTrimSelectedClip.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected clip'**
+  String get editTrimSelectedClip;
+
+  /// No description provided for @editTrimRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed'**
+  String get editTrimRemoved;
+
+  /// No description provided for @editTrimStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get editTrimStart;
+
+  /// No description provided for @editTrimEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get editTrimEnd;
+
+  /// No description provided for @editTrimReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get editTrimReset;
+
+  /// No description provided for @editCropSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Aspect ratio'**
+  String get editCropSectionTitle;
+
+  /// No description provided for @editCropOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Original'**
+  String get editCropOriginal;
+
+  /// No description provided for @editMuteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute audio'**
+  String get editMuteLabel;
+
+  /// No description provided for @editCompressSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Compression'**
+  String get editCompressSectionTitle;
+
+  /// No description provided for @editCompressOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Original quality'**
+  String get editCompressOriginal;
+
+  /// No description provided for @editCompressSocial.
+  ///
+  /// In en, this message translates to:
+  /// **'Social optimized'**
+  String get editCompressSocial;
+
+  /// No description provided for @editCompressSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'Small file'**
+  String get editCompressSmall;
+
+  /// No description provided for @editChooseAtLeastOneChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose at least one edit to continue'**
+  String get editChooseAtLeastOneChange;
+
+  /// No description provided for @editPreviewLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading preview…'**
+  String get editPreviewLoading;
+
+  /// No description provided for @editPreviewError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load video info.'**
+  String get editPreviewError;
+
+  /// No description provided for @editDurationApproxHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration is approximate until loaded.'**
+  String get editDurationApproxHint;
+
+  /// No description provided for @editLocalVideoComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Editing a video from your device is coming soon'**
+  String get editLocalVideoComingSoon;
+
+  /// No description provided for @downloadCardEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get downloadCardEdit;
+
+  /// No description provided for @editSourceExpiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The video expired on the server'**
+  String get editSourceExpiredTitle;
+
+  /// No description provided for @editSourceExpiredBody.
+  ///
+  /// In en, this message translates to:
+  /// **'To edit this video, download it again. After the download finishes, you\'ll be able to edit it right away.'**
+  String get editSourceExpiredBody;
+
+  /// No description provided for @editSourceExpiredDownloadNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Download now'**
+  String get editSourceExpiredDownloadNow;
+
+  /// No description provided for @editSourceExpiredCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get editSourceExpiredCancel;
+
+  /// No description provided for @editSourceMissingOriginalUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'The original link is missing. Paste the link again to download and edit it.'**
+  String get editSourceMissingOriginalUrl;
+
+  /// No description provided for @editProcessingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving your edit…'**
+  String get editProcessingTitle;
+
+  /// No description provided for @editProcessingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The edited file will be saved on your device'**
+  String get editProcessingSubtitle;
+
+  /// No description provided for @editProcessingServerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'re editing your video on LinkClip. This usually takes a few seconds.'**
+  String get editProcessingServerSubtitle;
+
+  /// No description provided for @editProcessingDontClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Do not close the app'**
+  String get editProcessingDontClose;
+
+  /// No description provided for @editProcessingSecondsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This should only take a few seconds'**
+  String get editProcessingSecondsHint;
+
+  /// No description provided for @editProcessingDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading edited file…'**
+  String get editProcessingDownloading;
+
+  /// No description provided for @editDoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your edit is ready'**
+  String get editDoneTitle;
+
+  /// No description provided for @editDoneSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The edited file is ready.\nThe video was saved to:\n{path}'**
+  String editDoneSubtitle(String path);
+
+  /// No description provided for @editExportOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get editExportOpen;
+
+  /// No description provided for @editExportShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get editExportShare;
+
+  /// No description provided for @editExportSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get editExportSave;
+
+  /// No description provided for @editFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Editing failed'**
+  String get editFailedTitle;
+
+  /// No description provided for @editTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get editTryAgain;
+
+  /// No description provided for @editSavedToDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'The video was saved to:\n{path}'**
+  String editSavedToDownloads(String path);
+
+  /// No description provided for @editSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t save the video right now.'**
+  String get editSaveFailed;
+
+  /// No description provided for @errorEditJobNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit job not found.'**
+  String get errorEditJobNotFound;
+
+  /// No description provided for @errorEditInvalidSource.
+  ///
+  /// In en, this message translates to:
+  /// **'This video cannot be edited right now.'**
+  String get errorEditInvalidSource;
+
+  /// No description provided for @errorEditFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit processing failed.'**
+  String get errorEditFailed;
+
+  /// No description provided for @editStageQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to start…'**
+  String get editStageQueued;
+
+  /// No description provided for @editStageValidating.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the video…'**
+  String get editStageValidating;
+
+  /// No description provided for @editStageProbing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing the video for editing…'**
+  String get editStageProbing;
+
+  /// No description provided for @editStageProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Editing the video…'**
+  String get editStageProcessing;
+
+  /// No description provided for @editStageFinalizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finalizing and saving…'**
+  String get editStageFinalizing;
+
+  /// No description provided for @editStageDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Your edit is ready'**
+  String get editStageDone;
+
+  /// No description provided for @editStageFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Editing failed'**
+  String get editStageFailed;
+
+  /// No description provided for @editLeaveWhileProcessingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave editing?'**
+  String get editLeaveWhileProcessingTitle;
+
+  /// No description provided for @editLeaveWhileProcessingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your edit is still processing. Leaving now will not cancel the server job, but you will need to reopen this screen to see progress.'**
+  String get editLeaveWhileProcessingBody;
+
+  /// No description provided for @editTabTrim.
+  ///
+  /// In en, this message translates to:
+  /// **'Trim'**
+  String get editTabTrim;
+
+  /// No description provided for @editTabAspectRatio.
+  ///
+  /// In en, this message translates to:
+  /// **'Aspect ratio'**
+  String get editTabAspectRatio;
+
+  /// No description provided for @editTabCompression.
+  ///
+  /// In en, this message translates to:
+  /// **'Compression'**
+  String get editTabCompression;
+
+  /// No description provided for @editTabAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get editTabAudio;
+
+  /// No description provided for @editCompressHelperHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how much to compress the final video'**
+  String get editCompressHelperHint;
+
+  /// No description provided for @editMuteDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the audio track from the edited video'**
+  String get editMuteDescription;
+
+  /// No description provided for @editCropTabHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview shows the framed area that will be kept (center crop).'**
+  String get editCropTabHint;
+
+  /// No description provided for @editTrimFieldStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get editTrimFieldStart;
+
+  /// No description provided for @editTrimFieldEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get editTrimFieldEnd;
+
+  /// No description provided for @editTrimTimeExample.
+  ///
+  /// In en, this message translates to:
+  /// **'Example: 02:04'**
+  String get editTrimTimeExample;
+
+  /// No description provided for @editTrimInvalidStartTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid start time'**
+  String get editTrimInvalidStartTime;
+
+  /// No description provided for @editTrimInvalidEndTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid end time'**
+  String get editTrimInvalidEndTime;
+
+  /// No description provided for @editTrimEndMustBeAfterStart.
+  ///
+  /// In en, this message translates to:
+  /// **'End must be after start'**
+  String get editTrimEndMustBeAfterStart;
+
+  /// No description provided for @editTrimRangeFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get editTrimRangeFrom;
+
+  /// No description provided for @editTrimRangeTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get editTrimRangeTo;
+
+  /// No description provided for @editLeaveWhileProcessingStay.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay'**
+  String get editLeaveWhileProcessingStay;
+
+  /// No description provided for @editLeaveWhileProcessingExit.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get editLeaveWhileProcessingExit;
+
+  /// No description provided for @editTrimSheetTitleStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get editTrimSheetTitleStart;
+
+  /// No description provided for @editTrimSheetTitleEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get editTrimSheetTitleEnd;
+
+  /// No description provided for @editTrimSheetApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get editTrimSheetApply;
+
+  /// No description provided for @editTrimTapToEditHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to enter exactly'**
+  String get editTrimTapToEditHint;
 }
 
 class _AppLocalizationsDelegate

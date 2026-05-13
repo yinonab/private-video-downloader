@@ -207,6 +207,9 @@ export async function getDownloadForDevice(
     id: job.id,
     status: job.status,
     format: job.format ?? undefined,
+    quality: job.quality ?? undefined,
+    // Original submitted URL (device-owned job); client uses this to re-download after server media expiry.
+    sourceUrl: job.link.url,
     processingStage: job.processingStage ?? undefined,
     progress: job.progress,
     progressPercent: job.progress,
@@ -215,6 +218,7 @@ export async function getDownloadForDevice(
     createdAt: job.createdAt.toISOString(),
     title: job.link.title ?? undefined,
     thumbnail: job.link.thumbnail ?? undefined,
+    platform: job.link.platform ?? job.link.extractor ?? undefined,
     error: job.error ?? undefined,
     file:
       job.status === "done" && primary
@@ -270,6 +274,8 @@ export async function listDownloadsForDevice(
       id: job.id,
       status: job.status,
       format: job.format ?? undefined,
+      quality: job.quality ?? undefined,
+      sourceUrl: job.link.url,
       processingStage: job.processingStage ?? undefined,
       progress: job.progress,
       progressPercent: job.progress,

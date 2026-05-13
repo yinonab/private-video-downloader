@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart" show ThemeMode;
 import "package:flutter/widgets.dart" show Locale;
@@ -7,6 +9,7 @@ import "package:shared_preferences/shared_preferences.dart";
 import "package:uuid/uuid.dart";
 
 import "../config/build_flags.dart";
+import "../models/download_models.dart";
 import "../utils/download_media_naming.dart";
 import "../utils/url_utils.dart";
 
@@ -358,6 +361,44 @@ class LocalSession extends ChangeNotifier {
     await prefs.remove("dl_name_$jobId");
     await prefs.remove("dl_mime_$jobId");
     await prefs.remove("dl_size_$jobId");
+    await prefs.remove("$_prefsDlCreatePrefix$jobId");
+  }
+
+  static const String _prefsDlCreatePrefix = "dl_create_";
+
+  /// Stores [POST /downloads] payload so "Download again" / Quick Edit recovery can reuse the original URL.
+  Future<void> rememberDownloadCreateRequest(
+      String jobId, CreateDownloadRequest req) async {
+    final id = jobId.trim();
+    if (id.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      "$_prefsDlCreatePrefix$id",
+      jsonEncode(req.toJson()),
+    );
+  }
+
+  /// Recreates [CreateDownloadRequest] from [rememberDownloadCreateRequest], or null if unknown (older app / cleared).
+  Future<CreateDownloadRequest?> storedCreateDownloadRequest(String jobId) async {
+    final id = jobId.trim();
+    if (id.isEmpty) return null;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString("$_prefsDlCreatePrefix$id")?.trim();
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final m = Map<String, dynamic>.from(decoded);
+      final url = "${m["url"] ?? ""}".trim();
+      if (url.isEmpty) return null;
+      final fmt = "${m["format"] ?? "best"}".trim();
+      final qRaw = m["quality"];
+      final q =
+          (qRaw != null && "$qRaw".trim().isNotEmpty) ? "$qRaw".trim() : fmt;
+      return CreateDownloadRequest(url: url, format: fmt, quality: q);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> wipeDownloadIndex() async {
@@ -369,7 +410,8 @@ class LocalSession extends ChangeNotifier {
               k.startsWith("dl_path_") ||
               k.startsWith("dl_name_") ||
               k.startsWith("dl_mime_") ||
-              k.startsWith("dl_size_"),
+              k.startsWith("dl_size_") ||
+              k.startsWith(_prefsDlCreatePrefix),
         );
     for (final k in keys) {
       await prefs.remove(k);

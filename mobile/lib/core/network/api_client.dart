@@ -9,6 +9,7 @@ import "../models/analyze_models.dart";
 import "../models/api_error.dart";
 import "../models/device_models.dart";
 import "../models/download_models.dart";
+import "../models/quick_edit_models.dart";
 import "../storage/local_session.dart";
 
 String _trimJoin(String base, String suffixPath) {
@@ -170,6 +171,30 @@ class ApiClient {
   /// Absolute HTTP URL for streaming the finished media file (logging / diagnostics).
   String downloadFileUrl(String jobId) => _trimJoin(_base, "/downloads/$jobId/file");
 
+  /// Absolute HTTP URL for `GET /edits/:id/file`.
+  String editFileUrl(String editJobId) => _trimJoin(_base, "/edits/$editJobId/file");
+
+  Future<CreateEditJobResponse> createEditJob(CreateEditJobRequest body) async {
+    return _unwrap(
+      _dio.post(_trimJoin(_base, "/edits"), data: body.toJson()),
+      (data) => CreateEditJobResponse.fromJson(data is Map ? Map<String, dynamic>.from(data) : null),
+    );
+  }
+
+  Future<EditJobDetailResponse> getEditJob(String editJobId) async {
+    return _unwrap(
+      _dio.get(_trimJoin(_base, "/edits/$editJobId")),
+      (data) => EditJobDetailResponse.fromJson(data is Map ? Map<String, dynamic>.from(data) : null),
+    );
+  }
+
+  Future<RetryEditJobResponse> retryEditJob(String editJobId) async {
+    return _unwrap(
+      _dio.post(_trimJoin(_base, "/edits/$editJobId/retry")),
+      (data) => RetryEditJobResponse.fromJson(data is Map ? Map<String, dynamic>.from(data) : null),
+    );
+  }
+
   static int? _parseContentLength(Response<dynamic> response) {
     final raw = response.headers.value(HttpHeaders.contentLengthHeader) ??
         response.headers.value("content-length");
@@ -177,23 +202,19 @@ class ApiClient {
     return int.tryParse(raw);
   }
 
-  /// Downloads job media to [absolutePath] via `GET …/file` with [ResponseType.bytes], then writes to disk.
-  ///
-  /// Avoids [Dio.download] here: a shared [Dio] with [BaseOptions.responseType] = JSON can yield HTTP 200 but
-  /// 0 bytes written for binary endpoints on some platforms.
-  Future<JobFileDownloadResult> downloadJobFileToPath({
-    required String jobId,
+  /// Streams authorized binary GET into [absolutePath] (works for `/downloads/…/file` and `/edits/…/file`).
+  Future<JobFileDownloadResult> _downloadAuthorizedBinaryToPath({
+    required String url,
     required String absolutePath,
+    required String debugLabel,
     void Function(int received, int total)? onReceiveProgress,
   }) async {
-    final url = downloadFileUrl(jobId);
     final tokenExists = _session.deviceToken.trim().isNotEmpty;
     final bearer = tokenExists ? "Bearer ${_session.deviceToken.trim()}" : null;
 
-    dev.log("dio_download: start url=$url savePath=$absolutePath jobId=$jobId");
+    dev.log("dio_download: start url=$url savePath=$absolutePath label=$debugLabel");
     downloadDebugPrint(
-      "downloadJobFileToPath jobId=$jobId baseUrl=$_base finalFileUrl=$url "
-      "tokenExists=$tokenExists tempPartPath=$absolutePath",
+      "$debugLabel baseUrl=$_base finalFileUrl=$url tokenExists=$tokenExists tempPartPath=$absolutePath",
     );
 
     Uint8List decodeBody(List<int>? body) {
@@ -268,10 +289,10 @@ class ApiClient {
       );
     } on DioException catch (e, st) {
       downloadDebugPrint(
-        "catch downloadJobFileToPath DioException type=${e.type} message=${e.message} "
+        "catch $debugLabel DioException type=${e.type} message=${e.message} "
         "responseStatus=${e.response?.statusCode} cancelTokenCancelled=${e.requestOptions.cancelToken?.isCancelled}",
       );
-      downloadDebugStackTrace("downloadJobFileToPath", st);
+      downloadDebugStackTrace(debugLabel, st);
       throw ApiError(
         code: "DEVICE_FILE_DOWNLOAD",
         message: e.message ?? "${e.type}",
@@ -279,5 +300,38 @@ class ApiClient {
         httpStatus: e.response?.statusCode,
       );
     }
+  }
+
+  /// Downloads job media to [absolutePath] via `GET …/file` with [ResponseType.bytes], then writes to disk.
+  ///
+  /// Avoids [Dio.download] here: a shared [Dio] with [BaseOptions.responseType] = JSON can yield HTTP 200 but
+  /// 0 bytes written for binary endpoints on some platforms.
+  Future<JobFileDownloadResult> downloadJobFileToPath({
+    required String jobId,
+    required String absolutePath,
+    void Function(int received, int total)? onReceiveProgress,
+  }) async {
+    final url = downloadFileUrl(jobId);
+    return _downloadAuthorizedBinaryToPath(
+      url: url,
+      absolutePath: absolutePath,
+      debugLabel: "downloadJobFileToPath jobId=$jobId",
+      onReceiveProgress: onReceiveProgress,
+    );
+  }
+
+  /// Downloads edited MP4 from `GET /edits/:editJobId/file`.
+  Future<JobFileDownloadResult> downloadEditFileToPath({
+    required String editJobId,
+    required String absolutePath,
+    void Function(int received, int total)? onReceiveProgress,
+  }) async {
+    final url = editFileUrl(editJobId);
+    return _downloadAuthorizedBinaryToPath(
+      url: url,
+      absolutePath: absolutePath,
+      debugLabel: "downloadEditFileToPath editJobId=$editJobId",
+      onReceiveProgress: onReceiveProgress,
+    );
   }
 }

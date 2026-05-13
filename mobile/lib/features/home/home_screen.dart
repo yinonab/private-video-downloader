@@ -1,12 +1,16 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter_animate/flutter_animate.dart";
 import "package:lucide_icons_flutter/lucide_icons.dart";
 
 import "../../core/app_scope.dart";
+import "../../core/downloads/redownload_request_resolution.dart";
 import "../../core/l10n/api_error_localizations.dart";
 import "../../core/l10n/context_l10n.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
+import "../../core/models/quick_edit_models.dart";
 import "../../core/utils/url_utils.dart";
 import "../../core/theme/linkclip_palette.dart";
 import "../../core/widgets/app_button.dart";
@@ -17,6 +21,7 @@ import "../../l10n/app_localizations.dart";
 import "../../services/saved_media_actions.dart";
 import "../analyze/analyze_screen.dart";
 import "../download_status/download_status_screen.dart";
+import "../edit/quick_edit_launch.dart";
 import "../settings/settings_screen.dart";
 import "download_card.dart";
 
@@ -42,7 +47,11 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final page = await svc.list(page: 1, limit: 50);
       if (!mounted) return;
+      final session = AppScope.read(context).session;
       setState(() => _items = page.items);
+      for (final job in page.items) {
+        unawaited(tryBackfillStoredRequestFromListItem(session, job));
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _err = e);
@@ -228,6 +237,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         showTip: isEmpty,
                         showPrimaryButton: isEmpty,
                         onPaste: _pasteDialog,
+                        onBannerEdit: hasItems
+                            ? () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(l10n.editLocalVideoComingSoon)),
+                                );
+                              }
+                            : null,
                       ),
                     ),
                     if (hasItems) ...[
@@ -270,9 +286,22 @@ class _HomeScreenState extends State<HomeScreen> {
               future: AppScope.read(context).session.localPathForJob(job.id),
               builder: (context, snap) {
                 final exists = snap.hasData && (snap.data?.isNotEmpty ?? false);
+                final eligible = downloadItemEligibleForQuickEdit(job);
                 return DownloadCard(
                   item: job,
                   localFileExists: exists,
+                  showQuickEdit: eligible,
+                  onQuickEdit: eligible
+                      ? () async {
+                          await launchQuickEditForJob(
+                            context,
+                            jobId: job.id,
+                            serverRetentionReferenceUtc: job.createdAt,
+                            prefetchListItem: job,
+                          );
+                          await _load();
+                        }
+                      : null,
                   onOpenStatus: () async {
                     await Navigator.push<void>(
                       context,
@@ -300,12 +329,14 @@ class _HomeHeroCard extends StatelessWidget {
     required this.showTip,
     required this.showPrimaryButton,
     required this.onPaste,
+    this.onBannerEdit,
   });
 
   final bool compact;
   final bool showTip;
   final bool showPrimaryButton;
   final VoidCallback onPaste;
+  final VoidCallback? onBannerEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -373,6 +404,16 @@ class _HomeHeroCard extends StatelessWidget {
                           ),
                   ),
                 ),
+                if (onBannerEdit != null)
+                  TextButton(
+                    onPressed: onBannerEdit,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.only(left: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(l10n.downloadCardEdit),
+                  ),
               ],
             ),
             SizedBox(height: compact ? 8 : 12),

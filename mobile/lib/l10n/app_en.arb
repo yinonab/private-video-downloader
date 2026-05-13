@@ -89,8 +89,25 @@
   "downloadSaveToDevice": "Save to device",
   "downloadOpen": "Open",
   "downloadShare": "Share",
-  "downloadSavedToDownloads": "Saved to Downloads",
-  "downloadSavedInAppOnly": "Saved in the app, but could not save to Downloads.",
+  "mediaExportDownloadsWord": "Downloads",
+  "downloadSavedToDownloads": "The video was saved to:\n{path}",
+  "@downloadSavedToDownloads": {
+    "placeholders": {
+      "path": {
+        "type": "String",
+        "example": "Downloads > PrivateVideoDownloader"
+      }
+    }
+  },
+  "downloadSavedInAppOnly": "Saved inside the app.\nCouldn't copy to public Downloads right now:\n{path}",
+  "@downloadSavedInAppOnly": {
+    "placeholders": {
+      "path": {
+        "type": "String",
+        "example": "Downloads > PrivateVideoDownloader"
+      }
+    }
+  },
   "downloadSavedGeneric": "Saved",
   "untitledVideo": "Untitled",
   "unknownPlatform": "Unknown",
@@ -215,5 +232,97 @@
     }
   },
   "downloadUnknownProgress": "Working on it...",
-  "bootstrapLoadingShort": "Starting LinkClip…"
+  "bootstrapLoadingShort": "Starting LinkClip…",
+  "editScreenTitle": "Edit video",
+  "editExit": "Exit",
+  "editSave": "Save",
+  "editTrimSectionTitle": "Trim",
+  "editTrimVideoDuration": "Video duration",
+  "editTrimSelectedClip": "Selected clip",
+  "editTrimRemoved": "Removed",
+  "editTrimStart": "Start",
+  "editTrimEnd": "End",
+  "editTrimReset": "Reset",
+  "editCropSectionTitle": "Aspect ratio",
+  "editCropOriginal": "Original",
+  "editMuteLabel": "Mute audio",
+  "editCompressSectionTitle": "Compression",
+  "editCompressOriginal": "Original quality",
+  "editCompressSocial": "Social optimized",
+  "editCompressSmall": "Small file",
+  "editChooseAtLeastOneChange": "Choose at least one edit to continue",
+  "editPreviewLoading": "Loading preview…",
+  "editPreviewError": "Could not load video info.",
+  "editDurationApproxHint": "Duration is approximate until loaded.",
+  "editLocalVideoComingSoon": "Editing a video from your device is coming soon",
+  "downloadCardEdit": "Edit",
+  "editSourceExpiredTitle": "The video expired on the server",
+  "editSourceExpiredBody": "To edit this video, download it again. After the download finishes, you'll be able to edit it right away.",
+  "editSourceExpiredDownloadNow": "Download now",
+  "editSourceExpiredCancel": "Cancel",
+  "editSourceMissingOriginalUrl": "The original link is missing. Paste the link again to download and edit it.",
+  "editProcessingTitle": "Saving your edit…",
+  "editProcessingSubtitle": "The edited file will be saved on your device",
+  "editProcessingServerSubtitle": "We're editing your video on LinkClip. This usually takes a few seconds.",
+  "editProcessingDontClose": "Do not close the app",
+  "editProcessingSecondsHint": "This should only take a few seconds",
+  "editProcessingDownloading": "Downloading edited file…",
+  "editDoneTitle": "Your edit is ready",
+  "editDoneSubtitle": "The edited file is ready.\nThe video was saved to:\n{path}",
+  "@editDoneSubtitle": {
+    "placeholders": {
+      "path": {
+        "type": "String",
+        "example": "Downloads > PrivateVideoDownloader"
+      }
+    }
+  },
+  "editExportOpen": "Open",
+  "editExportShare": "Share",
+  "editExportSave": "Save",
+  "editFailedTitle": "Editing failed",
+  "editTryAgain": "Try again",
+  "editSavedToDownloads": "The video was saved to:\n{path}",
+  "@editSavedToDownloads": {
+    "placeholders": {
+      "path": {
+        "type": "String",
+        "example": "Downloads > PrivateVideoDownloader"
+      }
+    }
+  },
+  "editSaveFailed": "We couldn't save the video right now.",
+  "errorEditJobNotFound": "Edit job not found.",
+  "errorEditInvalidSource": "This video cannot be edited right now.",
+  "errorEditFailed": "Edit processing failed.",
+  "editStageQueued": "Waiting to start…",
+  "editStageValidating": "Checking the video…",
+  "editStageProbing": "Preparing the video for editing…",
+  "editStageProcessing": "Editing the video…",
+  "editStageFinalizing": "Finalizing and saving…",
+  "editStageDone": "Your edit is ready",
+  "editStageFailed": "Editing failed",
+  "editLeaveWhileProcessingTitle": "Leave editing?",
+  "editLeaveWhileProcessingBody": "Your edit is still processing. Leaving now will not cancel the server job, but you will need to reopen this screen to see progress.",
+  "editTabTrim": "Trim",
+  "editTabAspectRatio": "Aspect ratio",
+  "editTabCompression": "Compression",
+  "editTabAudio": "Audio",
+  "editCompressHelperHint": "Choose how much to compress the final video",
+  "editMuteDescription": "Remove the audio track from the edited video",
+  "editCropTabHint": "Preview shows the framed area that will be kept (center crop).",
+  "editTrimFieldStart": "Start",
+  "editTrimFieldEnd": "End",
+  "editTrimTimeExample": "Example: 02:04",
+  "editTrimInvalidStartTime": "Invalid start time",
+  "editTrimInvalidEndTime": "Invalid end time",
+  "editTrimEndMustBeAfterStart": "End must be after start",
+  "editTrimRangeFrom": "From",
+  "editTrimRangeTo": "To",
+  "editLeaveWhileProcessingStay": "Stay",
+  "editLeaveWhileProcessingExit": "Leave",
+  "editTrimSheetTitleStart": "Start time",
+  "editTrimSheetTitleEnd": "End time",
+  "editTrimSheetApply": "Apply",
+  "editTrimTapToEditHint": "Tap to enter exactly"
 }

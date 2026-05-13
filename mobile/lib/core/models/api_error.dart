@@ -100,6 +100,12 @@ class ApiError implements Exception {
         return "קישור זה עדיין לא נתמך להורדה. נסה קישור מאינסטגרם, טיקטוק, פייסבוק או יוטיוב.";
       case "LINKCLIP_ERR_ANALYZE_METADATA_UNAVAILABLE":
         return "לא ניתן לטעון אפשרויות פורמט לווידאו. ייתכן שהקישור מוגבל או לא זמין זמנית.";
+      case "EDIT_JOB_NOT_FOUND":
+        return "משימת העריכה לא נמצאה.";
+      case "EDIT_INVALID_SOURCE":
+        return "לא ניתן לערוך את המקור הזה.";
+      case "EDIT_FAILED":
+        return "העריכה נכשלה.";
       case "NETWORK":
         return http != null ? "שגיאת רשת (קוד $http)" : "שגיאת רשת";
       default:
