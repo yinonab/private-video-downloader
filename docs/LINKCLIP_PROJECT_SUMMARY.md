@@ -108,7 +108,7 @@ Verified **in repository / documented flows** (operators still run their own QA)
 - **`sourceUrl` / stored link URL:** remains the **original** Facebook URL shared by the user — not the ephemeral CDN URL.
 - **Failure:** HTTP **422**, code **`FACEBOOK_EXTRACT_FAILED`** (English message + Flutter Hebrew mapping).
 - **Operational note:** when testing yt-dlp or curl with production cookies, copy `global.txt` to a **writable temp file** — do not pass the read-only secrets mount as `--cookies` (yt-dlp may rewrite the jar).
-- **Dev diagnostic:** `cd backend && npm run diag:facebook -- "<facebook-url>"` — prints counts / hosts only, not signed URLs or cookies.
+- **Dev diagnostic:** `cd backend && npm run diag:facebook -- "<facebook-url>"` — prints counts / hosts only, not signed URLs or cookies. The production Docker image copies `backend/scripts` into `/app/scripts`, so the same `npm run diag:facebook` command works inside the API/worker container (`cd /app`).
 
 ### Downloads
 
