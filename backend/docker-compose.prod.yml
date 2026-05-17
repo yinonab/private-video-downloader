@@ -26,6 +26,17 @@ services:
     networks:
       - linkclip
 
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: linkclip-dozzle
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "127.0.0.1:9999:8080"
+    networks:
+      - linkclip
+
   api:
     build:
       context: .
