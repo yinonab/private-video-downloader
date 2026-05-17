@@ -1,0 +1,49 @@
+---
+description: Keep LinkClip project documentation updated after every meaningful code change
+alwaysApply: true
+---
+
+# LinkClip documentation update rule
+
+This repository has a living project handoff document:
+
+`docs/LINKCLIP_PROJECT_SUMMARY.md`
+
+After every meaningful change, you must check whether this document needs an update.
+
+A meaningful change includes:
+
+- backend API changes
+- new routes or changed request/response schemas
+- Flutter UI flows
+- Quick Edit behavior
+- download/analyze behavior
+- storage paths
+- retention/cleanup behavior
+- auth/device/session behavior
+- rate limits
+- yt-dlp/cookies/ffmpeg behavior
+- deployment/operations changes
+- new dependencies
+- changed build commands
+- known limitations or resolved limitations
+- major UI/UX changes
+- production behavior changes
+
+Before finishing a task:
+
+1. Review the changes you made.
+2. Decide whether `docs/LINKCLIP_PROJECT_SUMMARY.md` is affected.
+3. If affected, update the relevant section.
+4. If not affected, explicitly say:  
+   **Project summary update: not needed because (reason).**
+
+Do not rewrite the whole summary unless requested. Prefer small targeted updates.
+
+When updating the summary:
+
+- Keep it factual.
+- Mark planned work as planned, not implemented.
+- Do not include secrets, tokens, cookie values, database URLs, or device IDs.
+- Do not document private production-only values unless they are already intentionally documented.
+- Keep the summary useful for future developers and future AI sessions.
