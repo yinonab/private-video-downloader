@@ -3,6 +3,7 @@ import "dart:math" as math;
 import "package:flutter/material.dart";
 
 import "../../../core/theme/linkclip_palette.dart";
+import "../../../core/widgets/orbital_rings_paint.dart";
 
 /// Export / processing hero: **recognizable scissors** (`Icons.content_cut`) +
 /// painted filmstrip + vertical video frame + flying film shards + rotating glow ring.
@@ -44,7 +45,6 @@ class _EditProcessingAnimationState extends State<EditProcessingAnimation>
     final palette = context.lcPalette;
     final primary = widget.color ?? scheme.primary;
     final glow = widget.accentGlow ?? palette.loaderBubble;
-    final dark = Theme.of(context).brightness == Brightness.dark;
     final s = widget.size;
 
     return RepaintBoundary(
@@ -65,7 +65,6 @@ class _EditProcessingAnimationState extends State<EditProcessingAnimation>
                     t: t,
                     primary: primary,
                     accentGlow: glow,
-                    dark: dark,
                   ),
                 ),
                 for (var i = 0; i < 6; i++)
@@ -153,13 +152,11 @@ class _FilmCutBackdropPainter extends CustomPainter {
     required this.t,
     required this.primary,
     required this.accentGlow,
-    required this.dark,
   });
 
   final double t;
   final Color primary;
   final Color accentGlow;
-  final bool dark;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -167,9 +164,20 @@ class _FilmCutBackdropPainter extends CustomPainter {
     final cy = size.height * 0.48;
     final s = size.shortestSide;
 
-    _vignette(canvas, size, cx, cy, s);
+    final secondary = Color.lerp(primary, accentGlow, 0.52)!;
+    paintLinkClipOrbitalRings(
+      canvas: canvas,
+      center: Offset(cx, cy),
+      shortestSide: s,
+      t: t,
+      primary: primary,
+      secondary: secondary,
+      ringCount: 5,
+      baseRadiusFraction: 0.17,
+      radiusStepFraction: 0.068,
+    );
+
     _rotatingGlowRing(canvas, cx, cy, s);
-    _softOrbBehindPhone(canvas, cx, cy, s);
 
     final phoneW = s * 0.34;
     final phoneH = s * 0.58;
@@ -185,18 +193,6 @@ class _FilmCutBackdropPainter extends CustomPainter {
     _filmstripInsideFrame(canvas, inner, s);
     _flyingFilmShards(canvas, inner, cx, cy, s);
     _ringSparksOnly(canvas, cx, cy, s * 0.42);
-  }
-
-  void _vignette(Canvas canvas, Size size, double cx, double cy, double s) {
-    final p = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          primary.withValues(alpha: dark ? 0.08 : 0.05),
-          Colors.black.withValues(alpha: dark ? 0.62 : 0.42),
-        ],
-        stops: const [0.25, 1],
-      ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: s));
-    canvas.drawRect(Offset.zero & size, p);
   }
 
   void _rotatingGlowRing(Canvas canvas, double cx, double cy, double s) {
@@ -217,18 +213,6 @@ class _FilmCutBackdropPainter extends CustomPainter {
         transform: GradientRotation(-t * math.pi * 2),
       ).createShader(rect);
     canvas.drawArc(rect, 0, math.pi * 2, false, ring);
-  }
-
-  void _softOrbBehindPhone(Canvas canvas, double cx, double cy, double s) {
-    final pulse = 0.85 + 0.15 * math.sin(t * math.pi * 2);
-    final orb = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          accentGlow.withValues(alpha: (dark ? 0.38 : 0.26) * pulse),
-          Colors.transparent,
-        ],
-      ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: s * 0.32));
-    canvas.drawCircle(Offset(cx, cy), s * 0.32, orb);
   }
 
   void _phoneDropShadow(Canvas canvas, RRect phone) {
@@ -399,7 +383,6 @@ class _FilmCutBackdropPainter extends CustomPainter {
   bool shouldRepaint(covariant _FilmCutBackdropPainter oldDelegate) {
     return oldDelegate.t != t ||
         oldDelegate.primary != primary ||
-        oldDelegate.accentGlow != accentGlow ||
-        oldDelegate.dark != dark;
+        oldDelegate.accentGlow != accentGlow;
   }
 }
