@@ -103,12 +103,12 @@ Verified **in repository / documented flows** (operators still run their own QA)
 #### Facebook fallback (HTML / embedded JSON → direct CDN MP4)
 
 - **Trigger only when:** host is Facebook (`facebook.com`, `fb.watch`, etc.) **and** yt-dlp failed **and** stderr contains **`Cannot parse data`** (case-insensitive). All other URLs and failures keep the existing yt-dlp-only behavior.
-- **Implementation:** fetches desktop / mobile / mbasic Facebook HTML (plus watch URLs discovered in-page), parses quoted JSON keys (`playable_url`, `browser_native_*`, etc.) and guarded `video*.fbcdn.net` MP4 patterns — **never** calls FDOWN, **never** scrapes third-party download sites.
+- **Implementation:** uses a **Desktop Chrome** request profile first (`Accept`/`Sec-Fetch-*`/`Upgrade-Insecure-Requests`/Chrome **125** UA) so Facebook returns standard embedded JSON/CDN hints instead of **WebLite** “unsupported” interstitial HTML often seen with mobile/iPhone-style profiles; **Android Chrome mobile** and **mbasic** requests remain as fallbacks. Parses quoted JSON keys (`playable_url`, `browser_native_*`, `videoDeliveryLegacyFields`, `dash_manifest`, etc.) plus guarded `video*.fbcdn.net` MP4 patterns — **never** calls FDOWN, **never** scrapes third-party download sites.
 - **`Link.facebookDirectFallback`:** set when analyze succeeds via this path. The download worker **re-runs** the extractor at job time (signed CDN URLs expire quickly).
 - **`sourceUrl` / stored link URL:** remains the **original** Facebook URL shared by the user — not the ephemeral CDN URL.
 - **Failure:** HTTP **422**, code **`FACEBOOK_EXTRACT_FAILED`** (English message + Flutter Hebrew mapping).
 - **Operational note:** when testing yt-dlp or curl with production cookies, copy `global.txt` to a **writable temp file** — do not pass the read-only secrets mount as `--cookies` (yt-dlp may rewrite the jar).
-- **Dev diagnostic:** `cd backend && npm run diag:facebook -- "<facebook-url>"` — prints counts / hosts only, not signed URLs or cookies. The production Docker image copies `backend/scripts` into `/app/scripts`, so the same `npm run diag:facebook` command works inside the API/worker container (`cd /app`).
+- **Dev diagnostic:** `cd backend && npm run diag:facebook -- "<facebook-url>"` — prints redirect probe (desktop Chrome), **per-step profile + variant**, HTML token counts (`.mp4`, `dash_manifest`, `videoDeliveryLegacyFields`, playable/native keys, WebLite unsupported markers), whether SD/HD were extracted, and **candidate hosts only** — not signed URLs or cookies. The production Docker image copies `backend/scripts` into `/app/scripts`, so the same `npm run diag:facebook` command works inside the API/worker container (`cd /app`).
 
 ### Downloads
 
