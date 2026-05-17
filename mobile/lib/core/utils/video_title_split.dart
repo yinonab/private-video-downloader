@@ -1,4 +1,5 @@
-/// Splits a possibly long yt-dlp title / caption into a short headline and optional body for expandable UI.
+import 'html_entities.dart';
+
 final class VideoTitleSplit {
   const VideoTitleSplit({required this.headlineTitle, this.expandableDescription});
 
@@ -14,8 +15,9 @@ const int _headlineMaxChars = 120;
 /// Single-line titles longer than [singleLineThreshold] get a truncated headline + full text expandable.
 const int _singleLineFoldChars = 100;
 
+/// Splits a possibly long yt-dlp title / caption into a short headline and optional body for expandable UI.
 VideoTitleSplit splitVideoTitleForDisplay(String? rawTitle) {
-  final t = (rawTitle ?? "").trim();
+  final t = decodeBasicHtmlEntities((rawTitle ?? "").trim());
   if (t.isEmpty) {
     return const VideoTitleSplit(headlineTitle: "");
   }

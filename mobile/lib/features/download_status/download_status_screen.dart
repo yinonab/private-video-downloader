@@ -28,6 +28,7 @@ import "../../core/widgets/branded_progress.dart";
 import "widgets/download_progress_hero_animation.dart";
 import "widgets/initial_download_loading_animation.dart";
 import "../../core/widgets/expandable_description.dart";
+import "../../core/widgets/linkclip_network_thumbnail.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
 import "../../services/saved_media_actions.dart";
 import "../edit/quick_edit_launch.dart";
@@ -487,8 +488,8 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(18),
                           child: d.thumbnail != null && d.thumbnail!.isNotEmpty
-                              ? Image.network(
-                                  d.thumbnail!,
+                              ? LinkClipNetworkThumbnail(
+                                  imageUrl: d.thumbnail!,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => _ph(context),
                                 )

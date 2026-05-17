@@ -132,6 +132,58 @@ function decodeEscapes(s: string): string {
   return out;
 }
 
+/** Decode numeric/named HTML entities (og:title, og:image URLs often include &#x…; / &amp;). */
+function decodeHtmlEntities(input: string): string {
+  if (!input) return input;
+  let s = input;
+  s = s.replace(/&#x([0-9a-f]{1,6});?/gi, (full, hex: string) => {
+    const code = parseInt(hex, 16);
+    if (!Number.isFinite(code) || code < 0 || code > 0x10ffff) return full;
+    try {
+      return String.fromCodePoint(code);
+    } catch {
+      return full;
+    }
+  });
+  s = s.replace(/&#(\d{1,7});?/g, (full, dec: string) => {
+    const code = parseInt(dec, 10);
+    if (!Number.isFinite(code) || code < 0 || code > 0x10ffff) return full;
+    try {
+      return String.fromCodePoint(code);
+    } catch {
+      return full;
+    }
+  });
+  s = s
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+  return s;
+}
+
+function isLikelyFacebookStatsTitle(t: string): boolean {
+  const s = t.trim();
+  if (s.length < 2) return true;
+  if (/^facebook$/i.test(s)) return true;
+  if (/\bviews\b/i.test(s) && (/\breactions?\b/i.test(s) || /[·•]/.test(s))) return true;
+  if (/^\s*[\d,.]+\s*[KkMmBb]?\s+views\b/i.test(s)) return true;
+  return false;
+}
+
+function normalizeFacebookThumbnailUrl(raw: string): string | undefined {
+  const u = decodeHtmlEntities(decodeEscapes(raw.trim()));
+  if (u.length < 12 || !/^https?:\/\//i.test(u)) return undefined;
+  try {
+    return new URL(u).toString();
+  } catch {
+    return u;
+  }
+}
+
 function tryParseFlexibleQuoted(html: string, key: string): string | null {
   const re = new RegExp(`"${key}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"`, "i");
   const m = html.match(re);
@@ -227,11 +279,13 @@ function assignSdHdFromUrls(urls: string[]): FacebookDirectCandidates {
 
 function parseThumbnail(html: string): string | undefined {
   const og = html.match(/property=["']og:image["']\s+content=["']([^"']+)["']/i);
-  if (og?.[1]) return decodeEscapes(og[1]);
+  if (og?.[1]) return normalizeFacebookThumbnailUrl(og[1]);
   const og2 = html.match(/content=["']([^"']+)["']\s+property=["']og:image["']/i);
-  if (og2?.[1]) return decodeEscapes(og2[1]);
+  if (og2?.[1]) return normalizeFacebookThumbnailUrl(og2[1]);
   const thumb = html.match(/"preferred_thumbnail"\s*:\s*\{[^}]*"image"\s*:\s*\{[^}]*"uri"\s*:\s*"((?:\\.|[^"\\])*)"/i);
-  if (thumb?.[1]) return decodeEscapes(thumb[1]);
+  if (thumb?.[1]) return normalizeFacebookThumbnailUrl(thumb[1]);
+  const quoted = tryParseFlexibleQuoted(html, "preferred_thumbnail_uri");
+  if (quoted?.startsWith("http")) return normalizeFacebookThumbnailUrl(quoted);
   return undefined;
 }
 
@@ -259,11 +313,26 @@ function parseDurationSeconds(html: string): number | undefined {
   return undefined;
 }
 
-function parseTitle(html: string): string | undefined {
-  const og = html.match(/property=["']og:title["']\s+content=["']([^"']+)["']/i);
-  if (og?.[1]) return decodeEscapes(og[1]).slice(0, 500);
-  const t = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  if (t?.[1]) return decodeEscapes(t[1]).trim().slice(0, 500);
+/** Prefer embedded story/video title; avoid stats-only og:title when possible. */
+function parseFacebookDisplayTitle(html: string): string | undefined {
+  const jsonKeys = ["story_raw_title", "video_title", "hd_keyword_video_title"] as const;
+  for (const key of jsonKeys) {
+    const raw = tryParseFlexibleQuoted(html, key);
+    if (!raw) continue;
+    const t = decodeHtmlEntities(decodeEscapes(raw)).trim();
+    if (t.length > 1 && !isLikelyFacebookStatsTitle(t)) return t.slice(0, 500);
+  }
+
+  const og = html.match(/property=["']og:title["']\s+content=["']([^"']+)["']/i)?.[1];
+  const ogDecoded = og ? decodeHtmlEntities(decodeEscapes(og)).trim() : "";
+  if (ogDecoded && !isLikelyFacebookStatsTitle(ogDecoded)) return ogDecoded.slice(0, 500);
+
+  const doc = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1];
+  const docDecoded = doc ? decodeHtmlEntities(decodeEscapes(doc)).trim() : "";
+  if (docDecoded && !isLikelyFacebookStatsTitle(docDecoded)) return docDecoded.slice(0, 500);
+
+  if (ogDecoded) return ogDecoded.slice(0, 500);
+  if (docDecoded) return docDecoded.slice(0, 500);
   return undefined;
 }
 
@@ -705,7 +774,7 @@ async function facebookFallbackExtractInner(
       const sd = lastCandidates.sdUrl;
       const thumbnailUrl = parseThumbnail(lastHtml);
       const durationSeconds = parseDurationSeconds(lastHtml);
-      let title = parseTitle(lastHtml);
+      let title = parseFacebookDisplayTitle(lastHtml);
       if (!title || /^facebook$/i.test(title)) title = "Facebook video";
       logger.info(
         {
@@ -748,7 +817,7 @@ async function facebookFallbackExtractInner(
         const sd = lastCandidates.sdUrl;
         const thumbnailUrl = parseThumbnail(lastHtml);
         const durationSeconds = parseDurationSeconds(lastHtml);
-        let title = parseTitle(lastHtml);
+        let title = parseFacebookDisplayTitle(lastHtml);
         if (!title || /^facebook$/i.test(title)) title = "Facebook video";
         logger.info(
           {
@@ -784,7 +853,7 @@ async function facebookFallbackExtractInner(
           const sd = lastCandidates.sdUrl;
           const thumbnailUrl = parseThumbnail(lastHtml);
           const durationSeconds = parseDurationSeconds(lastHtml);
-          let title = parseTitle(lastHtml);
+          let title = parseFacebookDisplayTitle(lastHtml);
           if (!title || /^facebook$/i.test(title)) title = "Facebook video";
           logger.info(
             {
@@ -824,7 +893,7 @@ async function facebookFallbackExtractInner(
           const sd = lastCandidates.sdUrl;
           const thumbnailUrl = parseThumbnail(lastHtml);
           const durationSeconds = parseDurationSeconds(lastHtml);
-          let title = parseTitle(lastHtml);
+          let title = parseFacebookDisplayTitle(lastHtml);
           if (!title || /^facebook$/i.test(title)) title = "Facebook video";
           logger.info(
             {

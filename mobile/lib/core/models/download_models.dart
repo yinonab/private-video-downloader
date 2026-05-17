@@ -1,3 +1,5 @@
+import '../utils/html_entities.dart';
+
 class DownloadFile {
   DownloadFile({required this.filename, this.mimeType, this.sizeBytes, this.downloadRelativePath});
 
@@ -79,9 +81,9 @@ class DownloadItem {
     return DownloadItem(
       id: "${m["id"] ?? ""}",
       status: st,
-      title: titleCandidate,
+      title: decodeBasicHtmlEntities(titleCandidate),
       platform: platformCandidate,
-      thumbnail: m["thumbnail"]?.toString(),
+      thumbnail: decodeThumbnailUrl(m["thumbnail"]?.toString()),
       createdAt: date ?? DateTime.fromMillisecondsSinceEpoch(0),
       processingStage: stageTrimmed.isEmpty ? null : stageTrimmed,
       progressPercent: prog,
@@ -260,8 +262,8 @@ class DownloadDetailResponse {
       sourceUrl: _coerceSourceUrl(m),
       speedText: m["speedText"]?.toString(),
       etaText: m["etaText"]?.toString(),
-      title: m["title"]?.toString(),
-      thumbnail: m["thumbnail"]?.toString(),
+      title: m["title"] != null ? decodeBasicHtmlEntities(m["title"]!.toString()) : null,
+      thumbnail: decodeThumbnailUrl(m["thumbnail"]?.toString()),
       platform: platTrimmed.isEmpty ? null : platTrimmed,
       error: m["error"]?.toString(),
       file: fileObj,

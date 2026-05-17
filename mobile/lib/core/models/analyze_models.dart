@@ -1,3 +1,5 @@
+import '../utils/html_entities.dart';
+
 class AvailableQuality {
   AvailableQuality({
     required this.id,
@@ -198,11 +200,15 @@ class AnalyzeResponse {
 
     return AnalyzeResponse(
       url: "${m["url"] ?? ""}",
-      title: "${m["title"] ?? ""}".trim().isEmpty ? "ללא כותרת" : "${m["title"]}",
+      title: () {
+        final raw = "${m["title"] ?? ""}".trim();
+        final decoded = decodeBasicHtmlEntities(raw);
+        return decoded.isEmpty ? "ללא כותרת" : decoded;
+      }(),
       platform: "${m["platform"] ?? ""}".trim().isEmpty ? "לא ידוע" : "${m["platform"]}",
       extractor: m["extractor"]?.toString(),
       durationSec: dur,
-      thumbnail: m["thumbnail"]?.toString(),
+      thumbnail: decodeThumbnailUrl(m["thumbnail"]?.toString()),
       availableFormats: merged,
     );
   }

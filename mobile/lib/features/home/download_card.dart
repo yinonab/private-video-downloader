@@ -7,6 +7,7 @@ import "../../core/l10n/download_job_ui_state.dart";
 import "../../core/models/download_models.dart";
 import "../../core/theme/linkclip_palette.dart";
 import "../../core/widgets/branded_progress.dart";
+import "../../core/widgets/linkclip_network_thumbnail.dart";
 import "../../core/widgets/linkclip_chips.dart";
 
 class DownloadCard extends StatelessWidget {
@@ -272,8 +273,8 @@ class DownloadCard extends StatelessWidget {
           width: _thumbW,
           child: AspectRatio(
             aspectRatio: 16 / 9,
-            child: Image.network(
-              thumb,
+            child: LinkClipNetworkThumbnail(
+              imageUrl: thumb,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => _ph(context),
               loadingBuilder: (context, child, prog) => prog == null ? child : _ph(context, loading: true),

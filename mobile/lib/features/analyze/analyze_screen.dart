@@ -15,6 +15,7 @@ import "../../core/widgets/app_button.dart";
 import "../../core/widgets/error_view.dart";
 import "widgets/analyze_processing_animation.dart";
 import "../../core/widgets/expandable_description.dart";
+import "../../core/widgets/linkclip_network_thumbnail.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
 import "../../core/widgets/linkclip_chips.dart";
 import "../download_status/download_status_screen.dart";
@@ -187,8 +188,8 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                     child: AspectRatio(
                       aspectRatio: 16 / 9,
                       child: d.thumbnail != null && d.thumbnail!.isNotEmpty
-                          ? Image.network(
-                              d.thumbnail!,
+                          ? LinkClipNetworkThumbnail(
+                              imageUrl: d.thumbnail!,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => _mediaPlaceholder(),
                             )
