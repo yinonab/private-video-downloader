@@ -30,6 +30,12 @@ function isPrivateIPv6(addr: string): boolean {
   return false;
 }
 
+/** facebook.com / www.facebook.com / m.facebook.com / mbasic etc. */
+export function hostnameIsFacebook(hostname: string): boolean {
+  const h = hostname.trim().toLowerCase();
+  return h === "facebook.com" || h.endsWith(".facebook.com") || h === "fb.watch" || h.endsWith(".fb.watch");
+}
+
 /** threads.com / threads.net (and subdomains) — not supported by yt-dlp for download. */
 export function hostnameIsThreads(hostname: string): boolean {
   const h = hostname.trim().toLowerCase();

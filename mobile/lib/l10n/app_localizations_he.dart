@@ -312,6 +312,10 @@ class AppLocalizationsHe extends AppLocalizations {
       'לא ניתן לטעון אפשרויות פורמט לווידאו. ייתכן שהקישור מוגבל או לא זמין זמנית.';
 
   @override
+  String get errorFacebookExtractFailed =>
+      'לא הצלחנו לקרוא את הסרטון מפייסבוק כרגע. ייתכן שהקישור דורש גישה מיוחדת או שפייסבוק חסמה את הגישה אליו. נסה קישור אחר או נסה שוב מאוחר יותר.';
+
+  @override
   String get settingsTitle => 'הגדרות';
 
   @override

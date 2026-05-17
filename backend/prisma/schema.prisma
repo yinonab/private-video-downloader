@@ -41,6 +41,8 @@ model Link {
   thumbnail   String?
   durationSec Int?
   extractor   String?
+  /// When true, analyze used HTML/JSON fallback (yt-dlp "Cannot parse data"); worker re-extracts CDN URL before download.
+  facebookDirectFallback Boolean @default(false)
   createdAt   DateTime @default(now())
 
   downloads DownloadJob[]

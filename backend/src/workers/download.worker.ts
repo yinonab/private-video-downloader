@@ -24,6 +24,11 @@ import {
   updateDownloadJobProgress,
 } from "../services/jobProgress";
 import {
+  downloadFacebookMp4ToFile,
+  extractFacebookDirectMedia,
+  pickFacebookMp4UrlForFormat,
+} from "../services/facebookFallbackExtractor";
+import {
   buildDownloadArgs,
   classifyYtDlpStderr,
   extractFormatArg,
@@ -48,6 +53,39 @@ function mimeForExt(ext: string): string {
 }
 
 const VIDEO_QUALITY_FORMATS: DownloadFormatKind[] = ["1080p", "720p", "480p", "tiktok_ready"];
+
+async function downloadFacebookFallbackMp4(
+  sourceUrl: string,
+  format: DownloadFormatKind,
+  destFsPath: string
+): Promise<number> {
+  const maxAttempts = 2;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const ex = await extractFacebookDirectMedia(sourceUrl);
+    if (!ex.ok) {
+      logger.warn({ facebook_direct_dl_attempt: attempt + 1, reason: ex.reason }, "facebook direct — re-extract failed");
+      continue;
+    }
+    const mp4 = pickFacebookMp4UrlForFormat(format, ex.candidates);
+    if (!mp4) {
+      logger.warn({ facebook_direct_dl_attempt: attempt + 1 }, "facebook direct — no mp4 for format");
+      continue;
+    }
+    try {
+      await downloadFacebookMp4ToFile(mp4, destFsPath);
+      return 0;
+    } catch (err) {
+      logger.warn(
+        {
+          facebook_direct_dl_attempt: attempt + 1,
+          err: err instanceof Error ? err.message : String(err),
+        },
+        "facebook direct mp4 download attempt failed"
+      );
+    }
+  }
+  return 1;
+}
 
 function stageForStrategy(s: NormalizeStrategy): string {
   switch (s) {
@@ -74,6 +112,7 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
         include: { link: true },
       });
       const platformLabel = jobRow?.link?.platform ?? jobRow?.link?.extractor ?? "unknown";
+      const facebookDirectFallback = Boolean(jobRow?.link?.facebookDirectFallback);
       const isTikTokReady = format === "tiktok_ready";
 
       logger.info(
@@ -150,71 +189,123 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
       const primaryBuilt = buildDownloadArgs({ url, deviceId, jobId, format });
       primaryFormatStr = extractFormatArg(primaryBuilt.args) ?? "(unknown)";
 
-      const code = await withYtDlpCookiesArgs(async (cookiesArgs) => {
-        const prefixArgs = (base: string[]) => [...cookiesArgs, ...base];
+      if (facebookDirectFallback && format === "audio_mp3") {
+        const msg =
+          "Audio MP3 is not available for this Facebook video. Choose a video quality instead.";
+        await updateDownloadJobProgress(
+          prisma,
+          jobId,
+          {
+            status: "failed",
+            processingStage: "failed",
+            progress: null,
+            error: msg,
+            speedText: null,
+            etaText: null,
+          },
+          {
+            platform: platformLabel,
+            requestedQuality: format,
+            logMessage: "facebook fallback — audio_mp3 not supported",
+          }
+        );
+        logger.warn({ jobId, platform: platformLabel }, "facebook fallback — audio_mp3 not supported");
+        return;
+      }
 
-        lastArgs = prefixArgs(primaryBuilt.args);
+      let code: number;
 
+      if (facebookDirectFallback) {
         await updateDownloadJobProgress(
           prisma,
           jobId,
           { processingStage: "downloading", progress: null },
-          { platform: platformLabel, requestedQuality: format }
+          { platform: platformLabel, requestedQuality: format, logMessage: "facebook direct — downloading" }
         );
 
-        let innerCode = await runYtDlpOnce(prefixArgs(primaryBuilt.args));
-
-        if (
-          innerCode !== 0 &&
-          stderrMeansUnavailableFormat(lastStderr) &&
-          VIDEO_QUALITY_FORMATS.includes(format)
-        ) {
-          fallbackAttempted = true;
-          const fbBuilt = buildDownloadArgs({ url, deviceId, jobId, format: "best" });
-          lastArgs = prefixArgs(fbBuilt.args);
-          logger.warn(
-            {
-              jobId,
-              platform: platformLabel,
-              requestedQuality: format,
-              primaryYtDlpFormat: primaryFormatStr,
-              fallbackAttempted: true,
-              fallbackFormatString: extractFormatArg(fbBuilt.args),
-            },
-            "yt-dlp retrying with best fallback after unavailable format"
-          );
-          innerCode = await runYtDlpOnce(prefixArgs(fbBuilt.args));
+        const videoDir = getVideoDir(deviceId);
+        try {
+          const names = await fs.readdir(videoDir);
+          for (const n of names) {
+            if (n.startsWith(`${jobId}.`)) await fs.unlink(path.join(videoDir, n)).catch(() => {});
+          }
+        } catch {
+          /* ignore */
         }
 
-        if (
-          innerCode !== 0 &&
-          stderrMeansUnavailableFormat(lastStderr) &&
-          format === "audio_mp3"
-        ) {
-          fallbackAttempted = true;
-          const again = buildDownloadArgs({ url, deviceId, jobId, format: "audio_mp3" });
-          lastArgs = prefixArgs(again.args);
-          logger.warn(
-            {
-              jobId,
-              platform: platformLabel,
-              requestedQuality: format,
-              primaryYtDlpFormat: primaryFormatStr,
-              fallbackAttempted: true,
-              fallbackFormatString: extractFormatArg(again.args),
-            },
-            "yt-dlp retrying audio pipeline once after unavailable format"
-          );
-          innerCode = await runYtDlpOnce(prefixArgs(again.args));
-        }
+        const destPath = path.join(videoDir, `${jobId}.mp4`);
+        code = await downloadFacebookFallbackMp4(url, format, destPath);
+        lastStderr = code !== 0 ? "facebook_direct_download_failed" : "";
+        lastArgs = ["facebook_direct_fallback"];
+      } else {
+        code = await withYtDlpCookiesArgs(async (cookiesArgs) => {
+          const prefixArgs = (base: string[]) => [...cookiesArgs, ...base];
 
-        return innerCode;
-      });
+          lastArgs = prefixArgs(primaryBuilt.args);
+
+          await updateDownloadJobProgress(
+            prisma,
+            jobId,
+            { processingStage: "downloading", progress: null },
+            { platform: platformLabel, requestedQuality: format }
+          );
+
+          let innerCode = (await runYtDlpOnce(prefixArgs(primaryBuilt.args))) ?? 1;
+
+          if (
+            innerCode !== 0 &&
+            stderrMeansUnavailableFormat(lastStderr) &&
+            VIDEO_QUALITY_FORMATS.includes(format)
+          ) {
+            fallbackAttempted = true;
+            const fbBuilt = buildDownloadArgs({ url, deviceId, jobId, format: "best" });
+            lastArgs = prefixArgs(fbBuilt.args);
+            logger.warn(
+              {
+                jobId,
+                platform: platformLabel,
+                requestedQuality: format,
+                primaryYtDlpFormat: primaryFormatStr,
+                fallbackAttempted: true,
+                fallbackFormatString: extractFormatArg(fbBuilt.args),
+              },
+              "yt-dlp retrying with best fallback after unavailable format"
+            );
+            innerCode = (await runYtDlpOnce(prefixArgs(fbBuilt.args))) ?? 1;
+          }
+
+          if (
+            innerCode !== 0 &&
+            stderrMeansUnavailableFormat(lastStderr) &&
+            format === "audio_mp3"
+          ) {
+            fallbackAttempted = true;
+            const again = buildDownloadArgs({ url, deviceId, jobId, format: "audio_mp3" });
+            lastArgs = prefixArgs(again.args);
+            logger.warn(
+              {
+                jobId,
+                platform: platformLabel,
+                requestedQuality: format,
+                primaryYtDlpFormat: primaryFormatStr,
+                fallbackAttempted: true,
+                fallbackFormatString: extractFormatArg(again.args),
+              },
+              "yt-dlp retrying audio pipeline once after unavailable format"
+            );
+            innerCode = (await runYtDlpOnce(prefixArgs(again.args))) ?? 1;
+          }
+
+          return innerCode;
+        });
+      }
 
       const finalFormatStr = extractFormatArg(lastArgs) ?? primaryFormatStr;
 
       if (code !== 0) {
-        const userMsg = formatDownloadFailureMessage(lastStderr, fallbackAttempted, platformLabel);
+        const userMsg = facebookDirectFallback
+          ? "We couldn't download this Facebook video right now. Try again later or choose another quality."
+          : formatDownloadFailureMessage(lastStderr, fallbackAttempted, platformLabel);
         await updateDownloadJobProgress(
           prisma,
           jobId,
@@ -236,7 +327,9 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
             message: "download failed",
             meta: {
               code,
-              stderrClassification: classifyYtDlpStderr(lastStderr),
+              stderrClassification: facebookDirectFallback
+                ? "facebook_direct"
+                : classifyYtDlpStderr(lastStderr),
             },
           },
         });
@@ -248,8 +341,10 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
             primaryYtDlpFormat: primaryFormatStr,
             fallbackAttempted,
             finalFormatString: finalFormatStr,
-            stderrClassification: classifyYtDlpStderr(lastStderr),
-            stderrTail: lastStderr.trim().slice(-2000),
+            stderrClassification: facebookDirectFallback
+              ? "facebook_direct"
+              : classifyYtDlpStderr(lastStderr),
+            ...(facebookDirectFallback ? {} : { stderrTail: lastStderr.trim().slice(-2000) }),
           },
           "download failed"
         );

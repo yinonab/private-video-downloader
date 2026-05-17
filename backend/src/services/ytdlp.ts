@@ -247,6 +247,11 @@ const YTDLP_METADATA_FORMAT_FALLBACKS: string[][] = [
 ];
 
 /** Case-insensitive substring classification for logs / telemetry (not shown raw to clients). */
+/** Facebook extractor breakage — safe to attempt HTML/JSON fallback when host is Facebook. */
+export function stderrIndicatesFacebookCannotParseData(stderr: string): boolean {
+  return /cannot parse data/i.test(stderr);
+}
+
 export function classifyYtDlpStderr(stderr: string): YtdlpStderrKind {
   const s = stderr.toLowerCase();
 

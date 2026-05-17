@@ -1,11 +1,18 @@
 import { PrismaClient } from "@prisma/client";
 import { computeAvailableQualities } from "../../services/availableQualities";
-import { fetchMetadataJson, YtdlpMetadataError } from "../../services/ytdlp";
-import { assertUrlSafeForFetch, hostnameIsThreads, normalizeUrl } from "../../services/urlSafety";
+import {
+  fetchMetadataJson,
+  stderrIndicatesFacebookCannotParseData,
+  YtdlpMetadataError,
+  type YtdlpFormatRow,
+  type YtdlpVideoInfo,
+} from "../../services/ytdlp";
+import { assertUrlSafeForFetch, hostnameIsFacebook, hostnameIsThreads, normalizeUrl } from "../../services/urlSafety";
 import { logger } from "../../services/logger";
 import { extractorToPlatform } from "../../services/platform";
 import { AppError, codes } from "../../types/errors";
 import { hashUrl } from "../../services/hashing";
+import { extractFacebookDirectMedia } from "../../services/facebookFallbackExtractor";
 
 const AVAILABLE_FORMATS_LEGACY = [
   { label: "Best MP4", value: "best", type: "video" },
@@ -14,6 +21,73 @@ const AVAILABLE_FORMATS_LEGACY = [
   { label: "480p MP4", value: "480p", type: "video" },
   { label: "Audio MP3", value: "audio_mp3", type: "audio" },
 ] as const;
+
+function buildSyntheticFacebookYtdlpMeta(
+  canonicalUrl: string,
+  fb: {
+    title?: string;
+    thumbnailUrl?: string;
+    durationSeconds?: number;
+    candidates: { hdUrl?: string; sdUrl?: string };
+  }
+): YtdlpVideoInfo {
+  const formats: YtdlpFormatRow[] = [];
+  const { hdUrl, sdUrl } = fb.candidates;
+
+  if (sdUrl) {
+    formats.push({
+      format_id: "fb_fallback_sd",
+      ext: "mp4",
+      height: 480,
+      width: 854,
+      vcodec: "h264",
+      acodec: "none",
+    });
+  }
+  if (hdUrl) {
+    const low = hdUrl.toLowerCase();
+    const height = /\b1080|1920|basic-gen2_1080|tag=[^&]*1080/i.test(low) ? 1080 : 720;
+    formats.push({
+      format_id: "fb_fallback_hd",
+      ext: "mp4",
+      height,
+      width: height >= 1080 ? 1920 : 1280,
+      vcodec: "h264",
+      acodec: "none",
+    });
+  }
+
+  return {
+    id: "facebook_fallback",
+    title: fb.title,
+    thumbnail: fb.thumbnailUrl,
+    duration: fb.durationSeconds,
+    extractor: "facebook",
+    webpage_url: canonicalUrl,
+    formats,
+  };
+}
+
+function handleYtdlpAnalyzeError(err: YtdlpMetadataError, urlHost: string): never {
+  if (err.classification === "unsupported_url") {
+    if (hostnameIsThreads(urlHost)) {
+      throw new AppError(
+        codes.LINKCLIP_ERR_THREADS_UNSUPPORTED,
+        "Threads links are not supported for download yet.",
+        400
+      );
+    }
+    throw new AppError(codes.LINKCLIP_ERR_PLATFORM_UNSUPPORTED, "This link is not supported for download yet.", 400);
+  }
+  if (err.classification === "format_unavailable") {
+    throw new AppError(
+      codes.LINKCLIP_ERR_ANALYZE_METADATA_UNAVAILABLE,
+      "Could not load video format information for this link.",
+      422
+    );
+  }
+  throw new AppError(codes.ANALYZE_FAILED, "Could not analyze URL", 502);
+}
 
 export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
   let normalized: string;
@@ -41,37 +115,36 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
     );
   }
 
-  let meta;
+  let meta: YtdlpVideoInfo;
+  let usedFacebookFallback = false;
+
   try {
     meta = await fetchMetadataJson(normalized);
   } catch (err) {
-    if (err instanceof YtdlpMetadataError) {
-      logger.warn({ classification: err.classification, urlHost }, "analyze yt-dlp metadata failed");
-      if (err.classification === "unsupported_url") {
-        if (hostnameIsThreads(urlHost)) {
-          throw new AppError(
-            codes.LINKCLIP_ERR_THREADS_UNSUPPORTED,
-            "Threads links are not supported for download yet.",
-            400
-          );
-        }
+    if (!(err instanceof YtdlpMetadataError)) {
+      logger.warn({ err }, "analyze unexpected failure");
+      throw new AppError(codes.ANALYZE_FAILED, "Could not analyze URL", 502);
+    }
+
+    logger.warn({ classification: err.classification, urlHost }, "analyze yt-dlp metadata failed");
+
+    const facebookParseFail =
+      hostnameIsFacebook(urlHost) && stderrIndicatesFacebookCannotParseData(err.stderrTail);
+
+    if (facebookParseFail) {
+      const fb = await extractFacebookDirectMedia(normalized);
+      if (!fb.ok) {
         throw new AppError(
-          codes.LINKCLIP_ERR_PLATFORM_UNSUPPORTED,
-          "This link is not supported for download yet.",
-          400
-        );
-      }
-      if (err.classification === "format_unavailable") {
-        throw new AppError(
-          codes.LINKCLIP_ERR_ANALYZE_METADATA_UNAVAILABLE,
-          "Could not load video format information for this link.",
+          codes.FACEBOOK_EXTRACT_FAILED,
+          "We couldn't read this Facebook video right now. This link may require special access or Facebook may be blocking access to it. Try another link or try again later.",
           422
         );
       }
-      throw new AppError(codes.ANALYZE_FAILED, "Could not analyze URL", 502);
+      meta = buildSyntheticFacebookYtdlpMeta(normalized, fb);
+      usedFacebookFallback = true;
+    } else {
+      handleYtdlpAnalyzeError(err, urlHost);
     }
-    logger.warn({ err }, "analyze unexpected failure");
-    throw new AppError(codes.ANALYZE_FAILED, "Could not analyze URL", 502);
   }
 
   const platform = extractorToPlatform(meta.extractor);
@@ -92,6 +165,7 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
       durationSec: meta.duration != null ? Math.floor(meta.duration) : null,
       extractor: meta.extractor ?? null,
       platform: platform ?? null,
+      facebookDirectFallback: usedFacebookFallback,
     },
     update: {
       title: meta.title ?? undefined,
@@ -99,6 +173,7 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
       durationSec: meta.duration != null ? Math.floor(meta.duration) : undefined,
       extractor: meta.extractor ?? undefined,
       platform: platform ?? undefined,
+      facebookDirectFallback: usedFacebookFallback,
     },
   });
 

@@ -41,6 +41,8 @@ export const codes = {
   LINKCLIP_ERR_PLATFORM_UNSUPPORTED: "LINKCLIP_ERR_PLATFORM_UNSUPPORTED",
   /** Analyze could not obtain format metadata (e.g. yt-dlp format resolution failure). */
   LINKCLIP_ERR_ANALYZE_METADATA_UNAVAILABLE: "LINKCLIP_ERR_ANALYZE_METADATA_UNAVAILABLE",
+  /** Facebook: yt-dlp "Cannot parse data" and HTML/JSON fallback found no playable CDN URLs. */
+  FACEBOOK_EXTRACT_FAILED: "FACEBOOK_EXTRACT_FAILED",
   EDIT_JOB_NOT_FOUND: "EDIT_JOB_NOT_FOUND",
   EDIT_INVALID_SOURCE: "EDIT_INVALID_SOURCE",
   EDIT_FAILED: "EDIT_FAILED",

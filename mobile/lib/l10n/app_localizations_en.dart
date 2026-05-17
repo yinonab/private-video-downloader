@@ -317,6 +317,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not load format options for this video. The link may be restricted or temporarily unavailable.';
 
   @override
+  String get errorFacebookExtractFailed =>
+      'We couldn\'t read this Facebook video right now. This link may require special access or Facebook may be blocking access to it. Try another link or try again later.';
+
+  @override
   String get settingsTitle => 'Settings';
 
   @override

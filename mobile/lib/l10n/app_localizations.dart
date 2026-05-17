@@ -668,6 +668,12 @@ abstract class AppLocalizations {
   /// **'Could not load format options for this video. The link may be restricted or temporarily unavailable.'**
   String get errorAnalyzeMetadataUnavailable;
 
+  /// No description provided for @errorFacebookExtractFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t read this Facebook video right now. This link may require special access or Facebook may be blocking access to it. Try another link or try again later.'**
+  String get errorFacebookExtractFailed;
+
   /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:

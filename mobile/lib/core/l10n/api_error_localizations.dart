@@ -37,6 +37,8 @@ String localizedApiErrorMessage(AppLocalizations l10n, ApiError e) {
       return l10n.errorPlatformUnsupported;
     case "LINKCLIP_ERR_ANALYZE_METADATA_UNAVAILABLE":
       return l10n.errorAnalyzeMetadataUnavailable;
+    case "FACEBOOK_EXTRACT_FAILED":
+      return l10n.errorFacebookExtractFailed;
     case "EDIT_JOB_NOT_FOUND":
       return l10n.errorEditJobNotFound;
     case "EDIT_INVALID_SOURCE":
