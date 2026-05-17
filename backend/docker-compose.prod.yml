@@ -76,6 +76,7 @@ services:
     restart: unless-stopped
     environment:
       MEDIA_RETENTION_MINUTES: "30"
+      UPLOAD_RETENTION_MINUTES: "120"
     volumes:
       - downloads_data:/app/storage
     command:
@@ -83,10 +84,12 @@ services:
       - -c
       - |
         set -eu
-        RET=$${MEDIA_RETENTION_MINUTES:-30}
-        echo "linkclip-cleanup: removing files under /app/storage not modified in the last $$RET minutes (every 300s)"
+        MEDIA_RET=$${MEDIA_RETENTION_MINUTES:-30}
+        UP_RET=$${UPLOAD_RETENTION_MINUTES:-120}
+        echo "linkclip-cleanup: uploads retention $${UP_RET}m; other storage $${MEDIA_RET}m (every 300s)"
         while true; do
-          find /app/storage -type f -mmin +$$RET -delete 2>/dev/null || true
+          find /app/storage/devices -path '*/uploads/*' -type f -mmin +$${UP_RET} -delete 2>/dev/null || true
+          find /app/storage -type f ! -path '*/uploads/*' -mmin +$${MEDIA_RET} -delete 2>/dev/null || true
           find /app/storage -type d -empty -delete 2>/dev/null || true
           sleep 300
         done

@@ -45,7 +45,8 @@ Verified **in repository / documented flows** (operators still run their own QA)
 | Cookies for yt-dlp | Optional `COOKIES_FILE`; validated + writable copy pattern in `ytdlp.ts` |
 | YouTube / JS challenges | Node + `yt-dlp-ejs`; `--no-js-runtimes --js-runtimes node` (`YTDLP_JS_RUNTIME_ARGS`) |
 | Admin diagnostics | `GET /admin/diagnostics` (JSON + optional `?format=text`, optional `?deep=true`) — see `backend/docs/ADMIN_DIAGNOSTICS.md` |
-| Media cleanup | Separate **cleanup** container; `find … -mmin +RETENTION` on shared volume (`backend/docker-compose.prod.yml`) |
+| Media cleanup | Separate **cleanup** container; **two-tier** retention on `/app/storage`: `devices/*/uploads/*` uses **`UPLOAD_RETENTION_MINUTES`** (default **120**); all **other** files use **`MEDIA_RETENTION_MINUTES`** (default **30**) — see `backend/docker-compose.prod.yml` |
+| Local video uploads (Phase A) | Backend **`UploadedMedia`** + `POST /uploads/videos`, `GET /uploads/:id`, file/thumbnail streams (`backend/src/modules/uploads/`). **175MB / 7min** limits; **not** listed on Home downloads. **Edit-from-upload** wired in later phases. |
 | Quick Edit backend | `POST /edits`, `GET /edits/:id`, `GET /edits/:id/file`, `POST /edits/:id/retry` (`backend/src/modules/edit/`) |
 | Quick Edit Android | `EditVideoScreen`, tabs, preview, export flow (`mobile/lib/features/edit/`) |
 | Source expiry / redownload | UI sheet + `forceNew` on recreate download (see §7) |
@@ -61,7 +62,7 @@ Verified **in repository / documented flows** (operators still run their own QA)
 ┌─────────────────┐     HTTPS       ┌──────────────────────────────────────┐
 │ Flutter Android │ ─────────────── │ Caddy :443 → Fastify API :3000       │
 │ (device token)  │                 │  ├─ /devices, /analyze, /downloads   │
-└────────┬────────┘                 │  ├─ /edits                           │
+└────────┬────────┘                 │  ├─ /edits, /uploads                 │
          │                          │  └─ /admin/*                         │
          │                          └───────────────┬──────────────────────┘
          │                                          │
@@ -88,7 +89,7 @@ Verified **in repository / documented flows** (operators still run their own QA)
 
 ## 4. Backend Summary
 
-**Layout:** `backend/src/modules/` — `devices`, `analyze`, `downloads`, `edit`, `admin`, etc.
+**Layout:** `backend/src/modules/` — `devices`, `analyze`, `downloads`, `edit`, **`uploads`**, `admin`, etc.
 
 ### Auth & devices
 
@@ -110,6 +111,15 @@ Verified **in repository / documented flows** (operators still run their own QA)
 - **Failure:** HTTP **422**, code **`FACEBOOK_EXTRACT_FAILED`** (English message + Flutter Hebrew mapping).
 - **Operational note:** when testing yt-dlp or curl with production cookies, copy `global.txt` to a **writable temp file** — do not pass the read-only secrets mount as `--cookies` (yt-dlp may rewrite the jar).
 - **Dev diagnostic:** `cd backend && npm run diag:facebook -- "<facebook-url>"` — prints redirect probe (desktop Chrome), **per-step profile + variant**, HTML token counts (`.mp4`, `dash_manifest`, `videoDeliveryLegacyFields`, playable/native keys, WebLite unsupported markers), whether SD/HD were extracted, and **candidate hosts only** — not signed URLs or cookies. The production Docker image copies `backend/scripts` into `/app/scripts`, so the same `npm run diag:facebook` command works inside the API/worker container (`cd /app`).
+
+### Local video uploads (Phase A — backend)
+
+- **Purpose:** device-uploaded **local source** videos for **future** on-server editing; uploads do **not** create `DownloadJob` rows and do **not** appear in the Home downloads list.
+- **Prisma:** `UploadedMedia` (`devices/<deviceId>/uploads/<uploadId>/source.<ext>`, optional `thumbnail.jpg`).
+- **API:** `POST /uploads/videos` (multipart field **`file`**); `GET /uploads/:id` (metadata); `GET /uploads/:id/file`; `GET /uploads/:id/thumbnail` (404 if no thumbnail). All require device auth + ownership.
+- **Limits (env):** `MAX_LOCAL_VIDEO_UPLOAD_MB` (default **175**), `MAX_LOCAL_VIDEO_UPLOAD_DURATION_SECONDS` (default **420**). Validation uses **ffprobe** + allowed containers (mp4/mov/webm family); declared MIME must be allowed or **`application/octet-stream`**.
+- **Retention:** filesystem cleanup uses **`UPLOAD_RETENTION_MINUTES`** (default **120**) under `*/uploads/*`; downloads/edits and other storage still follow **`MEDIA_RETENTION_MINUTES`** (default **30**). **`MEDIA_RETENTION_MINUTES` for downloaded `FileAsset` records is unchanged** in application logic.
+- **Roadmap:** Flutter picker, `EditVideoScreen`, and `POST /edits` integration — later phases (see `docs/LOCAL_VIDEO_EDITING_PLAN.md`).
 
 ### Downloads
 
@@ -136,7 +146,10 @@ Verified **in repository / documented flows** (operators still run their own QA)
 ### Storage paths
 
 - Configurable **`STORAGE_DIR`** (default `/app/storage` in production examples).
-- Prisma models tie jobs to storage keys / filenames; edited outputs stored separately from originals (see `QUICK_EDIT_ARCHITECTURE.md` §5 for intended layout).
+- **Downloads:** per-device `videos/`, `audio/`, `thumbs/` (see download worker).
+- **Uploads (local source):** `devices/<deviceId>/uploads/<uploadId>/source.<ext>` and optional `thumbnail.jpg`.
+- **Quick Edit outputs:** `devices/<deviceId>/edits/<editJobId>.mp4` (unchanged).
+- Prisma models tie jobs / uploads to storage keys / filenames; edited outputs stored separately from originals (see `QUICK_EDIT_ARCHITECTURE.md` §5 for intended layout).
 
 ### Cleanup & retention
 

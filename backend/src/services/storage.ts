@@ -22,6 +22,25 @@ export function getEditsDir(deviceId: string): string {
   return path.join(getDeviceBaseDir(deviceId), "edits");
 }
 
+/** Absolute directory for one upload bundle: `devices/<deviceId>/uploads/<uploadId>/`. */
+export function getUploadDir(deviceId: string, uploadId: string): string {
+  return path.join(getDeviceBaseDir(deviceId), "uploads", uploadId);
+}
+
+const SAFE_SOURCE_EXT = new Set(["mp4", "mov", "webm"]);
+
+/** POSIX storage key for uploaded source video (`source.<ext>`). */
+export function uploadSourceStorageKey(deviceId: string, uploadId: string, ext: string): string {
+  const normalized = ext.replace(/^\./, "").toLowerCase();
+  const safe = SAFE_SOURCE_EXT.has(normalized) ? normalized : "mp4";
+  return path.posix.join("devices", deviceId, "uploads", uploadId, `source.${safe}`);
+}
+
+/** POSIX storage key for upload JPEG thumbnail. */
+export function uploadThumbnailStorageKey(deviceId: string, uploadId: string): string {
+  return path.posix.join("devices", deviceId, "uploads", uploadId, "thumbnail.jpg");
+}
+
 export async function ensureDeviceDirs(deviceId: string): Promise<void> {
   await fs.mkdir(getVideoDir(deviceId), { recursive: true });
   await fs.mkdir(getAudioDir(deviceId), { recursive: true });

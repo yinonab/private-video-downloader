@@ -9,6 +9,8 @@ export type NormalizeStrategy = "remux" | "audio_only" | "full_transcode";
 
 export interface ProbeResult {
   durationMs: number;
+  /** Comma-separated container ids from ffprobe `format.format_name`. */
+  formatName?: string;
   video?: {
     codec: string;
     pixFmt: string;
@@ -58,9 +60,13 @@ export async function ffprobeMedia(inputPath: string): Promise<ProbeResult> {
   const { stdout, code, stderr } = await runCmd("ffprobe", args);
   if (code !== 0) throw new Error(stderr || "ffprobe failed");
   const j = JSON.parse(stdout) as {
-    format?: { duration?: string };
+    format?: { duration?: string; format_name?: string };
     streams?: Array<Record<string, unknown>>;
   };
+  const formatName =
+    j.format?.format_name != null && String(j.format.format_name).trim() !== ""
+      ? String(j.format.format_name)
+      : undefined;
   const durationSec = j.format?.duration != null ? Number(j.format.duration) : 0;
   const durationMs =
     Number.isFinite(durationSec) && durationSec > 0 ? Math.round(durationSec * 1000) : 0;
@@ -87,7 +93,7 @@ export async function ffprobeMedia(inputPath: string): Promise<ProbeResult> {
     }
   }
 
-  return { durationMs, video, audio };
+  return { durationMs, formatName, video, audio };
 }
 
 function videoCompatibleForCopyRemux(v: NonNullable<ProbeResult["video"]>): boolean {

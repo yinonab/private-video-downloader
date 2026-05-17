@@ -25,6 +25,8 @@ const envSchema = z.object({
   DOWNLOAD_CONCURRENCY: z.coerce.number().min(1).default(3),
   DEFAULT_DAILY_LIMIT: z.coerce.number().min(1).default(20),
   ANALYZE_DAILY_LIMIT: z.coerce.number().min(1).default(200),
+  MAX_LOCAL_VIDEO_UPLOAD_MB: z.coerce.number().min(1).default(175),
+  MAX_LOCAL_VIDEO_UPLOAD_DURATION_SECONDS: z.coerce.number().min(1).default(420),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -42,6 +44,11 @@ export const config = {
   storageDir: path.resolve(raw.STORAGE_DIR),
   cookiesFile: raw.COOKIES_FILE ? path.resolve(raw.COOKIES_FILE) : undefined,
   isDev: raw.NODE_ENV === "development",
+  maxLocalVideoUploadBytes: Math.min(
+    Number.MAX_SAFE_INTEGER,
+    Math.floor(raw.MAX_LOCAL_VIDEO_UPLOAD_MB * 1024 * 1024)
+  ),
+  maxLocalVideoUploadDurationSeconds: raw.MAX_LOCAL_VIDEO_UPLOAD_DURATION_SECONDS,
 };
 
 export type AppConfig = typeof config;

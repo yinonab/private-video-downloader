@@ -20,6 +20,32 @@ model Device {
   downloads DownloadJob[]
   files     FileAsset[]
   editJobs  EditJob[]
+  uploadedMedia UploadedMedia[]
+}
+
+/// Device-uploaded local source media (not shown in Home downloads list).
+model UploadedMedia {
+  id                  String   @id @default(uuid())
+  deviceId            String
+  kind                String   @default("video")
+  originalFilename    String?
+  mimeType            String?
+  sizeBytes           BigInt
+  storageKey          String
+  durationSeconds     Int?
+  width               Int?
+  height              Int?
+  thumbnailStorageKey String?
+  /// MVP: ready | failed
+  status              String   @default("ready")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  device Device @relation(fields: [deviceId], references: [id])
+
+  @@index([deviceId])
+  @@index([createdAt])
+  @@index([deviceId, createdAt])
 }
 
 model InviteCode {

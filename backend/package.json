@@ -20,10 +20,11 @@
     "node": ">=20"
   },
   "dependencies": {
-    "dotenv": "^16.5.0",
     "@fastify/cors": "^10.0.2",
+    "@fastify/multipart": "^10.0.0",
     "@prisma/client": "^6.8.2",
     "bullmq": "^5.52.2",
+    "dotenv": "^16.5.0",
     "fastify": "^5.3.3",
     "fastify-plugin": "^5.0.1",
     "ioredis": "^5.6.1",
