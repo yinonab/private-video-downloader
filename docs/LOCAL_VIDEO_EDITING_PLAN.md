@@ -27,9 +27,14 @@ Concise roadmap for **device-local video** as an edit source (server-side ffmpeg
 - L10n + **`localizedApiErrorMessage`** for **`UPLOAD_*`** and edit-source codes; retention-related codes share **`errorUploadSourceUnavailable`**.
 - **`http_parser`** added as a direct dependency (multipart **`MediaType`**); **not** a picker dependency.
 
-### Phase C2–C4 — pending
+### Phase C2 — editor source abstraction (implemented in repo)
 
-- **C2:** **`EditVideoSourceRef`** / **`EditVideoScreen`** upload path, preview fallbacks.
+- **`EditVideoSourceRef`** + **`EditVideoScreen`** accept download vs upload sources; **`EditVideoPreview`** uses **`EditVideoPreviewSource`** (local path → **`VideoPlayerController.file`**, else **`/downloads/:id/file`** or **`/uploads/:id/file`** with Bearer).
+- **`CreateEditJobRequest.download` / `.upload`** chosen from source kind; upload missing-source API errors surface **`errorUploadSourceUnavailable`** without the download redownload sheet.
+- No picker / Home wiring yet (**Phase C3**).
+
+### Phase C3–C4 — pending
+
 - **C3:** Pickers (**`image_picker`**, **`file_picker`**), home banner bottom sheet, upload launcher.
 - **C4:** QA, RTL polish, release APK.
 

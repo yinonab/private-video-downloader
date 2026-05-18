@@ -16,6 +16,7 @@ import "../../core/l10n/media_export_display_path.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
 import "../../core/models/quick_edit_models.dart";
+import "../../core/network/api_client.dart";
 import "../../core/theme/linkclip_palette.dart";
 import "../../core/widgets/app_button.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
@@ -23,23 +24,67 @@ import "../../l10n/app_localizations.dart";
 import "widgets/compression_selector.dart";
 import "widgets/crop_editor.dart";
 import "widgets/crop_preview_overlay.dart";
+import "edit_video_source_ref.dart";
 import "widgets/edit_processing_animation.dart";
 import "widgets/edit_video_preview.dart";
+import "widgets/edit_video_preview_source.dart";
 import "quick_edit_source_expired_sheet.dart";
 import "widgets/trim_editor.dart";
 
 enum _FlowPhase { composing, working, done, failed }
 
-/// Quick Edit for an existing download job: compose ops → POST `/edits` → poll → download MP4.
+/// Quick Edit: compose ops → POST `/edits` → poll → download MP4.
+///
+/// **Phase C3:** after `ApiClient.uploadVideo`, open the editor with
+/// [EditVideoScreen.upload] (picker wiring is not enabled until C3).
 class EditVideoScreen extends StatefulWidget {
-  const EditVideoScreen({
+  // ignore: prefer_const_constructors_in_immutables
+  EditVideoScreen({
     super.key,
-    required this.sourceDownloadJobId,
-    this.videoDurationSec,
+    required this.source,
   });
 
-  final String sourceDownloadJobId;
-  final double? videoDurationSec;
+  factory EditVideoScreen.download({
+    Key? key,
+    required String sourceDownloadJobId,
+    double? videoDurationSec,
+  }) {
+    return EditVideoScreen(
+      key: key,
+      source: EditVideoSourceRef.download(
+        sourceDownloadJobId: sourceDownloadJobId,
+        videoDurationSec: videoDurationSec,
+      ),
+    );
+  }
+
+  factory EditVideoScreen.upload({
+    Key? key,
+    required String sourceUploadId,
+    String? localPreviewPath,
+    String? title,
+    String? thumbnailUrl,
+    int? durationSeconds,
+    int? width,
+    int? height,
+    double? videoDurationSec,
+  }) {
+    return EditVideoScreen(
+      key: key,
+      source: EditVideoSourceRef.upload(
+        sourceUploadId: sourceUploadId,
+        localPreviewPath: localPreviewPath,
+        title: title,
+        thumbnailUrl: thumbnailUrl,
+        durationSeconds: durationSeconds,
+        width: width,
+        height: height,
+        videoDurationSec: videoDurationSec,
+      ),
+    );
+  }
+
+  final EditVideoSourceRef source;
 
   static const double fallbackDurationSec = 180;
 
@@ -82,7 +127,9 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       ..addListener(() {
         if (mounted) setState(() {});
       });
-    _durationSec = widget.videoDurationSec ?? _kFallback;
+    _durationSec = widget.source.videoDurationSec ??
+        widget.source.durationSeconds?.toDouble() ??
+        _kFallback;
     _endSec = _durationSec;
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadDetail());
   }
@@ -95,6 +142,26 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   }
 
   Future<void> _loadDetail() async {
+    if (widget.source.kind == EditVideoSourceKind.upload) {
+      setState(() {
+        _detailLoading = false;
+        _detailError = null;
+        _detail = null;
+        final sec = widget.source.videoDurationSec ??
+            widget.source.durationSeconds?.toDouble();
+        if (sec != null && sec > 0.5) {
+          _durationSec = sec;
+          _startSec = 0;
+          _endSec = _durationSec;
+        } else {
+          _durationSec = _kFallback;
+          _startSec = 0;
+          _endSec = _durationSec;
+        }
+      });
+      return;
+    }
+
     setState(() {
       _detailLoading = true;
       _detailError = null;
@@ -102,13 +169,13 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     try {
       final d = await AppScope.read(context)
           .downloadService
-          .detail(widget.sourceDownloadJobId);
+          .detail(widget.source.sourceDownloadJobId!);
       if (!mounted) return;
       setState(() {
         _detail = d;
         _detailLoading = false;
         _detailError = null;
-        if (widget.videoDurationSec == null) {
+        if (widget.source.videoDurationSec == null) {
           _durationSec = _kFallback;
           _startSec = 0;
           _endSec = _durationSec;
@@ -121,6 +188,26 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         _detailError = e;
       });
     }
+  }
+
+  bool get _showDurationApproxHint {
+    if (_detailLoading || _detailError != null) return false;
+    if (widget.source.kind == EditVideoSourceKind.download) {
+      return widget.source.videoDurationSec == null;
+    }
+    return widget.source.videoDurationSec == null &&
+        widget.source.durationSeconds == null;
+  }
+
+  String? _resolveThumbnailUrl(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    final t = raw.trim();
+    if (t.startsWith("http://") || t.startsWith("https://")) return t;
+    final base = ApiClient.normalizeServerInput(
+      AppScope.read(context).session.serverUrl,
+    ).trimRight().replaceAll(RegExp(r"/+$"), "");
+    if (t.startsWith("/")) return "$base$t";
+    return t;
   }
 
   bool get _hasChanges {
@@ -296,12 +383,23 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         mute: _mute,
         compressPreset: _compress,
       );
-      final created = await AppScope.read(context).api.createEditJob(
-            CreateEditJobRequest.download(
-              sourceDownloadJobId: widget.sourceDownloadJobId,
-              operations: ops,
-            ),
-          );
+      final api = AppScope.read(context).api;
+      final CreateEditJobResponse created;
+      if (widget.source.kind == EditVideoSourceKind.download) {
+        created = await api.createEditJob(
+          CreateEditJobRequest.download(
+            sourceDownloadJobId: widget.source.sourceDownloadJobId!,
+            operations: ops,
+          ),
+        );
+      } else {
+        created = await api.createEditJob(
+          CreateEditJobRequest.upload(
+            sourceUploadId: widget.source.sourceUploadId!,
+            operations: ops,
+          ),
+        );
+      }
       final id = created.editJobId.trim();
       if (id.isEmpty) {
         throw ApiError(code: "EDIT_FAILED", message: "missing editJobId");
@@ -312,15 +410,42 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     } catch (e) {
       if (!mounted) return;
       if (e is ApiError && e.code == "EDIT_INVALID_SOURCE") {
+        if (widget.source.kind == EditVideoSourceKind.download) {
+          setState(() {
+            _phase = _FlowPhase.composing;
+            _lastError = null;
+          });
+          await showQuickEditSourceExpiredSheet(
+            context,
+            sourceDownloadJobId: widget.source.sourceDownloadJobId!,
+          );
+          return;
+        }
         setState(() {
           _phase = _FlowPhase.composing;
           _lastError = null;
         });
-        await showQuickEditSourceExpiredSheet(
-          context,
-          sourceDownloadJobId: widget.sourceDownloadJobId,
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.errorUploadSourceUnavailable)),
         );
         return;
+      }
+      if (widget.source.kind == EditVideoSourceKind.upload && e is ApiError) {
+        const uploadMissing = <String>{
+          "EDIT_UPLOAD_NOT_FOUND",
+          "EDIT_SOURCE_FILE_MISSING",
+          "UPLOAD_NOT_FOUND",
+        };
+        if (uploadMissing.contains(e.code)) {
+          setState(() {
+            _phase = _FlowPhase.composing;
+            _lastError = null;
+          });
+          messenger.showSnackBar(
+            SnackBar(content: Text(l10n.errorUploadSourceUnavailable)),
+          );
+          return;
+        }
       }
       setState(() {
         _phase = _FlowPhase.failed;
@@ -623,13 +748,23 @@ class _EditVideoScreenState extends State<EditVideoScreen>
           fit: StackFit.loose,
           children: [
             EditVideoPreview(
-              jobId: widget.sourceDownloadJobId,
+              key: ValueKey<String>(widget.source.previewIdentityKey),
+              previewSource: widget.source.kind == EditVideoSourceKind.download
+                  ? EditVideoPreviewDownloadSource(
+                      jobId: widget.source.sourceDownloadJobId!,
+                    )
+                  : EditVideoPreviewUploadSource(
+                      uploadId: widget.source.sourceUploadId!,
+                      localPreviewPath: widget.source.localPreviewPath,
+                    ),
               session: scope.session,
               apiBaseForUrl: scope.session.serverUrl,
               trimStartSec: _startSec,
               trimEndSec: _endSec,
               videoDurationSec: _durationSec,
-              thumbnailUrl: _detail?.thumbnail,
+              thumbnailUrl: widget.source.kind == EditVideoSourceKind.download
+                  ? _detail?.thumbnail
+                  : _resolveThumbnailUrl(widget.source.thumbnailUrl),
               onDurationResolved: (sec) {
                 if (!mounted || sec <= 0.5) return;
                 setState(() {
@@ -691,9 +826,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: previewCard,
               ),
-              if (widget.videoDurationSec == null &&
-                  !_detailLoading &&
-                  _detailError == null)
+              if (_showDurationApproxHint)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Text(

@@ -6,15 +6,17 @@ import "package:video_player/video_player.dart";
 
 import "../../../core/network/api_client.dart";
 import "../../../core/storage/local_session.dart";
+import "edit_video_preview_source.dart";
 
-/// In-editor video preview: prefers local saved file, otherwise authenticated `GET /downloads/:id/file`.
+/// In-editor video preview: prefers local file when available, otherwise authenticated
+/// `GET /downloads/:id/file` or `GET /uploads/:id/file`.
 ///
 /// Preview playback loops within [trimStartSec]..[trimEndSec] (approximation only;
 /// final trim is still performed by the backend `/edits` pipeline).
 class EditVideoPreview extends StatefulWidget {
   const EditVideoPreview({
     super.key,
-    required this.jobId,
+    required this.previewSource,
     required this.session,
     required this.apiBaseForUrl,
     required this.trimStartSec,
@@ -25,7 +27,7 @@ class EditVideoPreview extends StatefulWidget {
     this.thumbnailUrl,
   });
 
-  final String jobId;
+  final EditVideoPreviewSource previewSource;
   final LocalSession session;
   final String apiBaseForUrl;
   final double trimStartSec;
@@ -50,48 +52,111 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
     scheduleMicrotask(_initPlayer);
   }
 
+  void _disposeController() {
+    final c = _controller;
+    if (c != null) {
+      c.removeListener(_onVideoTick);
+      c.dispose();
+      _controller = null;
+    }
+  }
+
   @override
   void didUpdateWidget(covariant EditVideoPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.previewSource.identityTag != widget.previewSource.identityTag) {
+      _disposeController();
+      setState(() {
+        _initializing = true;
+        _initError = null;
+      });
+      scheduleMicrotask(_initPlayer);
+      return;
+    }
     if (oldWidget.trimStartSec != widget.trimStartSec ||
-        oldWidget.trimEndSec != widget.trimEndSec ||
-        oldWidget.jobId != widget.jobId) {
+        oldWidget.trimEndSec != widget.trimEndSec) {
       unawaited(_seekToTrimStart());
       _enforceTrimWindow();
     }
   }
 
   Future<void> _initPlayer() async {
-    final id = widget.jobId.trim();
-    if (id.isEmpty) {
+    final token = widget.session.deviceToken.trim();
+    final urlRoot = ApiClient.normalizeServerInput(widget.apiBaseForUrl)
+        .trimRight()
+        .replaceAll(RegExp(r"/+$"), "");
+
+    VideoPlayerController? c;
+
+    final ps = widget.previewSource;
+    if (ps is EditVideoPreviewDownloadSource) {
+      final id = ps.jobId.trim();
+      if (id.isEmpty) {
+        if (mounted) setState(() => _initializing = false);
+        return;
+      }
+      try {
+        final local = (await widget.session.localPathForJob(id))?.trim();
+        if (local != null &&
+            local.isNotEmpty &&
+            !local.startsWith("content:") &&
+            await File(local).exists()) {
+          c = VideoPlayerController.file(File(local));
+        } else {
+          final fileUrl = "$urlRoot/downloads/$id/file";
+          final headers = token.isEmpty
+              ? <String, String>{}
+              : <String, String>{"Authorization": "Bearer $token"};
+          c = VideoPlayerController.networkUrl(
+            Uri.parse(fileUrl),
+            httpHeaders: headers,
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _initializing = false;
+          _initError = e;
+        });
+        return;
+      }
+    } else if (ps is EditVideoPreviewUploadSource) {
+      final id = ps.uploadId.trim();
+      if (id.isEmpty) {
+        if (mounted) setState(() => _initializing = false);
+        return;
+      }
+      try {
+        final lp = ps.localPreviewPath?.trim();
+        if (lp != null &&
+            lp.isNotEmpty &&
+            !lp.startsWith("content:") &&
+            await File(lp).exists()) {
+          c = VideoPlayerController.file(File(lp));
+        } else {
+          final fileUrl = "$urlRoot/uploads/$id/file";
+          final headers = token.isEmpty
+              ? <String, String>{}
+              : <String, String>{"Authorization": "Bearer $token"};
+          c = VideoPlayerController.networkUrl(
+            Uri.parse(fileUrl),
+            httpHeaders: headers,
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _initializing = false;
+          _initError = e;
+        });
+        return;
+      }
+    } else {
       if (mounted) setState(() => _initializing = false);
       return;
     }
 
     try {
-      final local = (await widget.session.localPathForJob(id))?.trim();
-      VideoPlayerController? c;
-      if (local != null &&
-          local.isNotEmpty &&
-          !local.startsWith("content:") &&
-          await File(local).exists()) {
-        c = VideoPlayerController.file(File(local));
-      } else {
-        final token = widget.session.deviceToken.trim();
-        final url = ApiClient.normalizeServerInput(widget.apiBaseForUrl)
-            .trimRight()
-            .replaceAll(RegExp(r"/+$"), "");
-        final fileUrl = "$url/downloads/$id/file";
-        final headers = token.isEmpty
-            ? <String, String>{}
-            : <String, String>{"Authorization": "Bearer $token"};
-        // Authenticated streaming preview when no local copy exists yet.
-        c = VideoPlayerController.networkUrl(
-          Uri.parse(fileUrl),
-          httpHeaders: headers,
-        );
-      }
-
       await c.initialize();
       if (!mounted) {
         await c.dispose();
@@ -114,6 +179,7 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
         });
       }
     } catch (e) {
+      await c.dispose();
       if (!mounted) return;
       setState(() {
         _initializing = false;
@@ -177,11 +243,7 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
 
   @override
   void dispose() {
-    final c = _controller;
-    if (c != null) {
-      c.removeListener(_onVideoTick);
-      c.dispose();
-    }
+    _disposeController();
     super.dispose();
   }
 
