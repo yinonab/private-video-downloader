@@ -45,6 +45,26 @@ String localizedApiErrorMessage(AppLocalizations l10n, ApiError e) {
       return l10n.errorEditInvalidSource;
     case "EDIT_FAILED":
       return l10n.errorEditFailed;
+    case "UPLOAD_FILE_TOO_LARGE":
+      return l10n.errorUploadFileTooLarge;
+    case "UPLOAD_VIDEO_TOO_LONG":
+      return l10n.errorUploadVideoTooLong;
+    case "UPLOAD_UNSUPPORTED_TYPE":
+      return l10n.errorUploadUnsupportedType;
+    case "UPLOAD_INVALID_VIDEO":
+      return l10n.errorUploadInvalidVideo;
+    case "UPLOAD_FAILED":
+      return l10n.errorUploadFailed;
+    case "UPLOAD_NOT_FOUND":
+    case "EDIT_UPLOAD_NOT_FOUND":
+    case "EDIT_SOURCE_FILE_MISSING":
+      return l10n.errorUploadSourceUnavailable;
+    case "EDIT_UPLOAD_NOT_READY":
+      return l10n.errorEditUploadNotReady;
+    case "EDIT_SOURCE_REQUIRED":
+      return l10n.errorEditSourceRequired;
+    case "EDIT_MULTIPLE_SOURCES":
+      return l10n.errorEditMultipleSources;
     case "DOWNLOAD_FAILED":
       return l10n.downloadJobErrorGeneric;
     case "UNKNOWN":

@@ -1502,6 +1502,60 @@ abstract class AppLocalizations {
   /// **'Edit processing failed.'**
   String get errorEditFailed;
 
+  /// No description provided for @errorUploadFileTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'This video is too large to edit right now. You can upload videos up to 175MB.'**
+  String get errorUploadFileTooLarge;
+
+  /// No description provided for @errorUploadVideoTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'This video is too long to edit right now. You can upload clips up to 7 minutes.'**
+  String get errorUploadVideoTooLong;
+
+  /// No description provided for @errorUploadUnsupportedType.
+  ///
+  /// In en, this message translates to:
+  /// **'This file type is not supported. Try an MP4 video.'**
+  String get errorUploadUnsupportedType;
+
+  /// No description provided for @errorUploadInvalidVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn’t read this video. Try another video.'**
+  String get errorUploadInvalidVideo;
+
+  /// No description provided for @errorUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn’t upload this video. Try again.'**
+  String get errorUploadFailed;
+
+  /// No description provided for @errorUploadSourceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The uploaded video is no longer available. Choose it again.'**
+  String get errorUploadSourceUnavailable;
+
+  /// No description provided for @errorEditUploadNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'The uploaded video is not ready for editing yet. Try again in a moment.'**
+  String get errorEditUploadNotReady;
+
+  /// No description provided for @errorEditSourceRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'No edit source was selected.'**
+  String get errorEditSourceRequired;
+
+  /// No description provided for @errorEditMultipleSources.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many edit sources were selected. Try again.'**
+  String get errorEditMultipleSources;
+
   /// No description provided for @editStageQueued.
   ///
   /// In en, this message translates to:

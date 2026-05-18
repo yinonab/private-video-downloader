@@ -757,6 +757,39 @@ class AppLocalizationsHe extends AppLocalizations {
   String get errorEditFailed => 'עיבוד העריכה נכשל.';
 
   @override
+  String get errorUploadFileTooLarge =>
+      'הסרטון גדול מדי לעריכה כרגע. אפשר להעלות סרטונים עד 175MB.';
+
+  @override
+  String get errorUploadVideoTooLong =>
+      'הסרטון ארוך מדי לעריכה כרגע. אפשר להעלות קליפים עד 7 דקות.';
+
+  @override
+  String get errorUploadUnsupportedType => 'סוג הקובץ לא נתמך. נסה סרטון MP4.';
+
+  @override
+  String get errorUploadInvalidVideo =>
+      'לא הצלחנו לקרוא את הסרטון הזה. נסה סרטון אחר.';
+
+  @override
+  String get errorUploadFailed => 'לא הצלחנו להעלות את הסרטון. נסה שוב.';
+
+  @override
+  String get errorUploadSourceUnavailable =>
+      'הסרטון שהעלית כבר לא זמין. בחר אותו מחדש.';
+
+  @override
+  String get errorEditUploadNotReady =>
+      'הסרטון עדיין לא מוכן לעריכה. נסה שוב בעוד רגע.';
+
+  @override
+  String get errorEditSourceRequired => 'לא נבחר מקור לעריכה.';
+
+  @override
+  String get errorEditMultipleSources =>
+      'נבחרו יותר מדי מקורות לעריכה. נסה שוב.';
+
+  @override
   String get editStageQueued => 'ממתין להתחלה…';
 
   @override

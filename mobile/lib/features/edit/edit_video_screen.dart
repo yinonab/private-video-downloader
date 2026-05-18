@@ -297,9 +297,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         compressPreset: _compress,
       );
       final created = await AppScope.read(context).api.createEditJob(
-            CreateEditJobRequest(
-                sourceDownloadJobId: widget.sourceDownloadJobId,
-                operations: ops),
+            CreateEditJobRequest.download(
+              sourceDownloadJobId: widget.sourceDownloadJobId,
+              operations: ops,
+            ),
           );
       final id = created.editJobId.trim();
       if (id.isEmpty) {

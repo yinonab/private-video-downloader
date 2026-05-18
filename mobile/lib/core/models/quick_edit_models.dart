@@ -13,18 +13,49 @@ bool downloadDetailEligibleForQuickEdit(DownloadDetailResponse d) {
 // --- API payloads (match backend/src/modules/edit/edit.schemas.ts) ---
 
 final class CreateEditJobRequest {
-  CreateEditJobRequest({
-    required this.sourceDownloadJobId,
+  CreateEditJobRequest._({
     required this.operations,
-  });
+    this.sourceDownloadJobId,
+    this.sourceUploadId,
+  }) : assert(
+          (sourceDownloadJobId != null) ^ (sourceUploadId != null),
+          "Exactly one of sourceDownloadJobId or sourceUploadId must be set",
+        );
 
-  final String sourceDownloadJobId;
+  factory CreateEditJobRequest.download({
+    required String sourceDownloadJobId,
+    required List<Map<String, dynamic>> operations,
+  }) =>
+      CreateEditJobRequest._(
+        operations: operations,
+        sourceDownloadJobId: sourceDownloadJobId,
+      );
+
+  factory CreateEditJobRequest.upload({
+    required String sourceUploadId,
+    required List<Map<String, dynamic>> operations,
+  }) =>
+      CreateEditJobRequest._(
+        operations: operations,
+        sourceUploadId: sourceUploadId,
+      );
+
+  final String? sourceDownloadJobId;
+  final String? sourceUploadId;
   final List<Map<String, dynamic>> operations;
 
-  Map<String, dynamic> toJson() => {
-        "sourceDownloadJobId": sourceDownloadJobId,
-        "operations": operations,
-      };
+  Map<String, dynamic> toJson() {
+    final map = <String, dynamic>{"operations": operations};
+    final dl = sourceDownloadJobId?.trim();
+    final up = sourceUploadId?.trim();
+    if (dl != null && dl.isNotEmpty) {
+      map["sourceDownloadJobId"] = dl;
+    }
+    if (up != null && up.isNotEmpty) {
+      map["sourceUploadId"] = up;
+    }
+    return map;
+  }
 }
 
 final class CreateEditJobResponse {
@@ -64,6 +95,8 @@ final class EditJobDetailResponse {
     this.stage,
     this.progressPercent,
     this.sourceDownloadJobId,
+    this.sourceUploadId,
+    this.sourceKind,
     this.outputReady,
     this.outputFilename,
     this.outputMimeType,
@@ -90,6 +123,8 @@ final class EditJobDetailResponse {
       stage: m["stage"]?.toString(),
       progressPercent: pct,
       sourceDownloadJobId: m["sourceDownloadJobId"]?.toString(),
+      sourceUploadId: m["sourceUploadId"]?.toString(),
+      sourceKind: m["sourceKind"]?.toString(),
       outputReady: m["outputReady"] == true,
       outputFilename: m["outputFilename"]?.toString(),
       outputMimeType: m["outputMimeType"]?.toString(),
@@ -108,6 +143,13 @@ final class EditJobDetailResponse {
   final String? stage;
   final int? progressPercent;
   final String? sourceDownloadJobId;
+
+  /// Present when the edit source is device-uploaded media (`UploadedMedia`).
+  final String? sourceUploadId;
+
+  /// Backend hint: `"download"` | `"upload"` when provided (Phase B+).
+  final String? sourceKind;
+
   final bool? outputReady;
   final String? outputFilename;
   final String? outputMimeType;

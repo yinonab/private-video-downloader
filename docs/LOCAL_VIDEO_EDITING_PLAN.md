@@ -16,10 +16,22 @@ Concise roadmap for **device-local video** as an edit source (server-side ffmpeg
 - **Worker** `resolveEditSource()` picks download video **`FileAsset`** (unchanged) or resolves **`UploadedMedia.storageKey`**; **same** ffmpeg args/build/output path (`devices/<deviceId>/edits/<editJobId>.mp4`).
 - **`GET /edits/:id`** may include **`sourceKind`**, **`sourceUploadId`** (additive); existing **`sourceDownloadJobId`** unchanged for download-sourced jobs.
 
-## Phase C (Flutter / UX) — pending
+## Phase C (Flutter / UX) — split delivery
 
-- File picker + multipart upload client; **`POST /edits`** with **`sourceUploadId`** from **`EditVideoScreen`** (or equivalent); map **`EDIT_*` / `UPLOAD_*`** errors.
-- Home banner / navigation polish if desired — **not** part of Phase B.
+### Phase C1 — mobile API & models (implemented in repo)
+
+- **`UploadVideoResponse`** (`mobile/lib/core/models/upload_models.dart`) + **`ApiClient.uploadVideo`** (`MultipartFile.fromFile`, streamed upload).
+- **`CreateEditJobRequest.download` / `.upload`** — **`toJson`** emits exactly one source key.
+- **`EditJobDetailResponse`** parses optional **`sourceKind`**, **`sourceUploadId`**.
+- Limits constants **`LocalVideoUploadLimits`** (`mobile/lib/core/config/local_video_upload_constants.dart`) for later picker pre-checks (unused in UI until C3).
+- L10n + **`localizedApiErrorMessage`** for **`UPLOAD_*`** and edit-source codes; retention-related codes share **`errorUploadSourceUnavailable`**.
+- **`http_parser`** added as a direct dependency (multipart **`MediaType`**); **not** a picker dependency.
+
+### Phase C2–C4 — pending
+
+- **C2:** **`EditVideoSourceRef`** / **`EditVideoScreen`** upload path, preview fallbacks.
+- **C3:** Pickers (**`image_picker`**, **`file_picker`**), home banner bottom sheet, upload launcher.
+- **C4:** QA, RTL polish, release APK.
 
 ## Phase D — pending
 

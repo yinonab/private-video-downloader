@@ -120,7 +120,7 @@ Verified **in repository / documented flows** (operators still run their own QA)
 - **API:** `POST /uploads/videos` (multipart field **`file`**); `GET /uploads/:id` (metadata); `GET /uploads/:id/file`; `GET /uploads/:id/thumbnail` (404 if no thumbnail). All require device auth + ownership.
 - **Limits (env):** `MAX_LOCAL_VIDEO_UPLOAD_MB` (default **175**), `MAX_LOCAL_VIDEO_UPLOAD_DURATION_SECONDS` (default **420**). Validation uses **ffprobe** + allowed containers (mp4/mov/webm family); declared MIME must be allowed or **`application/octet-stream`**.
 - **Retention:** filesystem cleanup uses **`UPLOAD_RETENTION_MINUTES`** (default **120**) under `*/uploads/*`; downloads/edits and other storage still follow **`MEDIA_RETENTION_MINUTES`** (default **30**). **`MEDIA_RETENTION_MINUTES` for downloaded `FileAsset` records is unchanged** in application logic.
-- **Roadmap (mobile):** Flutter file picker, upload UI, navigation into **`EditVideoScreen`** with **`sourceUploadId`** — **Phase C** (see `docs/LOCAL_VIDEO_EDITING_PLAN.md`). Download-based Quick Edit is unchanged.
+- **Roadmap (mobile):** **Phase C1 done:** models (**`UploadVideoResponse`**), **`ApiClient.uploadVideo`**, **`CreateEditJobRequest.download/upload`**, edit-detail fields (**`sourceKind`**, **`sourceUploadId`**), upload/edit error l10n. **Phase C2–C4:** `EditVideoScreen` upload source, pickers, home banner flow (see `docs/LOCAL_VIDEO_EDITING_PLAN.md`). Download-based Quick Edit is unchanged.
 
 ### Downloads
 

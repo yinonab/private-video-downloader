@@ -108,6 +108,26 @@ class ApiError implements Exception {
         return "לא ניתן לערוך את המקור הזה.";
       case "EDIT_FAILED":
         return "העריכה נכשלה.";
+      case "UPLOAD_FILE_TOO_LARGE":
+        return "הסרטון גדול מדי לעריכה כרגע. אפשר להעלות סרטונים עד 175MB.";
+      case "UPLOAD_VIDEO_TOO_LONG":
+        return "הסרטון ארוך מדי לעריכה כרגע. אפשר להעלות קליפים עד 7 דקות.";
+      case "UPLOAD_UNSUPPORTED_TYPE":
+        return "סוג הקובץ לא נתמך. נסה סרטון MP4.";
+      case "UPLOAD_INVALID_VIDEO":
+        return "לא הצלחנו לקרוא את הסרטון הזה. נסה סרטון אחר.";
+      case "UPLOAD_FAILED":
+        return "לא הצלחנו להעלות את הסרטון. נסה שוב.";
+      case "UPLOAD_NOT_FOUND":
+      case "EDIT_UPLOAD_NOT_FOUND":
+      case "EDIT_SOURCE_FILE_MISSING":
+        return "הסרטון שהעלית כבר לא זמין. בחר אותו מחדש.";
+      case "EDIT_UPLOAD_NOT_READY":
+        return "הסרטון עדיין לא מוכן לעריכה. נסה שוב בעוד רגע.";
+      case "EDIT_SOURCE_REQUIRED":
+        return "לא נבחר מקור לעריכה.";
+      case "EDIT_MULTIPLE_SOURCES":
+        return "נבחרו יותר מדי מקורות לעריכה. נסה שוב.";
       case "NETWORK":
         return http != null ? "שגיאת רשת (קוד $http)" : "שגיאת רשת";
       default:

@@ -767,6 +767,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorEditFailed => 'Edit processing failed.';
 
   @override
+  String get errorUploadFileTooLarge =>
+      'This video is too large to edit right now. You can upload videos up to 175MB.';
+
+  @override
+  String get errorUploadVideoTooLong =>
+      'This video is too long to edit right now. You can upload clips up to 7 minutes.';
+
+  @override
+  String get errorUploadUnsupportedType =>
+      'This file type is not supported. Try an MP4 video.';
+
+  @override
+  String get errorUploadInvalidVideo =>
+      'We couldn’t read this video. Try another video.';
+
+  @override
+  String get errorUploadFailed => 'We couldn’t upload this video. Try again.';
+
+  @override
+  String get errorUploadSourceUnavailable =>
+      'The uploaded video is no longer available. Choose it again.';
+
+  @override
+  String get errorEditUploadNotReady =>
+      'The uploaded video is not ready for editing yet. Try again in a moment.';
+
+  @override
+  String get errorEditSourceRequired => 'No edit source was selected.';
+
+  @override
+  String get errorEditMultipleSources =>
+      'Too many edit sources were selected. Try again.';
+
+  @override
   String get editStageQueued => 'Waiting to start…';
 
   @override

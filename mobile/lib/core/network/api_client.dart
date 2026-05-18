@@ -3,6 +3,8 @@ import "dart:io" show File, HttpHeaders, SocketException;
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
+import "package:http_parser/http_parser.dart";
+import "package:path/path.dart" as p;
 
 import "../config/build_flags.dart";
 import "../models/analyze_models.dart";
@@ -10,6 +12,7 @@ import "../models/api_error.dart";
 import "../models/device_models.dart";
 import "../models/download_models.dart";
 import "../models/quick_edit_models.dart";
+import "../models/upload_models.dart";
 import "../storage/local_session.dart";
 
 String _trimJoin(String base, String suffixPath) {
@@ -173,6 +176,43 @@ class ApiClient {
 
   /// Absolute HTTP URL for `GET /edits/:id/file`.
   String editFileUrl(String editJobId) => _trimJoin(_base, "/edits/$editJobId/file");
+
+  /// Multipart upload (`field`: `file`). Streams from disk — does not load entire file into memory.
+  ///
+  /// Phase C3+ may pass [mimeType] / [filename] from pickers; omitted keys use file basename.
+  Future<UploadVideoResponse> uploadVideo({
+    required String filePath,
+    String? filename,
+    String? mimeType,
+  }) async {
+    final f = File(filePath);
+    if (!await f.exists()) {
+      throw ApiError(code: "BAD_REQUEST", message: "File not found");
+    }
+    final name = (filename != null && filename.trim().isNotEmpty)
+        ? filename.trim()
+        : p.basename(filePath);
+
+    final mt = mimeType?.trim();
+    final multipart = await MultipartFile.fromFile(
+      filePath,
+      filename: name,
+      contentType: (mt != null && mt.isNotEmpty) ? MediaType.parse(mt) : null,
+    );
+    final formData = FormData.fromMap({"file": multipart});
+
+    return _unwrap(
+      _dio.post(
+        _trimJoin(_base, "/uploads/videos"),
+        data: formData,
+        options: Options(
+          sendTimeout: const Duration(minutes: 25),
+          receiveTimeout: const Duration(seconds: 120),
+        ),
+      ),
+      (data) => UploadVideoResponse.fromJson(data is Map ? Map<String, dynamic>.from(data) : null),
+    );
+  }
 
   Future<CreateEditJobResponse> createEditJob(CreateEditJobRequest body) async {
     return _unwrap(
