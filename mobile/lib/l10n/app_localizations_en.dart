@@ -687,6 +687,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'Editing a video from your device is coming soon';
 
   @override
+  String get editLocalVideoSheetTitle => 'Choose a short video to edit';
+
+  @override
+  String get editLocalVideoLimitsNote => 'Videos up to 7 minutes and 175MB';
+
+  @override
+  String get editLocalVideoPickMedia => 'Device media';
+
+  @override
+  String get editLocalVideoPickFiles => 'Browse files';
+
+  @override
+  String get editLocalVideoUploading => 'Uploading your video for editing...';
+
+  @override
   String get downloadCardEdit => 'Edit';
 
   @override

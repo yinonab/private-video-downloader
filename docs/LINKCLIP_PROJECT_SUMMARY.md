@@ -46,9 +46,9 @@ Verified **in repository / documented flows** (operators still run their own QA)
 | YouTube / JS challenges | Node + `yt-dlp-ejs`; `--no-js-runtimes --js-runtimes node` (`YTDLP_JS_RUNTIME_ARGS`) |
 | Admin diagnostics | `GET /admin/diagnostics` (JSON + optional `?format=text`, optional `?deep=true`) — see `backend/docs/ADMIN_DIAGNOSTICS.md` |
 | Media cleanup | Separate **cleanup** container; **two-tier** retention on `/app/storage`: `devices/*/uploads/*` uses **`UPLOAD_RETENTION_MINUTES`** (default **120**); all **other** files use **`MEDIA_RETENTION_MINUTES`** (default **30**) — see `backend/docker-compose.prod.yml` |
-| Local video uploads | **Phase A** — `UploadedMedia` + upload/read APIs (**175MB / 7min**, **120min** retention under `*/uploads/*`). **Phase B** — `POST /edits` accepts **`sourceUploadId`** or **`sourceDownloadJobId`** (exactly one); worker resolves upload storage keys through the same ffmpeg pipeline. **Not** on Home downloads. |
+| Local video uploads | **Phase A/B** APIs + **Phase C3** Android: Home banner **Edit** → bottom sheet (**Device media** / **Browse files**) → **`POST /uploads/videos`** → **`EditVideoScreen.upload`**. Limits **175MB / 7min**; **not** listed on Home downloads. |
 | Quick Edit backend | `POST /edits` ( **`sourceDownloadJobId`** *xor* **`sourceUploadId`** + **`operations`** ), `GET /edits/:id` (optional **`sourceKind`**, **`sourceUploadId`**), `GET /edits/:id/file`, `POST /edits/:id/retry` (`backend/src/modules/edit/`) |
-| Quick Edit Android | `EditVideoScreen` (**download** vs **upload** [`EditVideoSourceRef`]), tabs, preview (`EditVideoPreviewSource`), export flow (`mobile/lib/features/edit/`) |
+| Quick Edit Android | `EditVideoScreen` (**download** vs **upload** [`EditVideoSourceRef`]), **`launchLocalVideoEdit`** + **`image_picker`** / **`file_picker`**, preview (`EditVideoPreviewSource`), export (`mobile/lib/features/edit/`) |
 | Source expiry / redownload | UI sheet + `forceNew` on recreate download (see §7) |
 | Threads | **Blocked** in analyze with explicit error (see §8 / §12) |
 

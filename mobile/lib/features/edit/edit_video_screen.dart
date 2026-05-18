@@ -35,8 +35,7 @@ enum _FlowPhase { composing, working, done, failed }
 
 /// Quick Edit: compose ops → POST `/edits` → poll → download MP4.
 ///
-/// **Phase C3:** after `ApiClient.uploadVideo`, open the editor with
-/// [EditVideoScreen.upload] (picker wiring is not enabled until C3).
+/// **Phase C3:** after `ApiClient.uploadVideo`, open the editor with [EditVideoScreen.upload].
 class EditVideoScreen extends StatefulWidget {
   // ignore: prefer_const_constructors_in_immutables
   EditVideoScreen({

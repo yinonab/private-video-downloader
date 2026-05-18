@@ -1358,6 +1358,36 @@ abstract class AppLocalizations {
   /// **'Editing a video from your device is coming soon'**
   String get editLocalVideoComingSoon;
 
+  /// No description provided for @editLocalVideoSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a short video to edit'**
+  String get editLocalVideoSheetTitle;
+
+  /// No description provided for @editLocalVideoLimitsNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Videos up to 7 minutes and 175MB'**
+  String get editLocalVideoLimitsNote;
+
+  /// No description provided for @editLocalVideoPickMedia.
+  ///
+  /// In en, this message translates to:
+  /// **'Device media'**
+  String get editLocalVideoPickMedia;
+
+  /// No description provided for @editLocalVideoPickFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse files'**
+  String get editLocalVideoPickFiles;
+
+  /// No description provided for @editLocalVideoUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading your video for editing...'**
+  String get editLocalVideoUploading;
+
   /// No description provided for @downloadCardEdit.
   ///
   /// In en, this message translates to:

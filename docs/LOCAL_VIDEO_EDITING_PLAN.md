@@ -23,7 +23,7 @@ Concise roadmap for **device-local video** as an edit source (server-side ffmpeg
 - **`UploadVideoResponse`** (`mobile/lib/core/models/upload_models.dart`) + **`ApiClient.uploadVideo`** (`MultipartFile.fromFile`, streamed upload).
 - **`CreateEditJobRequest.download` / `.upload`** — **`toJson`** emits exactly one source key.
 - **`EditJobDetailResponse`** parses optional **`sourceKind`**, **`sourceUploadId`**.
-- Limits constants **`LocalVideoUploadLimits`** (`mobile/lib/core/config/local_video_upload_constants.dart`) for later picker pre-checks (unused in UI until C3).
+- Limits constants **`LocalVideoUploadLimits`** (`mobile/lib/core/config/local_video_upload_constants.dart`) — picker pre-checks (**C3**) + alignment with backend caps.
 - L10n + **`localizedApiErrorMessage`** for **`UPLOAD_*`** and edit-source codes; retention-related codes share **`errorUploadSourceUnavailable`**.
 - **`http_parser`** added as a direct dependency (multipart **`MediaType`**); **not** a picker dependency.
 
@@ -31,12 +31,16 @@ Concise roadmap for **device-local video** as an edit source (server-side ffmpeg
 
 - **`EditVideoSourceRef`** + **`EditVideoScreen`** accept download vs upload sources; **`EditVideoPreview`** uses **`EditVideoPreviewSource`** (local path → **`VideoPlayerController.file`**, else **`/downloads/:id/file`** or **`/uploads/:id/file`** with Bearer).
 - **`CreateEditJobRequest.download` / `.upload`** chosen from source kind; upload missing-source API errors surface **`errorUploadSourceUnavailable`** without the download redownload sheet.
-- No picker / Home wiring yet (**Phase C3**).
 
-### Phase C3–C4 — pending
+### Phase C3 — Home UI + pickers + upload (implemented in repo)
 
-- **C3:** Pickers (**`image_picker`**, **`file_picker`**), home banner bottom sheet, upload launcher.
-- **C4:** QA, RTL polish, release APK.
+- **Dependencies:** **`image_picker`** (gallery / device media), **`file_picker`** (`FileType.video`, **`withData: false`**, stream fallback via **`withReadStream: true`**).
+- **Home:** banner **Edit** opens **`launchLocalVideoEdit`** (`local_video_edit_launcher.dart`) — bottom sheet **Device media** vs **Browse files** → **`POST /uploads/videos`** → **`EditVideoScreen.upload`**. Edit is available even when the downloads list is empty.
+- **Models:** **`SelectedLocalVideo`**, **`LocalVideoPickKind`** (`features/edit/local_video/selected_local_video.dart`); picker helpers (`local_video_pickers.dart`). Large-file pre-check when **`sizeBytes`** is known; gallery **`content:`** URIs copied to temp via **`openRead`** stream (no full-file memory buffer).
+
+### Phase C4 — pending
+
+- **C4:** QA, RTL polish, release APK pass.
 
 ## Phase D — pending
 

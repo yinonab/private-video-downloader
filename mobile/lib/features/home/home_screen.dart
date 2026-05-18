@@ -22,6 +22,7 @@ import "../../services/saved_media_actions.dart";
 import "../analyze/analyze_screen.dart";
 import "../download_status/download_status_screen.dart";
 import "../edit/quick_edit_launch.dart";
+import "../edit/local_video_edit_launcher.dart";
 import "../settings/settings_screen.dart";
 import "download_card.dart";
 
@@ -237,13 +238,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         showTip: isEmpty,
                         showPrimaryButton: isEmpty,
                         onPaste: _pasteDialog,
-                        onBannerEdit: hasItems
-                            ? () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(l10n.editLocalVideoComingSoon)),
-                                );
-                              }
-                            : null,
+                        onBannerEdit: () {
+                          unawaited(launchLocalVideoEdit(context));
+                        },
                       ),
                     ),
                     if (hasItems) ...[

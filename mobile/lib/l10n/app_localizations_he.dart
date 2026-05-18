@@ -678,6 +678,21 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editLocalVideoComingSoon => 'עריכת סרטון מהמכשיר תתווסף בקרוב';
 
   @override
+  String get editLocalVideoSheetTitle => 'בחר סרטון קצר לעריכה';
+
+  @override
+  String get editLocalVideoLimitsNote => 'סרטונים עד 7 דקות ועד 175MB';
+
+  @override
+  String get editLocalVideoPickMedia => 'מדיה מהמכשיר';
+
+  @override
+  String get editLocalVideoPickFiles => 'עיון בקבצים';
+
+  @override
+  String get editLocalVideoUploading => 'מעלה את הסרטון לעריכה...';
+
+  @override
   String get downloadCardEdit => 'ערוך';
 
   @override
