@@ -46,8 +46,8 @@ Verified **in repository / documented flows** (operators still run their own QA)
 | YouTube / JS challenges | Node + `yt-dlp-ejs`; `--no-js-runtimes --js-runtimes node` (`YTDLP_JS_RUNTIME_ARGS`) |
 | Admin diagnostics | `GET /admin/diagnostics` (JSON + optional `?format=text`, optional `?deep=true`) — see `backend/docs/ADMIN_DIAGNOSTICS.md` |
 | Media cleanup | Separate **cleanup** container; **two-tier** retention on `/app/storage`: `devices/*/uploads/*` uses **`UPLOAD_RETENTION_MINUTES`** (default **120**); all **other** files use **`MEDIA_RETENTION_MINUTES`** (default **30**) — see `backend/docker-compose.prod.yml` |
-| Local video uploads (Phase A) | Backend **`UploadedMedia`** + `POST /uploads/videos`, `GET /uploads/:id`, file/thumbnail streams (`backend/src/modules/uploads/`). **175MB / 7min** limits; **not** listed on Home downloads. **Edit-from-upload** wired in later phases. |
-| Quick Edit backend | `POST /edits`, `GET /edits/:id`, `GET /edits/:id/file`, `POST /edits/:id/retry` (`backend/src/modules/edit/`) |
+| Local video uploads | **Phase A** — `UploadedMedia` + upload/read APIs (**175MB / 7min**, **120min** retention under `*/uploads/*`). **Phase B** — `POST /edits` accepts **`sourceUploadId`** or **`sourceDownloadJobId`** (exactly one); worker resolves upload storage keys through the same ffmpeg pipeline. **Not** on Home downloads. |
+| Quick Edit backend | `POST /edits` ( **`sourceDownloadJobId`** *xor* **`sourceUploadId`** + **`operations`** ), `GET /edits/:id` (optional **`sourceKind`**, **`sourceUploadId`**), `GET /edits/:id/file`, `POST /edits/:id/retry` (`backend/src/modules/edit/`) |
 | Quick Edit Android | `EditVideoScreen`, tabs, preview, export flow (`mobile/lib/features/edit/`) |
 | Source expiry / redownload | UI sheet + `forceNew` on recreate download (see §7) |
 | Threads | **Blocked** in analyze with explicit error (see §8 / §12) |
@@ -112,14 +112,15 @@ Verified **in repository / documented flows** (operators still run their own QA)
 - **Operational note:** when testing yt-dlp or curl with production cookies, copy `global.txt` to a **writable temp file** — do not pass the read-only secrets mount as `--cookies` (yt-dlp may rewrite the jar).
 - **Dev diagnostic:** `cd backend && npm run diag:facebook -- "<facebook-url>"` — prints redirect probe (desktop Chrome), **per-step profile + variant**, HTML token counts (`.mp4`, `dash_manifest`, `videoDeliveryLegacyFields`, playable/native keys, WebLite unsupported markers), whether SD/HD were extracted, and **candidate hosts only** — not signed URLs or cookies. The production Docker image copies `backend/scripts` into `/app/scripts`, so the same `npm run diag:facebook` command works inside the API/worker container (`cd /app`).
 
-### Local video uploads (Phase A — backend)
+### Local video uploads (Phase A–B backend)
 
-- **Purpose:** device-uploaded **local source** videos for **future** on-server editing; uploads do **not** create `DownloadJob` rows and do **not** appear in the Home downloads list.
+- **Purpose:** device-uploaded **local source** videos for on-server editing; uploads do **not** create `DownloadJob` rows and do **not** appear in the Home downloads list.
+- **Phase B:** **`POST /edits`** may use **`sourceUploadId`** (exactly one of download vs upload source); worker resolves **`UploadedMedia.storageKey`** into the same ffmpeg pipeline as download-based Quick Edit.
 - **Prisma:** `UploadedMedia` (`devices/<deviceId>/uploads/<uploadId>/source.<ext>`, optional `thumbnail.jpg`).
 - **API:** `POST /uploads/videos` (multipart field **`file`**); `GET /uploads/:id` (metadata); `GET /uploads/:id/file`; `GET /uploads/:id/thumbnail` (404 if no thumbnail). All require device auth + ownership.
 - **Limits (env):** `MAX_LOCAL_VIDEO_UPLOAD_MB` (default **175**), `MAX_LOCAL_VIDEO_UPLOAD_DURATION_SECONDS` (default **420**). Validation uses **ffprobe** + allowed containers (mp4/mov/webm family); declared MIME must be allowed or **`application/octet-stream`**.
 - **Retention:** filesystem cleanup uses **`UPLOAD_RETENTION_MINUTES`** (default **120**) under `*/uploads/*`; downloads/edits and other storage still follow **`MEDIA_RETENTION_MINUTES`** (default **30**). **`MEDIA_RETENTION_MINUTES` for downloaded `FileAsset` records is unchanged** in application logic.
-- **Roadmap:** Flutter picker, `EditVideoScreen`, and `POST /edits` integration — later phases (see `docs/LOCAL_VIDEO_EDITING_PLAN.md`).
+- **Roadmap (mobile):** Flutter file picker, upload UI, navigation into **`EditVideoScreen`** with **`sourceUploadId`** — **Phase C** (see `docs/LOCAL_VIDEO_EDITING_PLAN.md`). Download-based Quick Edit is unchanged.
 
 ### Downloads
 
@@ -130,10 +131,12 @@ Verified **in repository / documented flows** (operators still run their own QA)
 
 ### Quick Edit
 
-- `POST /edits` — body includes source download job id + **operations** (trim, crop, mute, compress — validated in `edit.schemas.ts`).
-- `GET /edits/:id` — status / progress / errors.
+- `POST /edits` — body includes **exactly one** of **`sourceDownloadJobId`** (completed download job, existing Quick Edit) **or** **`sourceUploadId`** (`UploadedMedia` id from Phase A upload API), plus **`operations`** (trim, crop, mute, compress — validated in `edit.schemas.ts`). Codes: **`EDIT_SOURCE_REQUIRED`**, **`EDIT_MULTIPLE_SOURCES`**, **`EDIT_UPLOAD_NOT_FOUND`**, **`EDIT_UPLOAD_NOT_READY`**, **`EDIT_SOURCE_FILE_MISSING`** where applicable.
+- `GET /edits/:id` — status / progress / errors; may include **`sourceKind`** (`download` \| `upload`), **`sourceUploadId`** when source is an upload ( **`sourceDownloadJobId`** remains for download-sourced jobs).
 - `GET /edits/:id/file` — output when `done` (supports range requests).
 - `POST /edits/:id/retry` — re-queue failed job.
+
+Download-based Quick Edit behavior (validation, redownload/expiry flows) is **unchanged** when using **`sourceDownloadJobId`**.
 
 **Worker:** `backend/src/workers/worker.ts` runs **both** `createDownloadWorker` and `createEditWorker` in one process.
 
@@ -235,8 +238,8 @@ mobile/build/app/outputs/flutter-apk/app-release.apk
 
 ### Job lifecycle
 
-1. Client `POST /edits` with `sourceDownloadJobId` + `operations`.
-2. Job queued → worker runs ffmpeg → output written under storage layout for edits.
+1. Client `POST /edits` with **`sourceDownloadJobId`** *or* **`sourceUploadId`** + **`operations`** (exactly one source).
+2. Job queued → worker resolves source (download **FileAsset** vs **`UploadedMedia.storageKey`**) → same ffmpeg pipeline → output under `devices/<deviceId>/edits/<editJobId>.mp4`.
 3. Client polls `GET /edits/:id` until `done` / `failed`.
 4. Client downloads via `GET /edits/:id/file`; open/share/save similar to downloads.
 

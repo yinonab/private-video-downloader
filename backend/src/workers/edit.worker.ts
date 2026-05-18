@@ -8,9 +8,9 @@ import { config } from "../config";
 import { EDIT_QUEUE_NAME } from "../plugins/queues";
 import { buildEditFfmpegArgs, ffmpegProgressRatio } from "../modules/edit/edit.ffmpeg";
 import {
-  assertDownloadVideoSourceReady,
   expectedEditOutputStorageKey,
   parseStoredOperations,
+  resolveEditSource,
 } from "../modules/edit/edit.service";
 import { resolveEditOperations } from "../modules/edit/edit.schemas";
 import type { EditQueuePayload } from "../modules/edit/edit.types";
@@ -90,10 +90,10 @@ export function createEditWorker(prisma: PrismaClient): Worker {
           data: { status: "running", stage: "validating_source", progressPercent: 0 },
         });
 
-        const source = await assertDownloadVideoSourceReady({
+        const source = await resolveEditSource({
           prisma,
+          row,
           deviceId,
-          sourceDownloadJobId: row.sourceDownloadJobId,
           log: { editJobId },
         });
 
@@ -163,7 +163,9 @@ export function createEditWorker(prisma: PrismaClient): Worker {
           {
             editJobId,
             deviceId,
-            sourceDownloadJobId: row.sourceDownloadJobId,
+            sourceKind: source.sourceKind,
+            ...(row.sourceDownloadJobId ? { sourceDownloadJobId: row.sourceDownloadJobId } : {}),
+            ...(row.sourceUploadId ? { sourceUploadId: row.sourceUploadId } : {}),
             segmentDurationSec: built.segmentDurationSec,
             mute: plan.mute,
             aspectRatio: plan.aspectRatio,

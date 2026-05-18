@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
-import type { FileAsset, Prisma, PrismaClient } from "@prisma/client";
+import type { EditJob, FileAsset, Prisma, PrismaClient } from "@prisma/client";
 import type { Queue } from "bullmq";
 import { AppError, codes } from "../../types/errors";
 import { resolveAbsoluteFromStorageKey } from "../../services/storage";
@@ -84,6 +84,129 @@ export async function assertDownloadVideoSourceReady(opts: {
   return picked;
 }
 
+export type ResolvedEditSource = {
+  absPath: string;
+  sourceKind: "download" | "upload";
+  durationSeconds?: number;
+  width?: number;
+  height?: number;
+};
+
+/** Resolve absolute source path for an edit job (download FileAsset or UploadedMedia). */
+export async function resolveEditSource(opts: {
+  prisma: PrismaClient;
+  row: EditJob;
+  deviceId: string;
+  log?: { editJobId?: string };
+}): Promise<ResolvedEditSource> {
+  const { prisma, row, deviceId, log } = opts;
+
+  const dlId = row.sourceDownloadJobId;
+  const upId = row.sourceUploadId;
+  const hasDl = dlId != null && dlId !== "";
+  const hasUp = upId != null && upId !== "";
+
+  if (!hasDl && !hasUp) {
+    throw new AppError(codes.EDIT_FAILED, "Edit job has no source reference", 500);
+  }
+  if (hasDl && hasUp) {
+    throw new AppError(codes.EDIT_FAILED, "Edit job has ambiguous source references", 500);
+  }
+
+  if (hasDl) {
+    const picked = await assertDownloadVideoSourceReady({
+      prisma,
+      deviceId,
+      sourceDownloadJobId: dlId!,
+      log,
+    });
+    return { absPath: picked.absPath, sourceKind: "download" };
+  }
+
+  const uploadPick = await assertUploadVideoSourceReady({
+    prisma,
+    deviceId,
+    sourceUploadId: upId!,
+    log,
+  });
+
+  return {
+    absPath: uploadPick.absPath,
+    sourceKind: "upload",
+    durationSeconds: uploadPick.durationSeconds ?? undefined,
+    width: uploadPick.width ?? undefined,
+    height: uploadPick.height ?? undefined,
+  };
+}
+
+export async function assertUploadVideoSourceReady(opts: {
+  prisma: PrismaClient;
+  deviceId: string;
+  sourceUploadId: string;
+  log?: { editJobId?: string };
+}): Promise<{
+  absPath: string;
+  stat: fs.Stats;
+  storageKey: string;
+  durationSeconds: number | null;
+  width: number | null;
+  height: number | null;
+}> {
+  const upload = await opts.prisma.uploadedMedia.findFirst({
+    where: { id: opts.sourceUploadId, deviceId: opts.deviceId },
+  });
+  if (!upload) {
+    throw new AppError(codes.EDIT_UPLOAD_NOT_FOUND, "Uploaded source not found", 404);
+  }
+  if (upload.kind !== "video") {
+    throw new AppError(codes.EDIT_UPLOAD_NOT_READY, "Uploaded source is not a video", 400);
+  }
+  if (upload.status !== "ready") {
+    throw new AppError(codes.EDIT_UPLOAD_NOT_READY, "Uploaded source is not ready", 400);
+  }
+
+  let absPath: string;
+  try {
+    absPath = resolveAbsoluteFromStorageKey(upload.storageKey);
+  } catch {
+    throw new AppError(
+      codes.EDIT_SOURCE_FILE_MISSING,
+      "Uploaded source storage key is invalid",
+      400
+    );
+  }
+
+  let st: fs.Stats;
+  try {
+    st = await fsp.stat(absPath);
+  } catch {
+    throw new AppError(codes.EDIT_SOURCE_FILE_MISSING, "Uploaded source file missing on disk", 400);
+  }
+  if (!st.isFile() || st.size <= 0) {
+    throw new AppError(codes.EDIT_SOURCE_FILE_MISSING, "Uploaded source file is missing or empty", 400);
+  }
+
+  logger.info(
+    {
+      sourceUploadId: opts.sourceUploadId,
+      deviceId: opts.deviceId,
+      editJobId: opts.log?.editJobId,
+      pickedStorageKey: upload.storageKey,
+      pickedSizeBytes: st.size,
+    },
+    "edit upload source validated"
+  );
+
+  return {
+    absPath,
+    stat: st,
+    storageKey: upload.storageKey,
+    durationSeconds: upload.durationSeconds,
+    width: upload.width,
+    height: upload.height,
+  };
+}
+
 export async function createEditJob(opts: {
   prisma: PrismaClient;
   queue: Queue;
@@ -95,18 +218,45 @@ export async function createEditJob(opts: {
     throw new AppError(codes.BAD_REQUEST, "Invalid body", 400);
   }
 
-  await assertDownloadVideoSourceReady({
-    prisma: opts.prisma,
-    deviceId: opts.deviceId,
-    sourceDownloadJobId: parsed.data.sourceDownloadJobId,
-  });
+  const d = parsed.data;
+  const hasDl = d.sourceDownloadJobId != null;
+  const hasUp = d.sourceUploadId != null;
+  if (!hasDl && !hasUp) {
+    throw new AppError(
+      codes.EDIT_SOURCE_REQUIRED,
+      "Provide exactly one of sourceDownloadJobId or sourceUploadId",
+      400
+    );
+  }
+  if (hasDl && hasUp) {
+    throw new AppError(
+      codes.EDIT_MULTIPLE_SOURCES,
+      "Provide only one of sourceDownloadJobId or sourceUploadId",
+      400
+    );
+  }
 
-  const operationsJson = parsed.data.operations as unknown as Prisma.InputJsonValue;
+  if (hasDl) {
+    await assertDownloadVideoSourceReady({
+      prisma: opts.prisma,
+      deviceId: opts.deviceId,
+      sourceDownloadJobId: d.sourceDownloadJobId!,
+    });
+  } else {
+    await assertUploadVideoSourceReady({
+      prisma: opts.prisma,
+      deviceId: opts.deviceId,
+      sourceUploadId: d.sourceUploadId!,
+    });
+  }
+
+  const operationsJson = d.operations as unknown as Prisma.InputJsonValue;
 
   const row = await opts.prisma.editJob.create({
     data: {
       deviceId: opts.deviceId,
-      sourceDownloadJobId: parsed.data.sourceDownloadJobId,
+      sourceDownloadJobId: hasDl ? d.sourceDownloadJobId! : null,
+      sourceUploadId: hasUp ? d.sourceUploadId! : null,
       status: "queued",
       stage: "queued",
       progressPercent: null,
@@ -123,7 +273,12 @@ export async function createEditJob(opts: {
   });
 
   logger.info(
-    { editJobId: row.id, deviceId: opts.deviceId, sourceDownloadJobId: parsed.data.sourceDownloadJobId },
+    {
+      editJobId: row.id,
+      deviceId: opts.deviceId,
+      ...(hasDl ? { sourceDownloadJobId: d.sourceDownloadJobId } : {}),
+      ...(hasUp ? { sourceUploadId: d.sourceUploadId } : {}),
+    },
     "edit job created"
   );
 
@@ -150,17 +305,22 @@ export async function getEditJobForDevice(opts: {
     throw new AppError(codes.EDIT_JOB_NOT_FOUND, "Edit job not found", 404);
   }
 
+  const hasUp = row.sourceUploadId != null && row.sourceUploadId !== "";
+  const hasDl = row.sourceDownloadJobId != null && row.sourceDownloadJobId !== "";
+  const sourceKind: "download" | "upload" | undefined = hasUp ? "upload" : hasDl ? "download" : undefined;
+
   return {
     id: row.id,
     status: row.status,
     stage: row.stage ?? undefined,
     progressPercent: row.progressPercent ?? undefined,
-    sourceDownloadJobId: row.sourceDownloadJobId,
+    sourceDownloadJobId: row.sourceDownloadJobId ?? undefined,
+    sourceUploadId: row.sourceUploadId ?? undefined,
+    ...(sourceKind != null ? { sourceKind } : {}),
     outputReady: row.status === "done" && row.outputStorageKey != null && row.outputStorageKey !== "",
     outputFilename: row.outputFilename ?? undefined,
     outputMimeType: row.outputMimeType ?? undefined,
-    outputSizeBytes:
-      row.outputSizeBytes != null ? Number(row.outputSizeBytes) : undefined,
+    outputSizeBytes: row.outputSizeBytes != null ? Number(row.outputSizeBytes) : undefined,
     errorCode: row.errorCode ?? undefined,
     errorMessage: row.errorMessage ?? undefined,
     createdAt: row.createdAt.toISOString(),

@@ -38,7 +38,8 @@ export const editOperationSchema = z.union([
 
 export const createEditJobSchema = z
   .object({
-    sourceDownloadJobId: z.string().uuid(),
+    sourceDownloadJobId: z.string().uuid().optional(),
+    sourceUploadId: z.string().uuid().optional(),
     operations: z.array(editOperationSchema).min(1),
   })
   .strict();

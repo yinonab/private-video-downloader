@@ -42,6 +42,7 @@ model UploadedMedia {
   updatedAt           DateTime @updatedAt
 
   device Device @relation(fields: [deviceId], references: [id])
+  editJobs EditJob[]
 
   @@index([deviceId])
   @@index([createdAt])
@@ -140,7 +141,10 @@ model AppSetting {
 model EditJob {
   id                    String    @id @default(uuid())
   deviceId              String
-  sourceDownloadJobId   String
+  /// Set when source is a completed download job (Quick Edit from downloads).
+  sourceDownloadJobId   String?
+  /// Set when source is device-uploaded media (`UploadedMedia`).
+  sourceUploadId        String?
   /// queued | running | done | failed
   status                String
   /// queued | validating_source | probing | processing | finalizing | done | failed
@@ -157,9 +161,11 @@ model EditJob {
   updatedAt             DateTime  @updatedAt
   completedAt           DateTime?
 
-  device Device @relation(fields: [deviceId], references: [id])
+  device         Device          @relation(fields: [deviceId], references: [id])
+  uploadedSource UploadedMedia?  @relation(fields: [sourceUploadId], references: [id])
 
   @@index([deviceId, status])
   @@index([deviceId, createdAt])
   @@index([deviceId, sourceDownloadJobId])
+  @@index([deviceId, sourceUploadId])
 }
