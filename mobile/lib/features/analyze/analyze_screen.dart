@@ -6,6 +6,7 @@ import "../../core/app_scope.dart";
 import "../../core/config/build_flags.dart";
 import "../../core/l10n/api_error_localizations.dart";
 import "../../core/l10n/context_l10n.dart";
+import "../../core/widgets/keep_app_open_hint.dart";
 import "../../core/models/analyze_models.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
@@ -123,9 +124,16 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
   Widget _buildBody() {
     final l10n = context.l10n;
     if (_loading) {
-      return AnalyzeProcessingAnimation(
-        title: l10n.loadingAnalyzingDot,
-        subtitle: l10n.analyzeProcessingSubtitle,
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: [
+          AnalyzeProcessingAnimation(
+            title: l10n.loadingAnalyzingDot,
+            subtitle: l10n.analyzeProcessingSubtitle,
+          ),
+          KeepAppOpenHint(l10n.keepAppOpenUntilAnalyzeFinished),
+        ],
       );
     }
     if (_err != null) {

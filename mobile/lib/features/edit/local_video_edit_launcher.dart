@@ -6,6 +6,7 @@ import "../../core/app_scope.dart";
 import "../../core/config/local_video_upload_constants.dart";
 import "../../core/l10n/api_error_localizations.dart";
 import "../../core/l10n/context_l10n.dart";
+import "../../core/widgets/keep_app_open_hint.dart";
 import "../../core/models/api_error.dart";
 import "../../l10n/app_localizations.dart";
 import "edit_video_screen.dart";
@@ -117,20 +118,27 @@ Future<void> launchLocalVideoEdit(BuildContext context) async {
         return PopScope(
           canPop: false,
           child: AlertDialog(
-            content: Row(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                Row(
+                  children: [
+                    const SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    ),
+                    const SizedBox(width: 18),
+                    Expanded(
+                      child: Text(
+                        loc.editLocalVideoUploading,
+                        style: Theme.of(dialogCtx).textTheme.bodyLarge,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 18),
-                Expanded(
-                  child: Text(
-                    loc.editLocalVideoUploading,
-                    style: Theme.of(dialogCtx).textTheme.bodyLarge,
-                  ),
-                ),
+                KeepAppOpenHint(loc.keepAppOpenUntilUploadFinished),
               ],
             ),
           ),

@@ -102,6 +102,8 @@ class ApiError implements Exception {
         return "לא ניתן לטעון אפשרויות פורמט לווידאו. ייתכן שהקישור מוגבל או לא זמין זמנית.";
       case "DRM_PROTECTED":
         return "לא ניתן להוריד את הקישור הזה כי התוכן מוגן בזכויות/DRM.";
+      case "EDIT_OUTPUT_UNAVAILABLE":
+        return "הסרטון הערוך כבר לא זמין בשרת ולא נמצא במכשיר.";
       case "FACEBOOK_EXTRACT_FAILED":
         return "לא הצלחנו לקרוא את הסרטון מפייסבוק כרגע. ייתכן שהקישור דורש גישה מיוחדת או שפייסבוק חסמה את הגישה אליו. נסה קישור אחר או נסה שוב מאוחר יותר.";
       case "EDIT_JOB_NOT_FOUND":

@@ -1238,6 +1238,72 @@ abstract class AppLocalizations {
   /// **'Preparing your download and connecting to the server.'**
   String get downloadLoadingSubtitle;
 
+  /// No description provided for @fileNoLongerAvailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is no longer available'**
+  String get fileNoLongerAvailableTitle;
+
+  /// No description provided for @fileNoLongerAvailableRedownloadBody.
+  ///
+  /// In en, this message translates to:
+  /// **'To continue, download it again.'**
+  String get fileNoLongerAvailableRedownloadBody;
+
+  /// No description provided for @downloadAgainAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Download again'**
+  String get downloadAgainAction;
+
+  /// No description provided for @uploadSourceNoLongerAvailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The uploaded video is no longer available. Choose it again.'**
+  String get uploadSourceNoLongerAvailableBody;
+
+  /// No description provided for @chooseAgainAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose it again'**
+  String get chooseAgainAction;
+
+  /// No description provided for @keepAppOpenUntilFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'We recommend keeping the app open until this finishes.'**
+  String get keepAppOpenUntilFinished;
+
+  /// No description provided for @keepAppOpenUntilAnalyzeFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'We recommend keeping the app open until analysis finishes.'**
+  String get keepAppOpenUntilAnalyzeFinished;
+
+  /// No description provided for @keepAppOpenUntilDownloadFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'We recommend keeping the app open until the download finishes.'**
+  String get keepAppOpenUntilDownloadFinished;
+
+  /// No description provided for @keepAppOpenUntilUploadFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'We recommend keeping the app open until the upload finishes.'**
+  String get keepAppOpenUntilUploadFinished;
+
+  /// No description provided for @keepAppOpenUntilEditFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'We recommend keeping the app open until the edit finishes.'**
+  String get keepAppOpenUntilEditFinished;
+
+  /// No description provided for @editServerOutputUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This edited video is no longer on the server and wasn\'t found on your device.'**
+  String get editServerOutputUnavailable;
+
   /// No description provided for @loadingPreparingDownloadDot.
   ///
   /// In en, this message translates to:

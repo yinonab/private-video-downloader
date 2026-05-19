@@ -1,13 +1,13 @@
 import "package:flutter/material.dart";
 
-import "../../core/downloads/expired_download_navigation.dart";
-import "../../core/l10n/context_l10n.dart";
-import "../../core/models/download_models.dart";
-/// Shown when Quick Edit cannot run because server-side source media likely expired or API returned
-/// [EDIT_INVALID_SOURCE].
-Future<void> showQuickEditSourceExpiredSheet(
+import "../downloads/expired_download_navigation.dart";
+import "../l10n/context_l10n.dart";
+import "../models/download_models.dart";
+
+/// Expired/missing **internet download** job media — offer explicit redownload (no passive triggers).
+Future<void> showInternetDownloadExpiredSheet(
   BuildContext parentContext, {
-  required String sourceDownloadJobId,
+  required String jobId,
   DownloadDetailResponse? prefetchedDetail,
   DownloadItem? prefetchedItem,
 }) async {
@@ -32,8 +32,7 @@ Future<void> showQuickEditSourceExpiredSheet(
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                  color: scheme.outline.withValues(alpha: 0.38)),
+              border: Border.all(color: scheme.outline.withValues(alpha: 0.38)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.35),
@@ -49,13 +48,12 @@ Future<void> showQuickEditSourceExpiredSheet(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    l10n.editSourceExpiredTitle,
-                    style: theme.textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w800),
+                    l10n.fileNoLongerAvailableTitle,
+                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    l10n.editSourceExpiredBody,
+                    l10n.fileNoLongerAvailableRedownloadBody,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                       height: 1.4,
@@ -67,7 +65,7 @@ Future<void> showQuickEditSourceExpiredSheet(
                       Navigator.pop(sheetCtx);
                       await navigateToRedownloadAfterExpiry(
                         parentContext,
-                        sourceDownloadJobId: sourceDownloadJobId,
+                        sourceDownloadJobId: jobId,
                         prefetchedDetail: prefetchedDetail,
                         prefetchedItem: prefetchedItem,
                       );
@@ -78,7 +76,7 @@ Future<void> showQuickEditSourceExpiredSheet(
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: Text(l10n.editSourceExpiredDownloadNow),
+                    child: Text(l10n.downloadAgainAction),
                   ),
                   const SizedBox(height: 10),
                   OutlinedButton(
@@ -89,7 +87,7 @@ Future<void> showQuickEditSourceExpiredSheet(
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: Text(l10n.editSourceExpiredCancel),
+                    child: Text(l10n.homeCancel),
                   ),
                 ],
               ),
@@ -98,5 +96,23 @@ Future<void> showQuickEditSourceExpiredSheet(
         ),
       );
     },
+  );
+}
+
+/// Upload source missing on server — user must choose video again (no redownload).
+Future<void> showUploadSourceExpiredDialog(BuildContext context) async {
+  final l10n = context.l10n;
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l10n.fileNoLongerAvailableTitle),
+      content: Text(l10n.uploadSourceNoLongerAvailableBody),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: Text(l10n.chooseAgainAction),
+        ),
+      ],
+    ),
   );
 }

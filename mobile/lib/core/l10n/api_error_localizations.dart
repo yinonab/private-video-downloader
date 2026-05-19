@@ -39,6 +39,8 @@ String localizedApiErrorMessage(AppLocalizations l10n, ApiError e) {
       return l10n.errorAnalyzeMetadataUnavailable;
     case "DRM_PROTECTED":
       return l10n.errorDrmProtected;
+    case "EDIT_OUTPUT_UNAVAILABLE":
+      return l10n.editServerOutputUnavailable;
     case "FACEBOOK_EXTRACT_FAILED":
       return l10n.errorFacebookExtractFailed;
     case "EDIT_JOB_NOT_FOUND":

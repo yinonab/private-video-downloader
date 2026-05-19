@@ -617,6 +617,47 @@ class AppLocalizationsHe extends AppLocalizations {
   String get downloadLoadingSubtitle => 'מכין את ההורדה שלך ומתחבר לשרת.';
 
   @override
+  String get fileNoLongerAvailableTitle => 'הקובץ כבר לא זמין';
+
+  @override
+  String get fileNoLongerAvailableRedownloadBody =>
+      'כדי להמשיך צריך להוריד אותו מחדש.';
+
+  @override
+  String get downloadAgainAction => 'הורד מחדש';
+
+  @override
+  String get uploadSourceNoLongerAvailableBody =>
+      'הסרטון שהעלית כבר לא זמין. בחר אותו מחדש.';
+
+  @override
+  String get chooseAgainAction => 'בחר אותו מחדש';
+
+  @override
+  String get keepAppOpenUntilFinished =>
+      'מומלץ להשאיר את האפליקציה פתוחה עד סיום הפעולה.';
+
+  @override
+  String get keepAppOpenUntilAnalyzeFinished =>
+      'מומלץ להשאיר את האפליקציה פתוחה עד סיום הניתוח.';
+
+  @override
+  String get keepAppOpenUntilDownloadFinished =>
+      'מומלץ להשאיר את האפליקציה פתוחה עד סיום ההורדה.';
+
+  @override
+  String get keepAppOpenUntilUploadFinished =>
+      'מומלץ להשאיר את האפליקציה פתוחה עד סיום ההעלאה.';
+
+  @override
+  String get keepAppOpenUntilEditFinished =>
+      'מומלץ להשאיר את האפליקציה פתוחה עד סיום העריכה.';
+
+  @override
+  String get editServerOutputUnavailable =>
+      'הסרטון הערוך כבר לא זמין בשרת ולא נמצא במכשיר.';
+
+  @override
   String get loadingPreparingDownloadDot => 'מכין הורדה…';
 
   @override

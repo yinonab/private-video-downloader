@@ -18,6 +18,9 @@ import "../../core/models/download_models.dart";
 import "../../core/models/quick_edit_models.dart";
 import "../../core/network/api_client.dart";
 import "../../core/theme/linkclip_palette.dart";
+import "../../core/media/backend_media_expired.dart";
+import "../../core/widgets/internet_download_expired_sheet.dart";
+import "../../core/widgets/keep_app_open_hint.dart";
 import "../../core/widgets/app_button.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
 import "../../l10n/app_localizations.dart";
@@ -390,9 +393,16 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       });
     } catch (e) {
       if (!mounted) return;
+      final mapped = e is ApiError && isMissingBackendBinaryError(e)
+          ? ApiError(
+              code: "EDIT_OUTPUT_UNAVAILABLE",
+              message: "missing_output",
+              hebrewSummary: context.l10n.editServerOutputUnavailable,
+            )
+          : e;
       setState(() {
         _phase = _FlowPhase.failed;
-        _lastError = e;
+        _lastError = mapped;
         _downloadingFile = false;
       });
     }
@@ -472,19 +482,12 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         return;
       }
       if (widget.source.kind == EditVideoSourceKind.upload && e is ApiError) {
-        const uploadMissing = <String>{
-          "EDIT_UPLOAD_NOT_FOUND",
-          "EDIT_SOURCE_FILE_MISSING",
-          "UPLOAD_NOT_FOUND",
-        };
-        if (uploadMissing.contains(e.code)) {
+        if (isMissingUploadEditSourceError(e)) {
           setState(() {
             _phase = _FlowPhase.composing;
             _lastError = null;
           });
-          messenger.showSnackBar(
-            SnackBar(content: Text(l10n.errorUploadSourceUnavailable)),
-          );
+          await showUploadSourceExpiredDialog(context);
           return;
         }
       }
@@ -1034,14 +1037,11 @@ class _EditVideoScreenState extends State<EditVideoScreen>
             style: theme.textTheme.bodyMedium
                 ?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
           ),
-          const SizedBox(height: 18),
-          if (!_downloadingFile)
-            Text(
-              "${l10n.editProcessingDontClose}\n${l10n.editProcessingSecondsHint}",
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: scheme.onSurfaceVariant, height: 1.45),
-            ),
+          KeepAppOpenHint(
+            _downloadingFile
+                ? l10n.keepAppOpenUntilDownloadFinished
+                : l10n.keepAppOpenUntilEditFinished,
+          ),
           const SizedBox(height: 22),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),

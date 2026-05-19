@@ -28,8 +28,11 @@ import "../../core/widgets/branded_progress.dart";
 import "widgets/download_progress_hero_animation.dart";
 import "widgets/initial_download_loading_animation.dart";
 import "../../core/widgets/expandable_description.dart";
-import "../../core/widgets/linkclip_network_thumbnail.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
+import "../../core/widgets/linkclip_network_thumbnail.dart";
+import "../../core/media/backend_media_expired.dart";
+import "../../core/widgets/internet_download_expired_sheet.dart";
+import "../../core/widgets/keep_app_open_hint.dart";
 import "../../services/saved_media_actions.dart";
 import "../edit/quick_edit_launch.dart";
 
@@ -73,6 +76,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   String? _resolvedJobId;
   bool _polling = false;
   bool _fileBusy = false;
+  bool _expiredRedownloadOfferInFlight = false;
   int _receiveBytes = 0;
   int _totalBytes = 0;
   bool _localSaved = false;
@@ -228,6 +232,77 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
     });
   }
 
+  Future<void> _maybeOfferRedownloadForMissingFile(ApiError err) async {
+    if (!mounted) return;
+    if (!isMissingBackendBinaryError(err)) return;
+    if (_expiredRedownloadOfferInFlight) return;
+    final id = _pollJobId;
+    if (id.isEmpty) return;
+    _expiredRedownloadOfferInFlight = true;
+    try {
+      await showInternetDownloadExpiredSheet(
+        context,
+        jobId: id,
+        prefetchedDetail: _detail,
+      );
+    } finally {
+      _expiredRedownloadOfferInFlight = false;
+    }
+  }
+
+  /// When the user has not saved locally yet, pull from server once (Open/Share/Save-to-device path).
+  Future<bool> _ensureLocalCopyFromServerForActions() async {
+    final d = _detail;
+    if (d == null || d.status != "done") return false;
+    if (_localSaved) return true;
+    if (_fileBusy) return false;
+
+    setState(() {
+      _fileBusy = true;
+      _receiveBytes = 0;
+      _totalBytes = 0;
+    });
+    try {
+      final scope = AppScope.read(context);
+      await scope.files.downloadJobMedia(
+        jobId: _pollJobId,
+        detail: d,
+        onProgress: (r, t) {
+          if (!mounted) return;
+          setState(() {
+            _receiveBytes = r;
+            _totalBytes = t;
+          });
+        },
+      );
+      if (!mounted) return false;
+      await _refreshLocalSaved();
+      return _localSaved;
+    } catch (e, st) {
+      downloadDebugPrint(
+        "catch download_status_screen._ensureLocalCopyFromServerForActions type=${e.runtimeType} message=$e",
+      );
+      if (e is DioException) {
+        downloadDebugPrint(
+          "DioException dioType=${e.type} responseStatus=${e.response?.statusCode} "
+          "cancelTokenCancelled=${e.requestOptions.cancelToken?.isCancelled}",
+        );
+      }
+      downloadDebugStackTrace("download_status_screen._ensureLocalCopyFromServerForActions", st);
+      if (!mounted) return false;
+      if (e is ApiError && isMissingBackendBinaryError(e)) {
+        await _maybeOfferRedownloadForMissingFile(e);
+      } else {
+        final msg =
+            e is ApiError ? localizedApiErrorMessage(context.l10n, e) : "$e";
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
+      return false;
+    } finally {
+      if (mounted) setState(() => _fileBusy = false);
+    }
+  }
+
   Future<void> _tickOnce() async {
     if (_polling) return;
     final id = _pollJobId;
@@ -336,6 +411,10 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       }
       downloadDebugStackTrace("download_status_screen._downloadToDevice", st);
       if (!mounted) return;
+      if (e is ApiError && isMissingBackendBinaryError(e)) {
+        await _maybeOfferRedownloadForMissingFile(e);
+        return;
+      }
       final msg = e is ApiError ? localizedApiErrorMessage(l10n, e) : "$e";
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } finally {
@@ -344,6 +423,8 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   }
 
   Future<void> _openLocal() async {
+    final ok = await _ensureLocalCopyFromServerForActions();
+    if (!mounted || !ok) return;
     await openSavedDownload(
       context: context,
       session: AppScope.read(context).session,
@@ -352,6 +433,8 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   }
 
   Future<void> _shareLocal() async {
+    final ok = await _ensureLocalCopyFromServerForActions();
+    if (!mounted || !ok) return;
     await shareSavedDownload(
       context: context,
       session: AppScope.read(context).session,
@@ -439,6 +522,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                 title: l10n.downloadStatusLoadingJob,
                 subtitle: l10n.downloadLoadingSubtitle,
               ),
+              KeepAppOpenHint(l10n.keepAppOpenUntilDownloadFinished),
             ],
             if (d != null) ...[
               if (_err != null) ...[
@@ -590,6 +674,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                             ],
                           ),
                         ],
+                        KeepAppOpenHint(l10n.keepAppOpenUntilDownloadFinished),
                       ],
                       if ((d.status == "failed" || d.status == "canceled") && (d.error ?? "").trim().isNotEmpty) ...[
                         const SizedBox(height: 12),
@@ -665,6 +750,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                               stageLabel: l10n.loadingSavingToDeviceDot,
                               bytesSubtitle: _totalBytes > 0 ? "${formatBytesUi(_receiveBytes)} / ${formatBytesUi(_totalBytes)}" : null,
                             ),
+                            KeepAppOpenHint(l10n.keepAppOpenUntilDownloadFinished),
                             const SizedBox(height: 14),
                           ],
                           if (!_localSaved)
@@ -672,19 +758,29 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                               label: l10n.downloadSaveToDevice,
                               loading: _fileBusy,
                               icon: const Icon(LucideIcons.smartphone),
-                              onPressed: _fileBusy ? null : _downloadToDevice,
+                              onPressed: (_fileBusy || _expiredRedownloadOfferInFlight) ? null : _downloadToDevice,
                             ),
                           if (!_localSaved) const SizedBox(height: 10),
                           AppOutlinedButton(
                             label: l10n.downloadOpen,
                             icon: Icon(LucideIcons.externalLink, color: scheme.primary),
-                            onPressed: _openLocal,
+                            onPressed: () {
+                              if (_fileBusy || _expiredRedownloadOfferInFlight) {
+                                return;
+                              }
+                              unawaited(_openLocal());
+                            },
                           ),
                           const SizedBox(height: 10),
                           AppOutlinedButton(
                             label: l10n.downloadShare,
                             icon: Icon(LucideIcons.share2, color: scheme.primary),
-                            onPressed: _shareLocal,
+                            onPressed: () {
+                              if (_fileBusy || _expiredRedownloadOfferInFlight) {
+                                return;
+                              }
+                              unawaited(_shareLocal());
+                            },
                           ),
                           if (downloadDetailEligibleForQuickEdit(d)) ...[
                             const SizedBox(height: 10),

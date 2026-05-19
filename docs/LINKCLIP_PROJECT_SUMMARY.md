@@ -198,6 +198,10 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 - **Downloads list:** Recent jobs on home; **Edit** available for completed **video** items (not audio-only — enforced in UI logic).
 - **Analyze screen:** Orbital rings backdrop + **vector brain** asset (`assets/illustrations/brain_side_profile.svg`), pulse animation (`pulsing_analyze_brain_svg.dart`).
 - **Saved exports:** User-visible folder messaging aligns with **Downloads → PrivateVideoDownloader** (see `media_export_constants.dart` / l10n path helpers); RTL-safe path display.
+- **Expired server files:** When the user explicitly taps **Save to device**, **Open**, or **Share** on a completed download that has **no** local copy yet, a missing `GET /downloads/:id/file` (e.g. `FILE_NOT_FOUND`, `JOB_NOT_FOUND`, or binary `DEVICE_FILE_DOWNLOAD` with HTTP **404/410**) opens a **redownload** sheet—not a generic snackbar. **Passive** job polling/list refresh does **not** open this sheet. Quick Edit’s existing retention/expiry sheet copy and behavior stay separate (`quick_edit_source_expired_sheet.dart`); both flows share **`navigateToRedownloadAfterExpiry`** (`expired_download_navigation.dart`).
+- **Upload source missing:** If an upload-based edit hits missing-upload/source errors, the app shows a **choose again** dialog (no “download again”).
+- **Edited output missing:** If fetching the edited MP4 from the server fails with the same missing-binary pattern and there is no local file yet, the failure screen uses **`EDIT_OUTPUT_UNAVAILABLE`** / localized “no longer on server…” copy (no fake redownload of edit outputs).
+- **Foreground hint copy:** Non-alarming “keep the app open until…” lines appear during **analyze** loading, **download** progress / initial job loading / save-to-device streaming, **local video upload** for edit, and **edit processing** (`keep_app_open_hint.dart`). No WorkManager, foreground service, or push notifications were added.
 
 ### Recent UI / UX polish (Android)
 

@@ -624,6 +624,47 @@ class AppLocalizationsEn extends AppLocalizations {
       'Preparing your download and connecting to the server.';
 
   @override
+  String get fileNoLongerAvailableTitle => 'This file is no longer available';
+
+  @override
+  String get fileNoLongerAvailableRedownloadBody =>
+      'To continue, download it again.';
+
+  @override
+  String get downloadAgainAction => 'Download again';
+
+  @override
+  String get uploadSourceNoLongerAvailableBody =>
+      'The uploaded video is no longer available. Choose it again.';
+
+  @override
+  String get chooseAgainAction => 'Choose it again';
+
+  @override
+  String get keepAppOpenUntilFinished =>
+      'We recommend keeping the app open until this finishes.';
+
+  @override
+  String get keepAppOpenUntilAnalyzeFinished =>
+      'We recommend keeping the app open until analysis finishes.';
+
+  @override
+  String get keepAppOpenUntilDownloadFinished =>
+      'We recommend keeping the app open until the download finishes.';
+
+  @override
+  String get keepAppOpenUntilUploadFinished =>
+      'We recommend keeping the app open until the upload finishes.';
+
+  @override
+  String get keepAppOpenUntilEditFinished =>
+      'We recommend keeping the app open until the edit finishes.';
+
+  @override
+  String get editServerOutputUnavailable =>
+      'This edited video is no longer on the server and wasn\'t found on your device.';
+
+  @override
   String get loadingPreparingDownloadDot => 'Preparing download…';
 
   @override
