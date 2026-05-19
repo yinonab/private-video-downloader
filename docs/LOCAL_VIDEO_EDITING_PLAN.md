@@ -32,19 +32,33 @@ Concise roadmap for **device-local video** as an edit source (server-side ffmpeg
 - **`EditVideoSourceRef`** + **`EditVideoScreen`** accept download vs upload sources; **`EditVideoPreview`** uses **`EditVideoPreviewSource`** (local path → **`VideoPlayerController.file`**, else **`/downloads/:id/file`** or **`/uploads/:id/file`** with Bearer).
 - **`CreateEditJobRequest.download` / `.upload`** chosen from source kind; upload missing-source API errors surface **`errorUploadSourceUnavailable`** without the download redownload sheet.
 
-### Phase C3 — Home UI + pickers + upload (implemented in repo)
+### Phase C3 — Home pickers + upload (implemented in repo)
 
 - **Dependencies:** **`image_picker`** (gallery / device media), **`file_picker`** (`FileType.video`, **`withData: false`**, stream fallback via **`withReadStream: true`**).
-- **Home:** banner **Edit** opens **`launchLocalVideoEdit`** (`local_video_edit_launcher.dart`) — bottom sheet **Device media** vs **Browse files** → **`POST /uploads/videos`** → **`EditVideoScreen.upload`**. Edit is available even when the downloads list is empty.
+- **`launchLocalVideoEdit`** (`local_video_edit_launcher.dart`) — bottom sheet **Device media** vs **Browse files** → **`POST /uploads/videos`** → **`EditVideoScreen.upload`**.
 - **Models:** **`SelectedLocalVideo`**, **`LocalVideoPickKind`** (`features/edit/local_video/selected_local_video.dart`); picker helpers (`local_video_pickers.dart`). Large-file pre-check when **`sizeBytes`** is known; gallery **`content:`** URIs copied to temp via **`openRead`** stream (no full-file memory buffer).
 
 ### Phase C4 — pending
 
 - **C4:** QA, RTL polish, release APK pass.
 
-## Phase D — pending
+### Phase D1 — Home quick actions & tabs (implemented in repo)
 
-- Preview polish, QA pass across upload + download sources; optional orphan DB cleanup if upload rows outlive deleted files.
+- **`HomeQuickActions`**: “What would you like to do?” + **Paste link** (from web) + **Edit video** (from device → **`launchLocalVideoEdit`**).
+- **Tabs:** **Downloads** / **Edits**; Downloads keeps **`RefreshIndicator`**, **`DownloadCard`**, per-card Quick Edit and all existing actions.
+
+### Phase D2 — local-only Edits history (implemented in repo)
+
+- **No** **`GET /edits`** list endpoint and **no** server-side edit history; retention and worker behavior unchanged.
+- **`LocalEditHistoryStore`** persists **small JSON metadata** under app **support** (`local_edit_history_v1.json`, cap **500** rows); entries reference the **existing** on-device output path under app **`documents/edits/`** (no second copy of the MP4).
+- History rows are recorded **only after** **`FileDownloadService.downloadEditedOutput`** succeeds (same moment the edit screen gets `_outputPath`).
+- **`HomeEditsTab`** reads metadata + checks **`File.exists`**: **Open** / **Share** / **Save** (Android **Save** hidden once published to public Downloads); missing files show as **“Deleted locally”** / **נמחק מקומית** with no actions (optional **Remove from list** in the overflow menu).
+- **Filters** (by **`savedAt`**): Today, 2 days, **3 days (default)**, week, 2 weeks, month, Unlimited — all **local-only**.
+- **Display cap:** newest first, **~500MB** total size counted **only** for rows whose file still exists (does **not** delete files or trim metadata).
+
+## Phase D — remaining / later
+
+- Optional server-backed edit list if product wants cross-device history; preview polish, QA pass across upload + download sources; optional orphan DB cleanup if upload rows outlive deleted files.
 
 ---
 

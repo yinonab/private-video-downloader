@@ -278,6 +278,192 @@ abstract class AppLocalizations {
   /// **'Paste a link'**
   String get homePasteLinkButton;
 
+  /// No description provided for @homeQuickActionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you like to do?'**
+  String get homeQuickActionsTitle;
+
+  /// No description provided for @homeActionPasteLinkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste link'**
+  String get homeActionPasteLinkTitle;
+
+  /// No description provided for @homeActionPasteLinkSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'From the web'**
+  String get homeActionPasteLinkSubtitle;
+
+  /// No description provided for @homeActionEditVideoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit video'**
+  String get homeActionEditVideoTitle;
+
+  /// No description provided for @homeActionEditVideoSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'From device'**
+  String get homeActionEditVideoSubtitle;
+
+  /// No description provided for @homeTabDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
+  String get homeTabDownloads;
+
+  /// No description provided for @homeTabEdits.
+  ///
+  /// In en, this message translates to:
+  /// **'Edits'**
+  String get homeTabEdits;
+
+  /// No description provided for @homeNoEditsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No edits yet'**
+  String get homeNoEditsTitle;
+
+  /// No description provided for @homeNoEditsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit a video from your device or from an existing download, and your edits will appear here.'**
+  String get homeNoEditsSubtitle;
+
+  /// No description provided for @editsFilterToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get editsFilterToday;
+
+  /// No description provided for @editsFilterTwoDays.
+  ///
+  /// In en, this message translates to:
+  /// **'2 days'**
+  String get editsFilterTwoDays;
+
+  /// No description provided for @editsFilterThreeDays.
+  ///
+  /// In en, this message translates to:
+  /// **'3 days'**
+  String get editsFilterThreeDays;
+
+  /// No description provided for @editsFilterWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Week'**
+  String get editsFilterWeek;
+
+  /// No description provided for @editsFilterTwoWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'2 weeks'**
+  String get editsFilterTwoWeeks;
+
+  /// No description provided for @editsFilterMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get editsFilterMonth;
+
+  /// No description provided for @editsFilterUnlimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited'**
+  String get editsFilterUnlimited;
+
+  /// No description provided for @editsDeletedLocally.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted locally'**
+  String get editsDeletedLocally;
+
+  /// No description provided for @editsFromDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'From device'**
+  String get editsFromDevice;
+
+  /// No description provided for @editsFromDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'From download'**
+  String get editsFromDownload;
+
+  /// No description provided for @editsFileUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'File unavailable'**
+  String get editsFileUnavailable;
+
+  /// No description provided for @editsOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get editsOpen;
+
+  /// No description provided for @editsShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get editsShare;
+
+  /// No description provided for @editsSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get editsSave;
+
+  /// No description provided for @editsNoItemsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No edits yet'**
+  String get editsNoItemsTitle;
+
+  /// No description provided for @editsNoItemsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit a video from your device or from an existing download, and your edits will appear here.'**
+  String get editsNoItemsSubtitle;
+
+  /// No description provided for @editsRemoveFromHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from list'**
+  String get editsRemoveFromHistory;
+
+  /// No description provided for @deleteEditFromApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete from app'**
+  String get deleteEditFromApp;
+
+  /// No description provided for @deleteEditFromAppTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this edit from the app?'**
+  String get deleteEditFromAppTitle;
+
+  /// No description provided for @deleteEditFromAppBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This will remove the edit from history and app storage. Files you saved to your device will not be deleted.'**
+  String get deleteEditFromAppBody;
+
+  /// No description provided for @removeEditFromList.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from list'**
+  String get removeEditFromList;
+
+  /// No description provided for @editedVideoFallbackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edited video'**
+  String get editedVideoFallbackTitle;
+
   /// No description provided for @homeInvalidLink.
   ///
   /// In en, this message translates to:

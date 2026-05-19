@@ -28,6 +28,7 @@ dependencies:
   flutter_animate: ^4.5.2
   lucide_icons_flutter: ^3.0.5
   video_player: ^2.9.5
+  video_thumbnail: ^0.5.3
   flutter_svg: ^2.2.0
   image_picker: ^1.1.2
   file_picker: ^8.1.6

@@ -13,7 +13,6 @@ import "../../core/models/download_models.dart";
 import "../../core/models/quick_edit_models.dart";
 import "../../core/utils/url_utils.dart";
 import "../../core/theme/linkclip_palette.dart";
-import "../../core/widgets/app_button.dart";
 import "../../core/widgets/error_view.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
 import "../../core/widgets/loading_view.dart";
@@ -25,6 +24,8 @@ import "../edit/quick_edit_launch.dart";
 import "../edit/local_video_edit_launcher.dart";
 import "../settings/settings_screen.dart";
 import "download_card.dart";
+import "home_edits_tab.dart";
+import "home_quick_actions.dart";
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,11 +34,13 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   bool _busy = false;
   bool _first = true;
   Object? _err;
   List<DownloadItem> _items = [];
+
+  late TabController _tabController;
 
   Future<void> _load() async {
     final svc = AppScope.read(context).downloadService;
@@ -174,9 +177,23 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onHomeTabChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _load();
     });
+  }
+
+  void _onHomeTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onHomeTabChanged);
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -189,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final hasError = _err != null;
     final listReady = !_first && !_busy && !hasError;
     final hasItems = listReady && _items.isNotEmpty;
-    final isEmpty = listReady && _items.isEmpty;
+    final showPasteFab = listReady && hasItems && _tabController.index == 0;
 
     return DecoratedBox(
       decoration: linkClipPageGradientDecoration(context),
@@ -213,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-      floatingActionButton: hasItems
+      floatingActionButton: showPasteFab
           ? FloatingActionButton.extended(
               onPressed: _pasteDialog,
               icon: Icon(LucideIcons.link2, color: scheme.onPrimary),
@@ -232,32 +249,48 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Padding(
-                      padding: EdgeInsets.fromLTRB(16, 12, 16, hasItems ? 6 : 12),
-                      child: _HomeHeroCard(
-                        compact: hasItems,
-                        showTip: isEmpty,
-                        showPrimaryButton: isEmpty,
-                        onPaste: _pasteDialog,
-                        onBannerEdit: () {
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                      child: HomeQuickActions(
+                        onPasteLink: _pasteDialog,
+                        onEditVideo: () {
                           unawaited(launchLocalVideoEdit(context));
                         },
                       ),
                     ),
-                    if (hasItems) ...[
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-                        child: Text(
-                          l10n.homeRecentDownloads,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.2,
-                            color: scheme.onSurface,
-                          ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicatorColor: scheme.primary,
+                        labelColor: scheme.primary,
+                        unselectedLabelColor: scheme.onSurfaceVariant,
+                        indicatorWeight: 3,
+                        labelStyle: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
                         ),
+                        unselectedLabelStyle: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        tabs: [
+                          Tab(text: l10n.homeTabDownloads),
+                          Tab(text: l10n.homeTabEdits),
+                        ],
                       ),
-                    ],
+                    ),
                     Expanded(
-                      child: isEmpty ? _HomeEmptyIllustration(l10n: l10n, scheme: scheme, theme: theme) : _buildList(context),
+                      child: TabBarView(
+                        controller: _tabController,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          _buildDownloadsTab(context),
+                          HomeEditsTab(
+                            editHistory: AppScope.read(context).editHistory,
+                            onEditVideo: () {
+                              unawaited(launchLocalVideoEdit(context));
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -265,8 +298,28 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildList(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom + 112;
+  Widget _buildDownloadsTab(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final l10n = context.l10n;
+    final hasItems = _items.isNotEmpty;
+    final reserveFab = hasItems && _tabController.index == 0;
+    final bottomInset = MediaQuery.of(context).padding.bottom + (reserveFab ? 112 : 28);
+
+    if (!hasItems) {
+      return RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(16, 8, 16, bottomInset),
+          children: [
+            const SizedBox(height: 8),
+            _HomeEmptyIllustration(l10n: l10n, scheme: scheme, theme: theme),
+          ],
+        ),
+      );
+    }
+
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.builder(
@@ -317,152 +370,6 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     );
-  }
-}
-
-class _HomeHeroCard extends StatelessWidget {
-  const _HomeHeroCard({
-    required this.compact,
-    required this.showTip,
-    required this.showPrimaryButton,
-    required this.onPaste,
-    this.onBannerEdit,
-  });
-
-  final bool compact;
-  final bool showTip;
-  final bool showPrimaryButton;
-  final VoidCallback onPaste;
-  final VoidCallback? onBannerEdit;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final palette = context.lcPalette;
-    final dark = theme.brightness == Brightness.dark;
-
-    final card = DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            scheme.surface,
-            Color.alphaBlend(
-              scheme.primaryContainer.withValues(alpha: dark ? 0.22 : 0.14),
-              scheme.surface,
-            ),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: scheme.outline.withValues(alpha: dark ? 0.55 : 0.38)),
-        boxShadow: dark ? const <BoxShadow>[] : palette.cardShadows,
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(compact ? 16 : 22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        scheme.primaryContainer.withValues(alpha: dark ? 0.65 : 1),
-                        scheme.primaryContainer.withValues(alpha: dark ? 0.35 : 0.72),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: scheme.primary.withValues(alpha: 0.14)),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(compact ? 10 : 12),
-                    child: Icon(LucideIcons.circlePlay, color: scheme.primary, size: compact ? 24 : 28),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    l10n.homeHeroTitle,
-                    style: compact
-                        ? theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                            color: scheme.onSurface,
-                          )
-                        : theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.4,
-                            color: scheme.onSurface,
-                          ),
-                  ),
-                ),
-                if (onBannerEdit != null)
-                  TextButton(
-                    onPressed: onBannerEdit,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.only(left: 4),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(l10n.downloadCardEdit),
-                  ),
-              ],
-            ),
-            SizedBox(height: compact ? 8 : 12),
-            Text(
-              compact ? l10n.homeHeroSubtitleCompact : l10n.homeHeroSubtitle,
-              style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
-            ),
-            if (showTip) ...[
-              const SizedBox(height: 14),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer.withValues(alpha: 0.45),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: scheme.primary.withValues(alpha: 0.12)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(LucideIcons.sparkles, size: 20, color: scheme.primary),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          l10n.homeShareTip,
-                          style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant, height: 1.4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-            if (showPrimaryButton) ...[
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: PremiumGradientCta(
-                  label: l10n.homePasteLinkButton,
-                  icon: Icon(LucideIcons.clipboardPaste),
-                  onPressed: onPaste,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-    return card
-        .animate()
-        .fadeIn(duration: 280.ms, curve: Curves.easeOut)
-        .slideY(begin: 0.06, end: 0, duration: 300.ms, curve: Curves.easeOut);
   }
 }
 

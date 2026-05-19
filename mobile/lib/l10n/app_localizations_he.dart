@@ -100,6 +100,102 @@ class AppLocalizationsHe extends AppLocalizations {
   String get homePasteLinkButton => 'הדבק קישור';
 
   @override
+  String get homeQuickActionsTitle => 'מה תרצה לעשות?';
+
+  @override
+  String get homeActionPasteLinkTitle => 'הדבק קישור';
+
+  @override
+  String get homeActionPasteLinkSubtitle => 'מהרשת';
+
+  @override
+  String get homeActionEditVideoTitle => 'ערוך סרטון';
+
+  @override
+  String get homeActionEditVideoSubtitle => 'מהמכשיר';
+
+  @override
+  String get homeTabDownloads => 'הורדות';
+
+  @override
+  String get homeTabEdits => 'עריכות';
+
+  @override
+  String get homeNoEditsTitle => 'עדיין אין עריכות';
+
+  @override
+  String get homeNoEditsSubtitle =>
+      'ערוך סרטון מהמכשיר או מתוך הורדה קיימת, והעריכות שלך יופיעו כאן.';
+
+  @override
+  String get editsFilterToday => 'היום';
+
+  @override
+  String get editsFilterTwoDays => 'יומיים';
+
+  @override
+  String get editsFilterThreeDays => '3 ימים';
+
+  @override
+  String get editsFilterWeek => 'שבוע';
+
+  @override
+  String get editsFilterTwoWeeks => 'שבועיים';
+
+  @override
+  String get editsFilterMonth => 'חודש';
+
+  @override
+  String get editsFilterUnlimited => 'ללא הגבלה';
+
+  @override
+  String get editsDeletedLocally => 'נמחק מקומית';
+
+  @override
+  String get editsFromDevice => 'מהמכשיר';
+
+  @override
+  String get editsFromDownload => 'מהורדה';
+
+  @override
+  String get editsFileUnavailable => 'הקובץ לא זמין';
+
+  @override
+  String get editsOpen => 'פתח';
+
+  @override
+  String get editsShare => 'שתף';
+
+  @override
+  String get editsSave => 'שמור';
+
+  @override
+  String get editsNoItemsTitle => 'עדיין אין עריכות';
+
+  @override
+  String get editsNoItemsSubtitle =>
+      'ערוך סרטון מהמכשיר או מתוך הורדה קיימת, והעריכות שלך יופיעו כאן.';
+
+  @override
+  String get editsRemoveFromHistory => 'הסר מהרשימה';
+
+  @override
+  String get deleteEditFromApp => 'מחק מהאפליקציה';
+
+  @override
+  String get deleteEditFromAppTitle => 'למחוק את העריכה מהאפליקציה?';
+
+  @override
+  String get deleteEditFromAppBody =>
+      'הקובץ יוסר מהיסטוריית העריכות ומהאחסון של האפליקציה. קבצים ששמרת למכשיר לא יימחקו.';
+
+  @override
+  String get removeEditFromList => 'הסר מהרשימה';
+
+  @override
+  String get editedVideoFallbackTitle => 'סרטון ערוך';
+
+  @override
   String get homeInvalidLink => 'הקישור לא תקין.';
 
   @override

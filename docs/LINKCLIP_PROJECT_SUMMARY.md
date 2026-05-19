@@ -16,7 +16,7 @@ Polished technical overview of the **private-video-downloader** / **LinkClip** r
 
 ## 1. Project Overview
 
-**LinkClip** is an Android-first MVP that lets users **analyze** a shared or pasted video URL, **download** media via a backend worker, then **open**, **share**, or **save** files locally. **Quick Edit** runs **on the server** (ffmpeg): trim, crop/aspect ratio, mute, compress — not on-device ffmpeg.
+**LinkClip** is an Android-first MVP that lets users **analyze** a shared or pasted video URL, **download** media via a backend worker, **edit** videos from links or from the device (**Downloads** / **Edits** areas on Home), then **open**, **share**, or **save** files locally. **Quick Edit** runs **on the server** (ffmpeg): trim, crop/aspect ratio, mute, compress — not on-device ffmpeg.
 
 | Layer | Technology |
 |-------|------------|
@@ -46,9 +46,9 @@ Verified **in repository / documented flows** (operators still run their own QA)
 | YouTube / JS challenges | Node + `yt-dlp-ejs`; `--no-js-runtimes --js-runtimes node` (`YTDLP_JS_RUNTIME_ARGS`) |
 | Admin diagnostics | `GET /admin/diagnostics` (JSON + optional `?format=text`, optional `?deep=true`) — see `backend/docs/ADMIN_DIAGNOSTICS.md` |
 | Media cleanup | Separate **cleanup** container; **two-tier** retention on `/app/storage`: `devices/*/uploads/*` uses **`UPLOAD_RETENTION_MINUTES`** (default **120**); all **other** files use **`MEDIA_RETENTION_MINUTES`** (default **30**) — see `backend/docker-compose.prod.yml` |
-| Local video uploads | **Phase A/B** APIs + **Phase C3** Android: Home banner **Edit** → bottom sheet (**Device media** / **Browse files**) → **`POST /uploads/videos`** → **`EditVideoScreen.upload`**. Limits **175MB / 7min**; **not** listed on Home downloads. |
+| Local video uploads | **Phase A/B** APIs + Android **`launchLocalVideoEdit`**. Home surfaces **Edit video** (device) beside **Paste link** (web); **Edits** tab lists **local-only** edited outputs (metadata JSON + **`documents/edits/`** paths), **not** a server list API. Limits **175MB / 7min**; **not** listed on Home downloads. |
 | Quick Edit backend | `POST /edits` ( **`sourceDownloadJobId`** *xor* **`sourceUploadId`** + **`operations`** ), `GET /edits/:id` (optional **`sourceKind`**, **`sourceUploadId`**), `GET /edits/:id/file`, `POST /edits/:id/retry` (`backend/src/modules/edit/`) |
-| Quick Edit Android | `EditVideoScreen` (**download** vs **upload** [`EditVideoSourceRef`]), **`launchLocalVideoEdit`** + **`image_picker`** / **`file_picker`**, preview (`EditVideoPreviewSource`), export (`mobile/lib/features/edit/`) |
+| Quick Edit Android | Home **Paste link** / **Edit video** quick actions + **Downloads** / **Edits** tabs (**Edits** = local edit history: filters, ~500MB display cap, missing-file UX); `EditVideoScreen` (**download** vs **upload** [`EditVideoSourceRef`]), **`launchLocalVideoEdit`**, **`image_picker`** / **`file_picker`**, preview (`EditVideoPreviewSource`), export (`mobile/lib/features/edit/`), `LocalEditHistoryStore` (`mobile/lib/core/edit_history/`) |
 | Source expiry / redownload | UI sheet + `forceNew` on recreate download (see §7) |
 | Threads | **Blocked** in analyze with explicit error (see §8 / §12) |
 

@@ -3,6 +3,7 @@ import "dart:io" show Platform;
 import "package:flutter/material.dart";
 
 import "core/app_scope.dart";
+import "core/edit_history/local_edit_history_store.dart";
 import "core/config/build_flags.dart";
 import "core/models/device_models.dart";
 import "core/network/api_client.dart";
@@ -28,12 +29,14 @@ final class BootstrapCoordinator {
 
   final LocalSession session = LocalSession();
   late final ApiClient api = ApiClient(session: session);
+  final LocalEditHistoryStore editHistory = LocalEditHistoryStore();
 
   ShareIntentService? _shareBridge;
 
   Future<void> bootstrap() async {
     regDebugPrint("app bootstrap started");
     await session.bootstrap();
+    await editHistory.hydrate();
 
     _shareBridge = ShareIntentService(
       navigatorKey: navigatorKey,
@@ -213,6 +216,7 @@ class _PrivateDownloaderAppState extends State<PrivateDownloaderApp> {
           downloadService: DownloadService(c.api),
           analyzeService: AnalyzeService(c.api),
           files: fileSvc,
+          editHistory: c.editHistory,
           child: MaterialApp(
             navigatorKey: c.navigatorKey,
             debugShowCheckedModeBanner: false,

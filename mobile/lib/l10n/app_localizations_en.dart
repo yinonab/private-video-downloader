@@ -102,6 +102,102 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homePasteLinkButton => 'Paste a link';
 
   @override
+  String get homeQuickActionsTitle => 'What would you like to do?';
+
+  @override
+  String get homeActionPasteLinkTitle => 'Paste link';
+
+  @override
+  String get homeActionPasteLinkSubtitle => 'From the web';
+
+  @override
+  String get homeActionEditVideoTitle => 'Edit video';
+
+  @override
+  String get homeActionEditVideoSubtitle => 'From device';
+
+  @override
+  String get homeTabDownloads => 'Downloads';
+
+  @override
+  String get homeTabEdits => 'Edits';
+
+  @override
+  String get homeNoEditsTitle => 'No edits yet';
+
+  @override
+  String get homeNoEditsSubtitle =>
+      'Edit a video from your device or from an existing download, and your edits will appear here.';
+
+  @override
+  String get editsFilterToday => 'Today';
+
+  @override
+  String get editsFilterTwoDays => '2 days';
+
+  @override
+  String get editsFilterThreeDays => '3 days';
+
+  @override
+  String get editsFilterWeek => 'Week';
+
+  @override
+  String get editsFilterTwoWeeks => '2 weeks';
+
+  @override
+  String get editsFilterMonth => 'Month';
+
+  @override
+  String get editsFilterUnlimited => 'Unlimited';
+
+  @override
+  String get editsDeletedLocally => 'Deleted locally';
+
+  @override
+  String get editsFromDevice => 'From device';
+
+  @override
+  String get editsFromDownload => 'From download';
+
+  @override
+  String get editsFileUnavailable => 'File unavailable';
+
+  @override
+  String get editsOpen => 'Open';
+
+  @override
+  String get editsShare => 'Share';
+
+  @override
+  String get editsSave => 'Save';
+
+  @override
+  String get editsNoItemsTitle => 'No edits yet';
+
+  @override
+  String get editsNoItemsSubtitle =>
+      'Edit a video from your device or from an existing download, and your edits will appear here.';
+
+  @override
+  String get editsRemoveFromHistory => 'Remove from list';
+
+  @override
+  String get deleteEditFromApp => 'Delete from app';
+
+  @override
+  String get deleteEditFromAppTitle => 'Delete this edit from the app?';
+
+  @override
+  String get deleteEditFromAppBody =>
+      'This will remove the edit from history and app storage. Files you saved to your device will not be deleted.';
+
+  @override
+  String get removeEditFromList => 'Remove from list';
+
+  @override
+  String get editedVideoFallbackTitle => 'Edited video';
+
+  @override
   String get homeInvalidLink => 'Invalid link.';
 
   @override

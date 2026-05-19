@@ -33,6 +33,14 @@ import "widgets/trim_editor.dart";
 
 enum _FlowPhase { composing, working, done, failed }
 
+String? _firstNonEmptyTrimmed(String? a, String? b) {
+  final x = a?.trim();
+  if (x != null && x.isNotEmpty) return x;
+  final y = b?.trim();
+  if (y != null && y.isNotEmpty) return y;
+  return null;
+}
+
 /// Quick Edit: compose ops → POST `/edits` → poll → download MP4.
 ///
 /// **Phase C3:** after `ApiClient.uploadVideo`, open the editor with [EditVideoScreen.upload].
@@ -341,6 +349,40 @@ class _EditVideoScreenState extends State<EditVideoScreen>
             suggestedBasename: d.outputFilename,
           );
       if (!mounted) return;
+
+      final outputBasename = p.basename(path);
+
+      final String? originalTitleDl = widget.source.kind == EditVideoSourceKind.download
+          ? _firstNonEmptyTrimmed(_detail?.title, widget.source.title)
+          : null;
+
+      final String? uploadDisplayName = widget.source.kind == EditVideoSourceKind.upload
+          ? _firstNonEmptyTrimmed(
+              widget.source.title,
+              widget.source.localPreviewPath != null
+                  ? p.basename(widget.source.localPreviewPath!)
+                  : null,
+            )
+          : null;
+
+      final sourceKindStr =
+          widget.source.kind == EditVideoSourceKind.download ? "download" : "upload";
+
+      await AppScope.read(context).editHistory.recordCompletedEdit(
+        editJobId: id,
+        localFilePath: path,
+        sourceKind: sourceKindStr,
+        title: outputBasename,
+        completedAtIso: d.completedAt,
+        durationSeconds: widget.source.durationSeconds,
+        width: widget.source.width,
+        height: widget.source.height,
+        originalSourceTitle: originalTitleDl,
+        sourceDisplayFilename: uploadDisplayName,
+        platform: widget.source.kind == EditVideoSourceKind.download ? _detail?.platform : null,
+      );
+
+      if (!mounted) return;
       setState(() {
         _outputPath = path;
         _phase = _FlowPhase.done;
@@ -556,6 +598,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
           shareDisplayName: p.basename(path),
         );
     if (!mounted) return;
+    final jid = _editJobId?.trim();
+    if (ok && jid != null && jid.isNotEmpty) {
+      await AppScope.read(context).editHistory.markPublishedToPublicDownloads(jid);
+    }
     final stillOnDisk = await internalFile.exists();
     final messengerText =
         ok || stillOnDisk ? l10n.editSavedToDownloads(displayPath) : l10n.editSaveFailed;
