@@ -154,6 +154,7 @@
   "errorJobNotFound": "Download not found.",
   "errorFileNotFound": "File not found.",
   "errorAnalyzeFailed": "Could not analyze the link.",
+  "errorDrmProtected": "This link can't be downloaded because the content is DRM-protected.",
   "errorThreadsUnsupported": "Threads links are not supported for download yet. Try an Instagram, TikTok, Facebook, or YouTube link.",
   "errorPlatformUnsupported": "This link is not supported for download yet. Try an Instagram, TikTok, Facebook, or YouTube link.",
   "errorAnalyzeMetadataUnavailable": "Could not load format options for this video. The link may be restricted or temporarily unavailable.",

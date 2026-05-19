@@ -47,6 +47,8 @@ String formatDownloadJobError(AppLocalizations l10n, String raw) {
       return l10n.downloadJobErrorQuality;
     case "LINKCLIP_ERR_QUALITY_FALLBACK_FAILED":
       return l10n.downloadErrorGeneric;
+    case "DRM_PROTECTED":
+      return l10n.errorDrmProtected;
     case "NORMALIZE_FAILED":
       return l10n.downloadJobErrorNormalizeFailed;
   }

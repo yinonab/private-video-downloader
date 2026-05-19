@@ -5,6 +5,7 @@ import fsPromises from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { config } from "../config";
+import { codes } from "../types/errors";
 import { logger } from "./logger";
 
 export interface YtdlpFormatRow {
@@ -219,6 +220,7 @@ export type YtdlpStderrKind =
   | "network_error"
   | "unsupported_url"
   | "format_unavailable"
+  | "drm_protected"
   | "unknown";
 
 export class YtdlpMetadataError extends Error {
@@ -259,8 +261,22 @@ export function stderrIndicatesFacebookCannotParseData(stderr: string): boolean 
   return /cannot parse data/i.test(stderr);
 }
 
+/** Detects yt-dlp DRM / not-supported extractor failures (stderr). Not a bypass signal. */
+export function stderrIndicatesDrmProtection(stderr: string): boolean {
+  if (stderr.includes("[DRM]")) return true;
+  const s = stderr.toLowerCase();
+  if (s.includes("known to use drm protection")) return true;
+  if (s.includes("it will not be supported")) return true;
+  if (s.includes("drm protection")) return true;
+  return false;
+}
+
 export function classifyYtDlpStderr(stderr: string): YtdlpStderrKind {
   const s = stderr.toLowerCase();
+
+  if (stderrIndicatesDrmProtection(stderr)) {
+    return "drm_protected";
+  }
 
   if (/requested format is not available/i.test(s)) {
     return "format_unavailable";
@@ -562,6 +578,9 @@ export function formatDownloadFailureMessage(
   platformLabel: string
 ): string {
   const tail = stderrTail.trim();
+  if (stderrIndicatesDrmProtection(tail)) {
+    return codes.DRM_PROTECTED;
+  }
   if (stderrMeansUnavailableFormat(tail)) {
     return attemptedFallback ? LINKCLIP_ERR_QUALITY_FALLBACK_FAILED : LINKCLIP_ERR_QUALITY_UNAVAILABLE;
   }

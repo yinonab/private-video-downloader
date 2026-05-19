@@ -249,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
                       child: HomeQuickActions(
                         onPasteLink: _pasteDialog,
                         onEditVideo: () {
@@ -258,23 +258,49 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
-                      child: TabBar(
-                        controller: _tabController,
-                        indicatorColor: scheme.primary,
-                        labelColor: scheme.primary,
-                        unselectedLabelColor: scheme.onSurfaceVariant,
-                        indicatorWeight: 3,
-                        labelStyle: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
+                      padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
+                      child: Material(
+                        color: scheme.surfaceContainerHighest.withValues(
+                          alpha: theme.brightness == Brightness.dark ? 0.52 : 0.92,
                         ),
-                        unselectedLabelStyle: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
+                        borderRadius: BorderRadius.circular(14),
+                        clipBehavior: Clip.antiAlias,
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: TabBar(
+                            controller: _tabController,
+                            dividerHeight: 0,
+                            dividerColor: Colors.transparent,
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            splashBorderRadius: BorderRadius.circular(10),
+                            indicator: BoxDecoration(
+                              color: scheme.primary,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: scheme.primary.withValues(alpha: 0.28),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            labelColor: scheme.onPrimary,
+                            unselectedLabelColor:
+                                scheme.onSurface.withValues(alpha: 0.58),
+                            labelStyle: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.15,
+                            ),
+                            unselectedLabelStyle:
+                                theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                            tabs: [
+                              Tab(text: l10n.homeTabDownloads),
+                              Tab(text: l10n.homeTabEdits),
+                            ],
+                          ),
                         ),
-                        tabs: [
-                          Tab(text: l10n.homeTabDownloads),
-                          Tab(text: l10n.homeTabEdits),
-                        ],
                       ),
                     ),
                     Expanded(

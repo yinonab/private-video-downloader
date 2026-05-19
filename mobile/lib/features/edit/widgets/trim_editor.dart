@@ -260,13 +260,18 @@ class _TrimEditorState extends State<TrimEditor> {
         Row(
           children: [
             Expanded(
-                child: _MetricRow(
-                    label: l10n.editTrimStart,
-                    value: formatTrimDurationUi(lo))),
+              child: _MetricRow(
+                label: l10n.editTrimStart,
+                value: formatTrimDurationUi(lo),
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
-                child: _MetricRow(
-                    label: l10n.editTrimEnd, value: formatTrimDurationUi(hi))),
+              child: _MetricRow(
+                label: l10n.editTrimEnd,
+                value: formatTrimDurationUi(hi),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -378,46 +383,47 @@ class _RangeArrowRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final rtl = Directionality.of(context) == TextDirection.rtl;
     final chip = BoxDecoration(
       color: scheme.primaryContainer.withValues(alpha: 0.45),
       borderRadius: BorderRadius.circular(12),
       border: Border.all(color: scheme.primary.withValues(alpha: 0.35)),
     );
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: chip,
-              child: Text(
-                startLabel,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w800),
-              ),
+    // Ambient text direction: RTL lays out Row right-to-start → start chip on the right, end on the left.
+    // Arrow points along the trim timeline (toward end): right in LTR, left in RTL.
+    final arrowIcon =
+        rtl ? Icons.arrow_back_rounded : Icons.arrow_forward_rounded;
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: chip,
+            child: Text(
+              startLabel,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelLarge
+                  ?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Icon(Icons.arrow_forward_rounded,
-                color: scheme.primary, size: 28),
-          ),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: chip,
-              child: Text(
-                endLabel,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w800),
-              ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Icon(arrowIcon, color: scheme.primary, size: 28),
+        ),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: chip,
+            child: Text(
+              endLabel,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelLarge
+                  ?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

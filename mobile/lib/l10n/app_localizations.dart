@@ -836,6 +836,12 @@ abstract class AppLocalizations {
   /// **'Could not analyze the link.'**
   String get errorAnalyzeFailed;
 
+  /// No description provided for @errorDrmProtected.
+  ///
+  /// In en, this message translates to:
+  /// **'This link can\'t be downloaded because the content is DRM-protected.'**
+  String get errorDrmProtected;
+
   /// No description provided for @errorThreadsUnsupported.
   ///
   /// In en, this message translates to:

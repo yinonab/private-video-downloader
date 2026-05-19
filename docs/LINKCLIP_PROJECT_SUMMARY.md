@@ -101,6 +101,7 @@ Verified **in repository / documented flows** (operators still run their own QA)
 
 - `POST /analyze` — URL safety (including **Threads** rejection), platform detection, yt-dlp metadata path.
 - Rate limiting: **`ANALYZE_DAILY_LIMIT`** (default `200` in example env).
+- **DRM-protected sources:** When yt-dlp stderr indicates DRM (e.g. Spotify track URLs), analyze returns HTTP **422**, code **`DRM_PROTECTED`**, with a non-technical English message (no raw stderr). Operational Slack uses classification **`drm_protected`**, host only, same error code. LinkClip does **not** attempt DRM bypass or Spotify track downloads.
 
 #### Facebook fallback (HTML / embedded JSON → direct CDN MP4)
 
@@ -129,6 +130,7 @@ Verified **in repository / documented flows** (operators still run their own QA)
 - Poll: `GET /downloads/:id`, list `GET /downloads`.
 - File: `GET /downloads/:id/file` (authenticated stream).
 - Responses expose **`sourceUrl`** (from linked URL) where applicable for client redownload flows (`download.service.ts`).
+- **DRM failures:** If the download worker hits yt-dlp DRM stderr, the job error field stores **`DRM_PROTECTED`** (machine-readable token); Slack classification **`drm_protected`** / error code **`DRM_PROTECTED`** (host only in Slack body—no full URL, no stderr). BullMQ jobs already use **`attempts: 1`** for downloads.
 
 ### Quick Edit
 
@@ -170,6 +172,7 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 ### Errors
 
 - Central **`AppError`** / **`codes`** in `backend/src/types/errors.ts`; Flutter maps known codes via `mobile/lib/core/models/api_error.dart` and l10n.
+- **`DRM_PROTECTED`** — DRM-blocked yt-dlp flows (e.g. Spotify); Flutter **`errorDrmProtected`** (EN/HE).
 
 ---
 

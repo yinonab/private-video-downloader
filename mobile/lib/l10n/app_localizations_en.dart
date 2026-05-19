@@ -401,6 +401,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorAnalyzeFailed => 'Could not analyze the link.';
 
   @override
+  String get errorDrmProtected =>
+      'This link can\'t be downloaded because the content is DRM-protected.';
+
+  @override
   String get errorThreadsUnsupported =>
       'Threads links are not supported for download yet. Try an Instagram, TikTok, Facebook, or YouTube link.';
 

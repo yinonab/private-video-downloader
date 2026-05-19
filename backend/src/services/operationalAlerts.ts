@@ -186,6 +186,8 @@ function downloadErrorCodeForClassification(
       return "DOWNLOAD_UNSUPPORTED_URL";
     case "format_unavailable":
       return "DOWNLOAD_FORMAT_UNAVAILABLE";
+    case "drm_protected":
+      return codes.DRM_PROTECTED;
     default:
       return codes.DOWNLOAD_FAILED;
   }
@@ -227,6 +229,13 @@ export function notifyDownloadWorkerFailed(opts: {
 
   const errorCode = downloadErrorCodeForClassification(opts.classification, opts.facebookDirectFallback);
 
+  const defaultDownloadHint =
+    opts.classification === "drm_protected"
+      ? "DRM-protected source — not supported; no bypass attempted."
+      : opts.facebookDirectFallback
+        ? "Check Facebook direct fallback / CDN availability."
+        : "Check yt-dlp stderr in logs, cookies/session, or platform status.";
+
   notifyOperationalAlert({
     alertType: "download_failed",
     cooldownTier: "generic",
@@ -238,11 +247,7 @@ export function notifyDownloadWorkerFailed(opts: {
     jobId: opts.jobId,
     deviceIdPrefix: devicePrefix,
     errorCode,
-    actionHint:
-      opts.actionHint ??
-      (opts.facebookDirectFallback
-        ? "Check Facebook direct fallback / CDN availability."
-        : "Check yt-dlp stderr in logs, cookies/session, or platform status."),
+    actionHint: opts.actionHint ?? defaultDownloadHint,
   });
 }
 
@@ -270,6 +275,8 @@ export function notifyDownloadWorkerBullUncaught(opts: {
 
 export function analyzeErrorCodeForYtdlpClassification(c: YtdlpStderrKind): string {
   switch (c) {
+    case "drm_protected":
+      return codes.DRM_PROTECTED;
     case "unsupported_url":
       return codes.LINKCLIP_ERR_PLATFORM_UNSUPPORTED;
     case "format_unavailable":

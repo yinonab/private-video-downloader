@@ -31,37 +31,44 @@ class HomeQuickActions extends StatelessWidget {
           colors: [
             scheme.surface,
             Color.alphaBlend(
-              scheme.primary.withValues(alpha: dark ? 0.14 : 0.08),
+              scheme.primary.withValues(alpha: dark ? 0.07 : 0.045),
               scheme.surface,
             ),
           ],
         ),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: scheme.primary.withValues(alpha: dark ? 0.42 : 0.28),
-          width: 1.2,
+          color: scheme.outline.withValues(alpha: dark ? 0.38 : 0.26),
+          width: 1,
         ),
-        boxShadow: dark ? const <BoxShadow>[] : palette.cardShadows,
+        boxShadow: dark ? const <BoxShadow>[] : palette.cardShadows.map((s) {
+          return BoxShadow(
+            color: s.color.withValues(alpha: s.color.a * 0.45),
+            blurRadius: s.blurRadius * 0.65,
+            offset: Offset(s.offset.dx, s.offset.dy * 0.7),
+            spreadRadius: s.spreadRadius,
+          );
+        }).toList(),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               l10n.homeQuickActionsTitle,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.2,
-                color: scheme.onSurface,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.1,
+                color: scheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             LayoutBuilder(
               builder: (context, c) {
                 final narrow = c.maxWidth < 340;
-                final gap = 10.0;
+                final gap = 8.0;
                 final paste = _QuickActionTile(
                   icon: LucideIcons.link2,
                   title: l10n.homeActionPasteLinkTitle,
@@ -131,19 +138,19 @@ class _QuickActionTile extends StatelessWidget {
     final bg = emphasizePrimary
         ? LinearGradient(
             colors: [
-              accent.withValues(alpha: dark ? 0.42 : 0.58),
-              accent.withValues(alpha: dark ? 0.22 : 0.38),
+              accent.withValues(alpha: dark ? 0.32 : 0.42),
+              accent.withValues(alpha: dark ? 0.16 : 0.26),
             ],
           )
         : LinearGradient(
             colors: [
-              scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.55 : 0.72),
-              scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.38 : 0.55),
+              scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.48 : 0.62),
+              scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.34 : 0.48),
             ],
           );
 
     final borderColor =
-        emphasizePrimary ? accent.withValues(alpha: 0.55) : scheme.outline.withValues(alpha: 0.45);
+        emphasizePrimary ? accent.withValues(alpha: 0.42) : scheme.outline.withValues(alpha: 0.38);
 
     final titleColor = emphasizePrimary ? scheme.onPrimary : scheme.onSurface;
     final subColor = emphasizePrimary
@@ -152,24 +159,24 @@ class _QuickActionTile extends StatelessWidget {
 
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(14),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         child: Ink(
           decoration: BoxDecoration(
             gradient: bg,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: borderColor, width: emphasizePrimary ? 1.6 : 1),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: borderColor, width: emphasizePrimary ? 1.15 : 1),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, size: 22, color: titleColor),
-                const SizedBox(width: 10),
+                Icon(icon, size: 20, color: titleColor),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,19 +187,21 @@ class _QuickActionTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.w800,
-                          height: 1.15,
+                          height: 1.12,
                           color: titleColor,
+                          fontSize: (theme.textTheme.labelLarge?.fontSize ?? 14) * 0.98,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         subtitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: subColor,
-                          height: 1.25,
+                          height: 1.2,
                           fontWeight: FontWeight.w600,
+                          fontSize: (theme.textTheme.bodySmall?.fontSize ?? 12) * 0.97,
                         ),
                       ),
                     ],

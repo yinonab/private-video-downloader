@@ -81,6 +81,13 @@ function buildSyntheticFacebookYtdlpMeta(
 }
 
 function handleYtdlpAnalyzeError(err: YtdlpMetadataError, urlHost: string): never {
+  if (err.classification === "drm_protected") {
+    throw new AppError(
+      codes.DRM_PROTECTED,
+      "This link can't be downloaded because the content is DRM-protected.",
+      422
+    );
+  }
   if (err.classification === "unsupported_url") {
     if (hostnameIsThreads(urlHost)) {
       throw new AppError(
@@ -216,7 +223,10 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
           urlHost,
           classification: err.classification,
           errorCode: analyzeErrorCodeForYtdlpClassification(err.classification),
-          actionHint: "Check platform support or yt-dlp metadata path.",
+          actionHint:
+            err.classification === "drm_protected"
+              ? "DRM-protected source — not supported; no bypass attempted."
+              : "Check platform support or yt-dlp metadata path.",
         });
       }
       handleYtdlpAnalyzeError(err, urlHost);

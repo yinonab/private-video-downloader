@@ -361,6 +361,7 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
         const stderrClassification = facebookDirectFallback
           ? undefined
           : classifyYtDlpStderr(lastStderr);
+        const drmFailure = stderrClassification === "drm_protected";
         notifyDownloadWorkerFailed({
           jobId,
           deviceId,
@@ -368,7 +369,7 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
           platformLabel,
           classification: facebookDirectFallback ? "facebook_direct" : stderrClassification ?? "unknown",
           facebookDirectFallback,
-          stderrTail: facebookDirectFallback ? undefined : lastStderr,
+          stderrTail: facebookDirectFallback || drmFailure ? undefined : lastStderr,
           stderrClassification,
         });
         return;
