@@ -13,6 +13,10 @@ import { extractorToPlatform } from "../../services/platform";
 import { AppError, codes } from "../../types/errors";
 import { hashUrl } from "../../services/hashing";
 import { extractFacebookDirectMedia } from "../../services/facebookFallbackExtractor";
+import {
+  triggerFacebookNoMp4CandidatesAlert,
+  triggerYtDlpInstagramOperationalAlert,
+} from "../../services/operationalAlerts";
 
 const AVAILABLE_FORMATS_LEGACY = [
   { label: "Best MP4", value: "best", type: "video" },
@@ -128,12 +132,23 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
 
     logger.warn({ classification: err.classification, urlHost }, "analyze yt-dlp metadata failed");
 
+    triggerYtDlpInstagramOperationalAlert({
+      context: "analyze",
+      urlHost,
+      platformLabel: "unknown",
+      classification: err.classification,
+      stderrTail: err.stderrTail,
+    });
+
     const facebookParseFail =
       hostnameIsFacebook(urlHost) && stderrIndicatesFacebookCannotParseData(err.stderrTail);
 
     if (facebookParseFail) {
       const fb = await extractFacebookDirectMedia(normalized);
       if (!fb.ok) {
+        if (fb.reason === "no_mp4_candidates") {
+          triggerFacebookNoMp4CandidatesAlert({ context: "analyze", urlHost });
+        }
         throw new AppError(
           codes.FACEBOOK_EXTRACT_FAILED,
           "We couldn't read this Facebook video right now. This link may require special access or Facebook may be blocking access to it. Try another link or try again later.",

@@ -41,6 +41,7 @@ import {
   type DownloadFormatKind,
 } from "../services/ytdlp";
 import { logger } from "../services/logger";
+import { triggerYtDlpInstagramOperationalAlert } from "../services/operationalAlerts";
 
 function mimeForExt(ext: string): string {
   const e = ext.toLowerCase();
@@ -348,6 +349,21 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
           },
           "download failed"
         );
+        if (!facebookDirectFallback) {
+          let urlHost = "unknown";
+          try {
+            urlHost = new URL(url).hostname.toLowerCase();
+          } catch {
+            /* ignore */
+          }
+          triggerYtDlpInstagramOperationalAlert({
+            context: "worker",
+            urlHost,
+            platformLabel,
+            classification: classifyYtDlpStderr(lastStderr),
+            stderrTail: lastStderr,
+          });
+        }
         return;
       }
 

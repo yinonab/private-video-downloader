@@ -173,6 +173,13 @@ function resolveValidatedCookiesSourcePathSync(): string | null {
   return p;
 }
 
+/** True when COOKIES_FILE is set but yt-dlp cannot use it (missing/empty/invalid/too large). */
+export function cookiesFileConfiguredButUnusable(): boolean {
+  const configured = config.cookiesFile?.trim();
+  if (!configured) return false;
+  return resolveValidatedCookiesSourcePathSync() === null;
+}
+
 /**
  * Runs `fn` with `--cookies` pointing at a writable temp copy of the validated secrets file.
  * yt-dlp may update the cookie jar on exit; the read-only mount must never be passed directly.
@@ -274,7 +281,9 @@ export function classifyYtDlpStderr(stderr: string): YtdlpStderrKind {
     return "rate_limited";
   }
   if (
-    /login required|login page|registered users|authentication|use --cookies|cookies-from-browser/.test(s)
+    /login required|login page|registered users|authentication|use --cookies|cookies-from-browser|checkpoint|challenge|locked behind the login page/.test(
+      s
+    )
   ) {
     return "auth_required";
   }
@@ -513,7 +522,8 @@ export const LINKCLIP_ERR_INSTAGRAM_RESTRICTED = "LINKCLIP_ERR_INSTAGRAM_RESTRIC
 export const LINKCLIP_ERR_UNSUPPORTED_OR_PRIVATE = "LINKCLIP_ERR_UNSUPPORTED_OR_PRIVATE";
 export const LINKCLIP_ERR_GENERIC = "LINKCLIP_ERR_GENERIC";
 
-function platformLooksInstagram(platformLabel: string): boolean {
+/** yt-dlp / DB platform label maps to Instagram */
+export function platformLabelLooksInstagram(platformLabel: string): boolean {
   return platformLabel.toLowerCase().includes("instagram");
 }
 
@@ -528,6 +538,8 @@ export function stderrIndicatesInstagramRestricted(stderr: string): boolean {
     "requested content is not available",
     "use --cookies",
     "cookies-from-browser",
+    "checkpoint",
+    "challenge",
   ];
   return needles.some((n) => s.includes(n));
 }
@@ -553,7 +565,7 @@ export function formatDownloadFailureMessage(
   if (stderrMeansUnavailableFormat(tail)) {
     return attemptedFallback ? LINKCLIP_ERR_QUALITY_FALLBACK_FAILED : LINKCLIP_ERR_QUALITY_UNAVAILABLE;
   }
-  if (platformLooksInstagram(platformLabel) && stderrIndicatesInstagramRestricted(tail)) {
+  if (platformLabelLooksInstagram(platformLabel) && stderrIndicatesInstagramRestricted(tail)) {
     return LINKCLIP_ERR_INSTAGRAM_RESTRICTED;
   }
   if (stderrIndicatesUnsupportedOrPrivate(tail)) {

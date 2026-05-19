@@ -43,6 +43,7 @@ Verified **in repository / documented flows** (operators still run their own QA)
 | Analyze (`POST /analyze`) | Implemented + rate limits |
 | Downloads (create, poll, file stream, retry patterns) | Implemented |
 | Cookies for yt-dlp | Optional `COOKIES_FILE`; validated + writable copy pattern in `ytdlp.ts` |
+| Operational Slack alerts | Optional Incoming Webhook (`ALERTS_ENABLED`, `ALERT_CHANNEL=slack`, `SLACK_WEBHOOK_URL`, `ALERT_COOLDOWN_MINUTES`); **sanitized** payloads (hostname + classification only; no URLs, paths, cookies, tokens); **in-memory cooldown** per alert type + platform + host; triggered on classified Instagram yt-dlp failures during **analyze** / **download worker**, and optionally Facebook fallback **`no_mp4_candidates`** — see `backend/src/services/alert.service.ts`, `operationalAlerts.ts`. Test: `cd backend && npm run diag:alert`. |
 | YouTube / JS challenges | Node + `yt-dlp-ejs`; `--no-js-runtimes --js-runtimes node` (`YTDLP_JS_RUNTIME_ARGS`) |
 | Admin diagnostics | `GET /admin/diagnostics` (JSON + optional `?format=text`, optional `?deep=true`) — see `backend/docs/ADMIN_DIAGNOSTICS.md` |
 | Media cleanup | Separate **cleanup** container; **two-tier** retention on `/app/storage`: `devices/*/uploads/*` uses **`UPLOAD_RETENTION_MINUTES`** (default **120**); all **other** files use **`MEDIA_RETENTION_MINUTES`** (default **30**) — see `backend/docker-compose.prod.yml` |

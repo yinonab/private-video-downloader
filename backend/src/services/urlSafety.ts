@@ -30,6 +30,12 @@ function isPrivateIPv6(addr: string): boolean {
   return false;
 }
 
+/** instagram.com / www.instagram.com / m.instagram.com / l.instagram.com etc. */
+export function hostnameIsInstagram(hostname: string): boolean {
+  const h = hostname.trim().toLowerCase();
+  return h === "instagram.com" || h.endsWith(".instagram.com");
+}
+
 /** facebook.com / www.facebook.com / m.facebook.com / mbasic etc. */
 export function hostnameIsFacebook(hostname: string): boolean {
   const h = hostname.trim().toLowerCase();
