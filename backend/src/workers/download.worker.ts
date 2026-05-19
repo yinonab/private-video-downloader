@@ -41,7 +41,7 @@ import {
   type DownloadFormatKind,
 } from "../services/ytdlp";
 import { logger } from "../services/logger";
-import { triggerYtDlpInstagramOperationalAlert } from "../services/operationalAlerts";
+import { notifyDownloadWorkerBullUncaught, notifyDownloadWorkerFailed } from "../services/operationalAlerts";
 
 function mimeForExt(ext: string): string {
   const e = ext.toLowerCase();
@@ -211,6 +211,15 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
           }
         );
         logger.warn({ jobId, platform: platformLabel }, "facebook fallback — audio_mp3 not supported");
+        notifyDownloadWorkerFailed({
+          jobId,
+          deviceId,
+          url,
+          platformLabel,
+          classification: "facebook_audio_mp3_unsupported",
+          facebookDirectFallback: true,
+          actionHint: "User chose audio on Facebook fallback video — product limitation.",
+        });
         return;
       }
 
@@ -349,21 +358,19 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
           },
           "download failed"
         );
-        if (!facebookDirectFallback) {
-          let urlHost = "unknown";
-          try {
-            urlHost = new URL(url).hostname.toLowerCase();
-          } catch {
-            /* ignore */
-          }
-          triggerYtDlpInstagramOperationalAlert({
-            context: "worker",
-            urlHost,
-            platformLabel,
-            classification: classifyYtDlpStderr(lastStderr),
-            stderrTail: lastStderr,
-          });
-        }
+        const stderrClassification = facebookDirectFallback
+          ? undefined
+          : classifyYtDlpStderr(lastStderr);
+        notifyDownloadWorkerFailed({
+          jobId,
+          deviceId,
+          url,
+          platformLabel,
+          classification: facebookDirectFallback ? "facebook_direct" : stderrClassification ?? "unknown",
+          facebookDirectFallback,
+          stderrTail: facebookDirectFallback ? undefined : lastStderr,
+          stderrClassification,
+        });
         return;
       }
 
@@ -378,6 +385,15 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
           progress: null,
           error: LINKCLIP_ERR_UNSUPPORTED_OR_PRIVATE,
         });
+        notifyDownloadWorkerFailed({
+          jobId,
+          deviceId,
+          url,
+          platformLabel,
+          classification: "output_directory_unreadable",
+          facebookDirectFallback: false,
+          actionHint: "Cannot read device output directory — check storage volume permissions.",
+        });
         return;
       }
 
@@ -390,6 +406,15 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
           error: LINKCLIP_ERR_UNSUPPORTED_OR_PRIVATE,
         });
         logger.warn({ jobId, dir }, "download output file missing");
+        notifyDownloadWorkerFailed({
+          jobId,
+          deviceId,
+          url,
+          platformLabel,
+          classification: "output_file_missing",
+          facebookDirectFallback: false,
+          actionHint: "yt-dlp reported success but expected output file prefix is missing.",
+        });
         return;
       }
 
@@ -422,6 +447,15 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
           },
           "download output empty"
         );
+        notifyDownloadWorkerFailed({
+          jobId,
+          deviceId,
+          url,
+          platformLabel,
+          classification: "output_empty",
+          facebookDirectFallback: false,
+          actionHint: "Download produced a zero-byte candidate file.",
+        });
         return;
       }
 
@@ -586,6 +620,15 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
               },
               "ffmpeg normalize failed"
             );
+            notifyDownloadWorkerFailed({
+              jobId,
+              deviceId,
+              url,
+              platformLabel,
+              classification: "tiktok_normalize_failed",
+              facebookDirectFallback: false,
+              actionHint: "TikTok-ready ffmpeg normalization failed — inspect ffmpeg logs.",
+            });
             return;
           }
 
@@ -646,6 +689,15 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
               },
               "ffmpeg normalize rename to final asset failed"
             );
+            notifyDownloadWorkerFailed({
+              jobId,
+              deviceId,
+              url,
+              platformLabel,
+              classification: "tiktok_finalize_rename_failed",
+              facebookDirectFallback: false,
+              actionHint: "Could not move normalized temp file into place.",
+            });
             return;
           }
 
@@ -781,6 +833,14 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
 
   worker.on("failed", (job, err) => {
     logger.error({ jobId: job?.id, err }, "bullmq job failed");
+    const data = job?.data as QueuePayload | undefined;
+    if (data?.jobId && data.deviceId && data.url) {
+      notifyDownloadWorkerBullUncaught({
+        jobId: data.jobId,
+        deviceId: data.deviceId,
+        url: data.url,
+      });
+    }
   });
 
   return worker;

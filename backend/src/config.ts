@@ -52,6 +52,7 @@ export const config = {
   alertChannel: (process.env.ALERT_CHANNEL ?? "").trim().toLowerCase(),
   alertCooldownMinutes: parseCooldownMinutes(process.env.ALERT_COOLDOWN_MINUTES, 30),
   slackWebhookUrl: (process.env.SLACK_WEBHOOK_URL ?? "").trim(),
+  alertGenericCooldownMinutes: parseCooldownMinutes(process.env.ALERT_GENERIC_COOLDOWN_MINUTES, 5),
   storageDir: path.resolve(raw.STORAGE_DIR),
   cookiesFile: raw.COOKIES_FILE ? path.resolve(raw.COOKIES_FILE) : undefined,
   isDev: raw.NODE_ENV === "development",

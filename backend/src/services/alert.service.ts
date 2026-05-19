@@ -5,20 +5,29 @@
 import { config } from "../config";
 import { logger } from "./logger";
 
-export type OperationalAlertContext = "analyze" | "worker";
+export type OperationalAlertContext = "analyze" | "download_worker";
+
+export type OperationalAlertCooldownTier = "critical" | "generic";
 
 export type OperationalAlertPayload = {
-  /** Dedupe/cooldown key segment, e.g. instagram_rate_limited */
+  /** Dedupe bucket, e.g. analyze_failed, instagram_rate_limited */
   alertType: string;
-  /** Human-readable platform, e.g. Instagram */
+  cooldownTier: OperationalAlertCooldownTier;
+  /** Slack title line after emoji */
+  headline: string;
   platformLabel: string;
-  /** Classification / stderr bucket, no raw stderr */
+  /** Logical classification / stderr bucket — never raw stderr */
   classification: string;
   context: OperationalAlertContext;
   /** Hostname only (sanitized) */
   urlHost: string;
   actionHint: string;
-  /** Optional extra bullet lines (already sanitized, no paths/secrets) */
+  /** App / stable error code */
+  errorCode?: string;
+  jobId?: string;
+  /** Short prefix only — never full device token */
+  deviceIdPrefix?: string;
+  /** Optional extra lines (sanitized) */
   extraLines?: string[];
 };
 
@@ -39,31 +48,66 @@ function sanitizeHostname(raw: string): string {
   return s;
 }
 
-function slackCooldownKey(payload: OperationalAlertPayload): string {
+function sanitizeClassificationForDisplay(raw: string): string {
+  return raw.trim().replace(/\s+/g, "_").slice(0, 120) || "unknown";
+}
+
+function sanitizeErrorCode(raw: string): string {
+  const s = raw.trim().slice(0, 80);
+  if (!/^[a-zA-Z0-9_-]+$/.test(s)) return "UNKNOWN";
+  return s;
+}
+
+function sanitizeJobId(raw: string): string {
+  const s = raw.trim().slice(0, 40);
+  if (!/^[a-zA-Z0-9-]+$/.test(s)) return "redacted";
+  return s;
+}
+
+function sanitizeDevicePrefix(raw: string): string {
+  const s = raw.trim().toLowerCase().slice(0, 8);
+  if (!/^[a-z0-9]+$/.test(s)) return "????????";
+  return s;
+}
+
+/** Cooldown key: alertType + context + urlHost + classification (all sanitized). */
+export function slackCooldownKey(payload: OperationalAlertPayload): string {
   const type = sanitizeAlertToken(payload.alertType, 80);
-  const plat = sanitizeAlertToken(payload.platformLabel.replace(/\s+/g, "_"), 40);
+  const ctx = sanitizeAlertToken(payload.context, 40);
   const host = sanitizeHostname(payload.urlHost);
-  return `${type}|${plat}|${host}`;
+  const cls = sanitizeAlertToken(payload.classification.replace(/\s+/g, "_"), 80);
+  return `${type}|${ctx}|${host}|${cls}`;
+}
+
+function cooldownMsForTier(tier: OperationalAlertCooldownTier): number {
+  return tier === "critical"
+    ? config.alertCooldownMinutes * 60_000
+    : config.alertGenericCooldownMinutes * 60_000;
 }
 
 function buildSlackText(payload: OperationalAlertPayload): string {
   const host = sanitizeHostname(payload.urlHost);
-  const title =
-    payload.platformLabel.toLowerCase().includes("facebook") && payload.alertType.includes("facebook")
-      ? "LinkClip Facebook issue"
-      : payload.platformLabel.toLowerCase().includes("instagram") || payload.alertType.includes("instagram")
-        ? "LinkClip Instagram issue"
-        : "LinkClip operational alert";
-
   const lines = [
-    `🚨 ${title}`,
-    `Type: ${sanitizeAlertToken(payload.alertType, 80)}`,
-    `Platform: ${payload.platformLabel.trim().slice(0, 80)}`,
-    `Classification: ${sanitizeAlertToken(payload.classification.replace(/\s+/g, "_"), 80)}`,
+    `🚨 ${payload.headline.trim().slice(0, 120)}`,
     `Context: ${payload.context}`,
     `Host: ${host}`,
-    `Action: ${payload.actionHint.trim().slice(0, 500)}`,
   ];
+  const plat = payload.platformLabel.trim();
+  if (plat && plat !== "unknown") {
+    lines.push(`Platform: ${plat.slice(0, 80)}`);
+  }
+  lines.push(`Classification: ${sanitizeClassificationForDisplay(payload.classification)}`);
+  if (payload.errorCode) {
+    lines.push(`Error code: ${sanitizeErrorCode(payload.errorCode)}`);
+  }
+  if (payload.jobId) {
+    lines.push(`Job ID: ${sanitizeJobId(payload.jobId)}`);
+  }
+  if (payload.deviceIdPrefix) {
+    lines.push(`Device: ${sanitizeDevicePrefix(payload.deviceIdPrefix)}…`);
+  }
+  lines.push(`Action: ${payload.actionHint.trim().slice(0, 500)}`);
+  lines.push(`Time: ${new Date().toISOString()}`);
   if (payload.extraLines?.length) {
     for (const raw of payload.extraLines) {
       const line = raw.trim().slice(0, 400);
@@ -101,7 +145,7 @@ async function deliverOperationalAlert(payload: OperationalAlertPayload): Promis
   if (channel !== "slack") {
     if (!warnedUnknownChannel && channel) {
       warnedUnknownChannel = true;
-      logger.warn({ alertChannel: channel }, "ALERT_CHANNEL is set but only \"slack\" is supported; alerts disabled");
+      logger.warn({ alertChannel: channel }, 'ALERT_CHANNEL is set but only "slack" is supported; alerts disabled');
     }
     return;
   }
@@ -117,11 +161,11 @@ async function deliverOperationalAlert(payload: OperationalAlertPayload): Promis
 
   const key = slackCooldownKey(payload);
   const now = Date.now();
-  const cooldownMs = config.alertCooldownMinutes * 60_000;
+  const cooldownMs = cooldownMsForTier(payload.cooldownTier);
   const until = cooldownUntilMs.get(key) ?? 0;
   if (now < until) {
     logger.info(
-      { cooldownKey: key, alertType: payload.alertType, urlHost: sanitizeHostname(payload.urlHost) },
+      { cooldownKey: key, cooldownTier: payload.cooldownTier, alertType: payload.alertType, urlHost: sanitizeHostname(payload.urlHost) },
       "operational alert suppressed (cooldown)"
     );
     return;

@@ -7,15 +7,23 @@ import {
   type YtdlpFormatRow,
   type YtdlpVideoInfo,
 } from "../../services/ytdlp";
-import { assertUrlSafeForFetch, hostnameIsFacebook, hostnameIsThreads, normalizeUrl } from "../../services/urlSafety";
+import {
+  assertUrlSafeForFetch,
+  hostnameIsFacebook,
+  hostnameIsThreads,
+  normalizeUrl,
+} from "../../services/urlSafety";
 import { logger } from "../../services/logger";
 import { extractorToPlatform } from "../../services/platform";
 import { AppError, codes } from "../../types/errors";
 import { hashUrl } from "../../services/hashing";
 import { extractFacebookDirectMedia } from "../../services/facebookFallbackExtractor";
 import {
-  triggerFacebookNoMp4CandidatesAlert,
-  triggerYtDlpInstagramOperationalAlert,
+  analyzeErrorCodeForYtdlpClassification,
+  notifyAnalyzeFailedGeneric,
+  notifyFacebookNoMp4CandidatesAlert,
+  safeHostFromUrlString,
+  tryNotifyInstagramYtDlpCritical,
 } from "../../services/operationalAlerts";
 
 const AVAILABLE_FORMATS_LEGACY = [
@@ -98,11 +106,22 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
   try {
     normalized = normalizeUrl(urlRaw);
   } catch (e) {
-    if (e instanceof AppError) throw e;
+    const host = safeHostFromUrlString(urlRaw);
+    if (e instanceof AppError) {
+      notifyAnalyzeFailedGeneric({
+        urlHost: host,
+        classification: "invalid_url",
+        errorCode: e.code,
+      });
+      throw e;
+    }
+    notifyAnalyzeFailedGeneric({
+      urlHost: host,
+      classification: "invalid_url",
+      errorCode: codes.INVALID_URL,
+    });
     throw new AppError(codes.INVALID_URL, "Invalid URL", 400);
   }
-
-  await assertUrlSafeForFetch(normalized);
 
   let urlHost = "unknown";
   try {
@@ -111,7 +130,27 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
     /* ignore */
   }
 
+  try {
+    await assertUrlSafeForFetch(normalized);
+  } catch (e) {
+    if (e instanceof AppError) {
+      notifyAnalyzeFailedGeneric({
+        urlHost,
+        classification: "url_safety_blocked",
+        errorCode: e.code,
+        actionHint: "Private IP, blocked host, or DNS policy rejected this URL.",
+      });
+    }
+    throw e;
+  }
+
   if (hostnameIsThreads(urlHost)) {
+    notifyAnalyzeFailedGeneric({
+      urlHost,
+      classification: "threads_unsupported",
+      errorCode: codes.LINKCLIP_ERR_THREADS_UNSUPPORTED,
+      actionHint: "Threads links are blocked by product policy.",
+    });
     throw new AppError(
       codes.LINKCLIP_ERR_THREADS_UNSUPPORTED,
       "Threads links are not supported for download yet.",
@@ -127,12 +166,18 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
   } catch (err) {
     if (!(err instanceof YtdlpMetadataError)) {
       logger.warn({ err }, "analyze unexpected failure");
+      notifyAnalyzeFailedGeneric({
+        urlHost,
+        classification: "unexpected_metadata_error",
+        errorCode: codes.ANALYZE_FAILED,
+        actionHint: "Non-yt-dlp error during metadata fetch — inspect logs.",
+      });
       throw new AppError(codes.ANALYZE_FAILED, "Could not analyze URL", 502);
     }
 
     logger.warn({ classification: err.classification, urlHost }, "analyze yt-dlp metadata failed");
 
-    triggerYtDlpInstagramOperationalAlert({
+    const instagramNotified = tryNotifyInstagramYtDlpCritical({
       context: "analyze",
       urlHost,
       platformLabel: "unknown",
@@ -147,7 +192,15 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
       const fb = await extractFacebookDirectMedia(normalized);
       if (!fb.ok) {
         if (fb.reason === "no_mp4_candidates") {
-          triggerFacebookNoMp4CandidatesAlert({ context: "analyze", urlHost });
+          notifyFacebookNoMp4CandidatesAlert({ context: "analyze", urlHost });
+        } else {
+          notifyAnalyzeFailedGeneric({
+            urlHost,
+            classification: "facebook_fallback_failed",
+            errorCode: codes.FACEBOOK_EXTRACT_FAILED,
+            platformLabel: "facebook",
+            actionHint: "Facebook HTML fallback failed — inspect extractor logs.",
+          });
         }
         throw new AppError(
           codes.FACEBOOK_EXTRACT_FAILED,
@@ -158,6 +211,14 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
       meta = buildSyntheticFacebookYtdlpMeta(normalized, fb);
       usedFacebookFallback = true;
     } else {
+      if (!instagramNotified) {
+        notifyAnalyzeFailedGeneric({
+          urlHost,
+          classification: err.classification,
+          errorCode: analyzeErrorCodeForYtdlpClassification(err.classification),
+          actionHint: "Check platform support or yt-dlp metadata path.",
+        });
+      }
       handleYtdlpAnalyzeError(err, urlHost);
     }
   }
