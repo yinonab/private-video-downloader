@@ -257,13 +257,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
-                      child: Material(
-                        color: scheme.surfaceContainerHighest.withValues(
-                          alpha: theme.brightness == Brightness.dark ? 0.52 : 0.92,
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerHighest.withValues(
+                            alpha: theme.brightness == Brightness.dark ? 0.42 : 0.6,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: scheme.outline.withValues(alpha: theme.brightness == Brightness.dark ? 0.42 : 0.45),
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(14),
-                        clipBehavior: Clip.antiAlias,
                         child: Padding(
                           padding: const EdgeInsets.all(4),
                           child: TabBar(
@@ -271,28 +275,35 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             dividerHeight: 0,
                             dividerColor: Colors.transparent,
                             indicatorSize: TabBarIndicatorSize.tab,
-                            splashBorderRadius: BorderRadius.circular(10),
+                            splashBorderRadius: BorderRadius.circular(11),
+                            labelPadding:
+                                const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                             indicator: BoxDecoration(
-                              color: scheme.primary,
-                              borderRadius: BorderRadius.circular(10),
+                              color: scheme.surface.withValues(
+                                alpha: theme.brightness == Brightness.dark ? 0.75 : 0.95,
+                              ),
+                              borderRadius: BorderRadius.circular(11),
+                              border: Border.all(color: scheme.primary.withValues(alpha: 0.32)),
                               boxShadow: [
                                 BoxShadow(
-                                  color: scheme.primary.withValues(alpha: 0.16),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
+                                  color: scheme.shadow.withValues(alpha: 0.12),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 1),
                                 ),
                               ],
                             ),
-                            labelColor: scheme.onPrimary,
+                            labelColor: scheme.onSurface.withValues(alpha: 0.95),
                             unselectedLabelColor:
-                                scheme.onSurface.withValues(alpha: 0.58),
+                                scheme.onSurfaceVariant.withValues(alpha: 0.62),
                             labelStyle: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.15,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.1,
+                              fontSize: (theme.textTheme.titleSmall?.fontSize ?? 15) * 0.96,
                             ),
-                            unselectedLabelStyle:
-                                theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
+                            unselectedLabelStyle: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0,
+                              fontSize: (theme.textTheme.titleSmall?.fontSize ?? 15) * 0.94,
                             ),
                             tabs: [
                               Tab(text: l10n.homeTabDownloads),
@@ -426,18 +437,18 @@ class _HomeEmptyIllustration extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(26),
+              padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
-                color: scheme.primaryContainer.withValues(alpha: 0.35),
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
                 shape: BoxShape.circle,
               ),
-              child: Icon(LucideIcons.video, size: 52, color: scheme.primary),
+              child: Icon(LucideIcons.video, size: 44, color: scheme.primary.withValues(alpha: 0.55)),
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 20),
             Text(
               l10n.homeEmptyTitle,
               textAlign: TextAlign.center,
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, color: scheme.onSurface),
+              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: scheme.onSurface),
             ),
             const SizedBox(height: 10),
             Text(

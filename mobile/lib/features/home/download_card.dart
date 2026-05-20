@@ -16,7 +16,7 @@ import "../../core/widgets/linkclip_chips.dart";
 import "../../core/widgets/linkclip_network_thumbnail.dart";
 import "../../l10n/app_localizations.dart";
 
-/// Compact download row: one primary action; overflow menu, long-press sheet, and swipe shortcuts.
+/// Compact download row: one primary action, overflow menu, long‑press sheet, restrained icon swipe shortcuts.
 class DownloadCard extends StatelessWidget {
   const DownloadCard({
     super.key,
@@ -40,11 +40,9 @@ class DownloadCard extends StatelessWidget {
   final VoidCallback? onShareLocal;
   final bool localFileExists;
 
-  /// When true and [onQuickEdit] is set, offers Quick Edit for finished jobs (menu / gestures).
   final bool showQuickEdit;
   final VoidCallback? onQuickEdit;
 
-  /// When non-null and small, card fades/slides in subtly (list performance cap).
   final int? listAnimationIndex;
 
   static String? _fmtBytes(int? b) {
@@ -60,7 +58,14 @@ class DownloadCard extends StatelessWidget {
     return "$s ${u[i]}";
   }
 
-  static const double _thumbW = 102;
+  static const double _thumbW = 92;
+
+  /// Restrained swipe pane (~0.24–0.32 of card width depending on icon count).
+  static double _swipeExtentRatio(int actionCount) {
+    if (actionCount <= 0) return 0;
+    final raw = 0.068 * actionCount + 0.11;
+    return math.min(0.32, math.max(0.22, raw));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,12 +103,14 @@ class DownloadCard extends StatelessWidget {
       localFileExists: localFileExists,
     );
 
+    final primaryIsOpenLocal = done && localFileExists && onOpenLocal != null;
+
     final cardFace = Material(
-      color: scheme.surface.withValues(alpha: dark ? 0.92 : 1),
+      color: scheme.surface.withValues(alpha: dark ? 0.88 : 1),
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: scheme.outline.withValues(alpha: dark ? 0.28 : 0.2)),
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: scheme.outline.withValues(alpha: dark ? 0.38 : 0.28)),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -111,7 +118,7 @@ class DownloadCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 4, 10),
+            padding: const EdgeInsets.fromLTRB(10, 10, 2, 0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -121,102 +128,29 @@ class DownloadCard extends StatelessWidget {
                   onFallback: onOpenStatus,
                   child: _thumb(context),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
                       onTap: () {
                         HapticFeedback.lightImpact();
                         onOpenStatus();
                       },
-                      onLongPress: () {
-                        HapticFeedback.selectionClick();
-                        _showActionsSheet(
-                          context,
-                          entries: _sheetEntries(
-                            l10n: l10n,
-                            failedOrCanceled: failedOrCanceled,
-                            done: done,
-                          ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(14),
-                      splashColor: scheme.primary.withValues(alpha: 0.07),
+                      splashColor: scheme.primary.withValues(alpha: 0.06),
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(4, 2, 4, 2),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              titleLine,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: scheme.onSurface,
-                                height: 1.2,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    platformLine.toLowerCase(),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: scheme.onSurfaceVariant.withValues(alpha: 0.88),
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.2,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                LinkClipStatusChip(label: statusLabel, semantic: item.statusParsed.label),
-                              ],
-                            ),
-                            if (done && isTikTokJob) ...[
-                              const SizedBox(height: 6),
-                              Text(
-                                l10n.downloadChipTikTokReady,
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: palette.tiktokOnAccent.withValues(alpha: 0.78),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: (theme.textTheme.labelSmall?.fontSize ?? 11) * 0.95,
-                                ),
-                              ),
-                            ],
-                            if (item.active) ...[
-                              const SizedBox(height: 10),
-                              Builder(
-                                builder: (context) {
-                                  final pct = ui.determinatePercent ?? 0;
-                                  return BrandedProgressBar(
-                                    dense: true,
-                                    indeterminate: ui.showIndeterminateProgress,
-                                    value: ui.showDeterminateProgress ? pct / 100.0 : null,
-                                    percentLabel: ui.showDeterminateProgress ? l10n.progressPercent(pct) : null,
-                                    stageLabel: ui.progressStageTitle,
-                                    stageSubtitle: ui.progressStageSubtitle,
-                                  );
-                                },
-                              ),
-                            ],
-                            const SizedBox(height: 8),
-                            Text(
-                              [
-                                if (sizeStr != null) sizeStr,
-                                dateStr,
-                              ].join(" · "),
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: scheme.onSurfaceVariant.withValues(alpha: 0.82),
-                              ),
-                            ),
-                          ],
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                        child: Text(
+                          titleLine,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurface,
+                            height: 1.25,
+                            letterSpacing: -0.15,
+                          ),
                         ),
                       ),
                     ),
@@ -225,9 +159,9 @@ class DownloadCard extends StatelessWidget {
                 PopupMenuButton<String>(
                   tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                   onOpened: () => HapticFeedback.selectionClick(),
-                  icon: Icon(LucideIcons.ellipsisVertical, color: scheme.onSurfaceVariant, size: 22),
+                  icon: Icon(LucideIcons.ellipsisVertical, color: scheme.onSurfaceVariant.withValues(alpha: 0.9), size: 20),
                   onSelected: (k) {
                     HapticFeedback.lightImpact();
                     _handleMenuKey(
@@ -245,14 +179,109 @@ class DownloadCard extends StatelessWidget {
                     scheme: scheme,
                     failedOrCanceled: failedOrCanceled,
                     done: done,
+                    primaryIsOpenLocal: primaryIsOpenLocal,
                   ),
                 ),
               ],
             ),
           ),
+          Padding(
+            padding: EdgeInsetsDirectional.only(
+              start: 10 + _thumbW + 10,
+              end: 10,
+              top: 8,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  onOpenStatus();
+                },
+                onLongPress: () {
+                  HapticFeedback.selectionClick();
+                  _showActionsSheet(
+                    context,
+                    entries: _sheetEntries(
+                      l10n: l10n,
+                      failedOrCanceled: failedOrCanceled,
+                      done: done,
+                      hideOpenInSheet: primaryIsOpenLocal,
+                    ),
+                  );
+                },
+                splashColor: scheme.primary.withValues(alpha: 0.06),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              platformLine.toLowerCase(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: scheme.onSurfaceVariant.withValues(alpha: 0.92),
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.2,
+                                fontSize: (theme.textTheme.labelSmall?.fontSize ?? 11) * 0.98,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          LinkClipStatusChip(label: statusLabel, semantic: item.statusParsed.label),
+                        ],
+                      ),
+                      if (done && isTikTokJob) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          l10n.downloadChipTikTokReady,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: palette.tiktokOnAccent.withValues(alpha: 0.75),
+                            fontWeight: FontWeight.w500,
+                            fontSize: (theme.textTheme.labelSmall?.fontSize ?? 11) * 0.95,
+                          ),
+                        ),
+                      ],
+                      if (item.active) ...[
+                        const SizedBox(height: 8),
+                        Builder(
+                          builder: (context) {
+                            final pct = ui.determinatePercent ?? 0;
+                            return BrandedProgressBar(
+                              dense: true,
+                              indeterminate: ui.showIndeterminateProgress,
+                              value: ui.showDeterminateProgress ? pct / 100.0 : null,
+                              percentLabel: ui.showDeterminateProgress ? l10n.progressPercent(pct) : null,
+                              stageLabel: ui.progressStageTitle,
+                              stageSubtitle: ui.progressStageSubtitle,
+                            );
+                          },
+                        ),
+                      ],
+                      const SizedBox(height: 6),
+                      Text(
+                        [if (sizeStr != null) sizeStr, dateStr].join(" · "),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.72),
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
           if (primary != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
               child: _PrimaryCta(
                 label: primary.label,
                 icon: primary.icon,
@@ -263,35 +292,185 @@ class DownloadCard extends StatelessWidget {
       ),
     );
 
-    final actions = _slidableActions(
+    Widget layered = cardFace;
+    final swipeActions = _swipePaneChildren(
       context,
-      l10n: l10n,
+      l10n,
       scheme: scheme,
-      failedOrCanceled: failedOrCanceled,
+      dark: dark,
       done: done,
+      failedOrCanceled: failedOrCanceled,
+      onOpenStatus: onOpenStatus,
+      onRetry: onRetry,
+      onDelete: onDelete,
+      onShareLocal: onShareLocal,
+      onQuickEdit: onQuickEdit,
     );
-
-    Widget slidableChild = Slidable(
-      key: ValueKey<String>("slidable-${item.id}"),
-      groupTag: "home-downloads",
-      closeOnScroll: true,
-      endActionPane: ActionPane(
-        motion: const BehindMotion(),
-        extentRatio: math.min(0.52, 0.26 + actions.length * 0.11),
-        children: actions,
-      ),
-      child: cardFace,
-    );
+    if (swipeActions.isNotEmpty) {
+      layered = Slidable(
+        key: ValueKey<String>("download-slidable-${item.id}"),
+        groupTag: "home-downloads",
+        closeOnScroll: true,
+        endActionPane: ActionPane(
+          motion: const BehindMotion(),
+          extentRatio: _swipeExtentRatio(swipeActions.length),
+          dragDismissible: false,
+          children: swipeActions,
+        ),
+        child: cardFace,
+      );
+    }
 
     if (listAnimationIndex != null && listAnimationIndex! < 16) {
       final i = listAnimationIndex!;
-      slidableChild = slidableChild
-          .animate(delay: (i * 20).ms)
-          .fadeIn(duration: 210.ms, curve: Curves.easeOut)
-          .slideY(begin: 0.03, duration: 240.ms, curve: Curves.easeOutCubic);
+      return layered
+          .animate(delay: (i * 18).ms)
+          .fadeIn(duration: 200.ms, curve: Curves.easeOut)
+          .slideY(begin: 0.02, duration: 220.ms, curve: Curves.easeOutCubic);
     }
 
-    return slidableChild;
+    return layered;
+  }
+
+  List<Widget> _swipePaneChildren(
+    BuildContext context,
+    AppLocalizations l10n, {
+    required ColorScheme scheme,
+    required bool dark,
+    required bool done,
+    required bool failedOrCanceled,
+    required VoidCallback onOpenStatus,
+    required VoidCallback? onRetry,
+    required VoidCallback onDelete,
+    required VoidCallback? onShareLocal,
+    required VoidCallback? onQuickEdit,
+  }) {
+    final swipeNeutralBg = dark ? const Color(0xFF1B2433) : scheme.surfaceContainerHighest.withValues(alpha: 0.96);
+    final swipeNeutralIcon = dark ? const Color(0xFFA7B2C2) : scheme.onSurfaceVariant.withValues(alpha: 0.85);
+    final swipeAccentIcon = dark ? const Color(0xFFA9CCE6) : scheme.primary.withValues(alpha: 0.88);
+    final swipeDangerBg = dark ? const Color(0xFF3A2024) : Color.alphaBlend(const Color(0xFFC96B6B).withValues(alpha: 0.12), scheme.surface);
+    final swipeDangerIcon = const Color(0xFFC96B6B);
+
+    CustomSlidableAction iconSwipe({
+      required BuildContext outerContext,
+      required String tooltipMessage,
+      required IconData icon,
+      required VoidCallback invoke,
+      required Color bgColor,
+      required Color iconColor,
+    }) {
+      final pad =
+          EdgeInsetsDirectional.only(start: 4, end: 2, top: 9, bottom: 17).resolve(Directionality.of(outerContext));
+      return CustomSlidableAction(
+        flex: 1,
+        padding: pad,
+        backgroundColor: Colors.transparent,
+        autoClose: true,
+        onPressed: (_) {
+          HapticFeedback.lightImpact();
+          invoke();
+        },
+        child: Tooltip(
+          message: tooltipMessage,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: scheme.outline.withValues(alpha: dark ? 0.32 : 0.38)),
+            ),
+            child: Center(child: Icon(icon, size: 21, color: iconColor)),
+          ),
+        ),
+      );
+    }
+
+    if (item.active) {
+      return [
+        iconSwipe(
+          outerContext: context,
+          tooltipMessage: l10n.downloadCardStatusDetails,
+          icon: LucideIcons.info,
+          invoke: onOpenStatus,
+          bgColor: swipeNeutralBg,
+          iconColor: swipeNeutralIcon,
+        ),
+      ];
+    }
+
+    if (failedOrCanceled) {
+      final list = <Widget>[];
+      if (onRetry != null) {
+        list.add(iconSwipe(
+          outerContext: context,
+          tooltipMessage: l10n.downloadCardRetry,
+          icon: LucideIcons.rotateCw,
+          invoke: onRetry,
+          bgColor: swipeNeutralBg,
+          iconColor: swipeAccentIcon,
+        ));
+      }
+      list.add(iconSwipe(
+        outerContext: context,
+        tooltipMessage: l10n.downloadCardDelete,
+        icon: LucideIcons.trash2,
+        invoke: onDelete,
+        bgColor: swipeDangerBg,
+        iconColor: swipeDangerIcon,
+      ));
+      return list;
+    }
+
+    if (done) {
+      final list = <Widget>[];
+      if (localFileExists && onShareLocal != null) {
+        list.add(iconSwipe(
+          outerContext: context,
+          tooltipMessage: l10n.downloadShare,
+          icon: LucideIcons.share2,
+          invoke: onShareLocal,
+          bgColor: swipeNeutralBg,
+          iconColor: swipeAccentIcon,
+        ));
+      }
+      if (showQuickEdit && onQuickEdit != null) {
+        list.add(iconSwipe(
+          outerContext: context,
+          tooltipMessage: l10n.downloadCardEdit,
+          icon: LucideIcons.scissors,
+          invoke: onQuickEdit,
+          bgColor: swipeNeutralBg,
+          iconColor: swipeAccentIcon,
+        ));
+      }
+      list.add(iconSwipe(
+        outerContext: context,
+        tooltipMessage: l10n.downloadCardDelete,
+        icon: LucideIcons.trash2,
+        invoke: onDelete,
+        bgColor: swipeDangerBg,
+        iconColor: swipeDangerIcon,
+      ));
+      return list;
+    }
+
+    return [
+      iconSwipe(
+        outerContext: context,
+        tooltipMessage: l10n.downloadCardStatusDetails,
+        icon: LucideIcons.info,
+        invoke: onOpenStatus,
+        bgColor: swipeNeutralBg,
+        iconColor: swipeNeutralIcon,
+      ),
+      iconSwipe(
+        outerContext: context,
+        tooltipMessage: l10n.downloadCardDelete,
+        icon: LucideIcons.trash2,
+        invoke: onDelete,
+        bgColor: swipeDangerBg,
+        iconColor: swipeDangerIcon,
+      ),
+    ];
   }
 
   ({String label, IconData icon, VoidCallback onTap})? _primaryAction(
@@ -332,19 +511,18 @@ class DownloadCard extends StatelessWidget {
     required ColorScheme scheme,
     required bool failedOrCanceled,
     required bool done,
+    required bool primaryIsOpenLocal,
   }) {
     final out = <PopupMenuEntry<String>>[
       PopupMenuItem(value: "status", child: Text(l10n.downloadCardStatusDetails)),
-      if (done && !localFileExists)
-        PopupMenuItem(value: "save", child: Text(l10n.downloadSaveToDevice)),
-      if (done && localFileExists && onOpenLocal != null)
+      if (done && !localFileExists) PopupMenuItem(value: "save", child: Text(l10n.downloadSaveToDevice)),
+      if (done && localFileExists && onOpenLocal != null && !primaryIsOpenLocal)
         PopupMenuItem(value: "open", child: Text(l10n.downloadOpen)),
       if (done && localFileExists && onShareLocal != null)
         PopupMenuItem(value: "share", child: Text(l10n.downloadShare)),
       if (done && showQuickEdit && onQuickEdit != null)
         PopupMenuItem(value: "edit", child: Text(l10n.downloadCardEdit)),
-      if (failedOrCanceled && onRetry != null)
-        PopupMenuItem(value: "retry", child: Text(l10n.downloadCardRetry)),
+      if (failedOrCanceled && onRetry != null) PopupMenuItem(value: "retry", child: Text(l10n.downloadCardRetry)),
       const PopupMenuDivider(),
       PopupMenuItem(
         value: "del",
@@ -358,16 +536,13 @@ class DownloadCard extends StatelessWidget {
     required AppLocalizations l10n,
     required bool failedOrCanceled,
     required bool done,
+    required bool hideOpenInSheet,
   }) {
     return [
-      _SheetTile(
-        icon: LucideIcons.info,
-        label: l10n.downloadCardStatusDetails,
-        onTap: () => onOpenStatus(),
-      ),
+      _SheetTile(icon: LucideIcons.info, label: l10n.downloadCardStatusDetails, onTap: () => onOpenStatus()),
       if (done && !localFileExists)
         _SheetTile(icon: LucideIcons.smartphone, label: l10n.downloadSaveToDevice, onTap: () => onOpenStatus()),
-      if (done && localFileExists && onOpenLocal != null)
+      if (done && localFileExists && onOpenLocal != null && !hideOpenInSheet)
         _SheetTile(icon: LucideIcons.externalLink, label: l10n.downloadOpen, onTap: () => onOpenLocal!()),
       if (done && localFileExists && onShareLocal != null)
         _SheetTile(icon: LucideIcons.share2, label: l10n.downloadShare, onTap: () => onShareLocal!()),
@@ -383,119 +558,6 @@ class DownloadCard extends StatelessWidget {
         onTap: () => onDelete(),
       ),
     ];
-  }
-
-  List<Widget> _slidableActions(
-    BuildContext context, {
-    required AppLocalizations l10n,
-    required ColorScheme scheme,
-    required bool failedOrCanceled,
-    required bool done,
-  }) {
-    final active = item.active;
-    final beforeDelete = <Widget>[];
-
-    void addBeforeDelete(Widget w) {
-      if (beforeDelete.length < 2) beforeDelete.add(w);
-    }
-
-    if (active) {
-      addBeforeDelete(
-        SlidableAction(
-          onPressed: (_) {
-            HapticFeedback.lightImpact();
-            onOpenStatus();
-          },
-          backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.95),
-          foregroundColor: scheme.onSurface,
-          icon: Icons.info_outline_rounded,
-          label: l10n.downloadCardStatusDetails,
-        ),
-      );
-    } else if (failedOrCanceled && onRetry != null) {
-      addBeforeDelete(
-        SlidableAction(
-          onPressed: (_) {
-            HapticFeedback.lightImpact();
-            onRetry!();
-          },
-          backgroundColor: scheme.primaryContainer.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.85 : 1),
-          foregroundColor: scheme.onPrimaryContainer,
-          icon: Icons.refresh_rounded,
-          label: l10n.downloadCardRetry,
-        ),
-      );
-    } else if (done && !localFileExists) {
-      addBeforeDelete(
-        SlidableAction(
-          onPressed: (_) {
-            HapticFeedback.lightImpact();
-            onOpenStatus();
-          },
-          backgroundColor: scheme.secondaryContainer.withValues(alpha: 0.92),
-          foregroundColor: scheme.onSecondaryContainer,
-          icon: Icons.save_alt_rounded,
-          label: l10n.downloadSaveToDevice,
-        ),
-      );
-      if (showQuickEdit && onQuickEdit != null) {
-        addBeforeDelete(
-          SlidableAction(
-            onPressed: (_) {
-              HapticFeedback.lightImpact();
-              onQuickEdit!();
-            },
-            backgroundColor: scheme.tertiaryContainer.withValues(alpha: 0.92),
-            foregroundColor: scheme.onTertiaryContainer,
-            icon: Icons.content_cut_rounded,
-            label: l10n.downloadCardEdit,
-          ),
-        );
-      }
-    } else if (done && localFileExists) {
-      if (onShareLocal != null) {
-        addBeforeDelete(
-          SlidableAction(
-            onPressed: (_) {
-              HapticFeedback.lightImpact();
-              onShareLocal!();
-            },
-            backgroundColor: scheme.primaryContainer.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.55 : 0.95),
-            foregroundColor: scheme.onPrimaryContainer,
-            icon: Icons.share_rounded,
-            label: l10n.downloadShare,
-          ),
-        );
-      }
-      if (showQuickEdit && onQuickEdit != null) {
-        addBeforeDelete(
-          SlidableAction(
-            onPressed: (_) {
-              HapticFeedback.lightImpact();
-              onQuickEdit!();
-            },
-            backgroundColor: scheme.tertiaryContainer.withValues(alpha: 0.92),
-            foregroundColor: scheme.onTertiaryContainer,
-            icon: Icons.content_cut_rounded,
-            label: l10n.downloadCardEdit,
-          ),
-        );
-      }
-    }
-
-    final deleteAction = SlidableAction(
-      onPressed: (_) {
-        HapticFeedback.lightImpact();
-        onDelete();
-      },
-      backgroundColor: scheme.error,
-      foregroundColor: scheme.onError,
-      icon: Icons.delete_outline_rounded,
-      label: l10n.downloadCardDelete,
-    );
-
-    final actions = <Widget>[...beforeDelete, deleteAction];
-    return actions;
   }
 
   void _handleMenuKey(
@@ -544,7 +606,7 @@ class DownloadCard extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      backgroundColor: scheme.surfaceContainerHigh,
+      backgroundColor: scheme.surfaceContainerHighest,
       builder: (ctx) {
         return SafeArea(
           child: SingleChildScrollView(
@@ -556,7 +618,7 @@ class DownloadCard extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
                   child: Text(
                     l10n.downloadCardActionsTitle,
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ),
                 ...entries,
@@ -573,7 +635,7 @@ class DownloadCard extends StatelessWidget {
     final thumb = item.thumbnail;
     if (thumb != null && thumb.isNotEmpty) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: SizedBox(
           width: _thumbW,
           child: AspectRatio(
@@ -593,15 +655,18 @@ class DownloadCard extends StatelessWidget {
 
   Widget _ph(BuildContext context, {bool loading = false}) {
     final scheme = Theme.of(context).colorScheme;
-    final icon = loading ? _LucideSpinner(iconData: LucideIcons.loader, color: scheme.primary) : Icon(LucideIcons.video, color: scheme.onSurfaceVariant);
+    final icon =
+        loading ? _LucideSpinner(iconData: LucideIcons.loader, color: scheme.primary.withValues(alpha: 0.7)) : Icon(LucideIcons.video, color: scheme.onSurfaceVariant.withValues(alpha: 0.6));
     return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       child: SizedBox(
         width: _thumbW,
         child: AspectRatio(
           aspectRatio: 16 / 9,
           child: ColoredBox(
-            color: scheme.surfaceContainerHighest.withValues(alpha: 0.88),
+            color: scheme.surfaceContainerHighest.withValues(
+              alpha: Theme.of(context).brightness == Brightness.dark ? 0.72 : 0.55,
+            ),
             child: Center(child: icon),
           ),
         ),
@@ -628,7 +693,7 @@ class _ThumbnailTap extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
@@ -639,8 +704,8 @@ class _ThumbnailTap extends StatelessWidget {
             onFallback();
           }
         },
-        splashColor: scheme.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
+        splashColor: scheme.primary.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(12),
         child: child,
       ),
     );
@@ -661,28 +726,36 @@ class _PrimaryCta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+
+    final fill = Color.alphaBlend(scheme.primary.withValues(alpha: 0.18), scheme.surface);
+    final fg = scheme.primary;
+
     return SizedBox(
-      height: 46,
+      height: 40,
       width: double.infinity,
       child: FilledButton.icon(
         style: FilledButton.styleFrom(
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          backgroundColor: fill,
+          foregroundColor: fg,
           padding: const EdgeInsets.symmetric(horizontal: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         onPressed: () {
           HapticFeedback.lightImpact();
           onTap();
         },
-        icon: Icon(icon, size: 18, color: scheme.onPrimary),
+        icon: Icon(icon, size: 17, color: fg),
         label: Text(
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: scheme.onPrimary,
-                fontWeight: FontWeight.w800,
-              ),
+          style: theme.textTheme.labelLarge?.copyWith(
+                color: fg,
+                fontWeight: FontWeight.w600,
+              ) ??
+              TextStyle(color: fg, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -705,10 +778,10 @@ class _SheetTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final fg = destructive ? scheme.error : scheme.onSurface;
+    final fg = destructive ? scheme.error.withValues(alpha: 0.92) : scheme.onSurface;
     return ListTile(
-      leading: Icon(icon, color: fg),
-      title: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w600)),
+      leading: Icon(icon, size: 22, color: fg),
+      title: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w500)),
       onTap: () {
         Navigator.pop(context);
         HapticFeedback.lightImpact();

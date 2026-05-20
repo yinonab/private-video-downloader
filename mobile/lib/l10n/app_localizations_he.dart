@@ -45,7 +45,7 @@ class AppLocalizationsHe extends AppLocalizations {
   String get languageSectionTitle => 'שפה';
 
   @override
-  String get settingsLanguageRowTitle => '🌐 שפה';
+  String get settingsLanguageRowTitle => 'שפה';
 
   @override
   String get settingsLanguageRowSubtitle => 'בחירת שפת האפליקציה';

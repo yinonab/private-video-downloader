@@ -26,21 +26,21 @@ class LinkClipPremiumAppBar extends StatelessWidget implements PreferredSizeWidg
       centerTitle: true,
       title: DefaultTextStyle.merge(
         style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               letterSpacing: -0.35,
             ) ??
-            const TextStyle(fontWeight: FontWeight.w700),
+            const TextStyle(fontWeight: FontWeight.w600),
         child: title,
       ),
       actions: [
         for (final w in actions) Padding(padding: const EdgeInsetsDirectional.only(end: 2), child: w),
-        const SizedBox(width: 6),
+        const SizedBox(width: 4),
       ],
     );
   }
 }
 
-/// Pill-shaped toolbar control with soft surface / border (Lucide icons typically inside).
+/// Subtle toolbar control — restrained surface and compact hit target.
 class LinkClipToolbarIconButton extends StatelessWidget {
   const LinkClipToolbarIconButton({
     super.key,
@@ -60,17 +60,17 @@ class LinkClipToolbarIconButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: scheme.surface.withValues(alpha: dark ? 0.55 : 0.94),
+        color: scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.38 : 0.65),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: scheme.outline.withValues(alpha: dark ? 0.45 : 0.28)),
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: scheme.outline.withValues(alpha: dark ? 0.35 : 0.4)),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed,
           child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Icon(icon, size: 21, color: scheme.onSurface),
+            padding: const EdgeInsets.all(8),
+            child: Icon(icon, size: 20, color: scheme.onSurface.withValues(alpha: dark ? 0.9 : 0.82)),
           ),
         ),
       ),

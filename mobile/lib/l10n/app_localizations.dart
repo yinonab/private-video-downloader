@@ -173,7 +173,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsLanguageRowTitle.
   ///
   /// In en, this message translates to:
-  /// **'🌐 Language'**
+  /// **'Language'**
   String get settingsLanguageRowTitle;
 
   /// No description provided for @settingsLanguageRowSubtitle.

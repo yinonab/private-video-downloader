@@ -17,25 +17,22 @@ class HomeQuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final scheme = Theme.of(context).colorScheme;
 
     return LayoutBuilder(
       builder: (context, c) {
         final narrow = c.maxWidth < 320;
-        final paste = _CompactQuickButton(
+        final paste = _CompactQuickTile(
           icon: LucideIcons.link2,
           title: l10n.homeActionPasteLinkTitle,
           subtitle: l10n.homeActionPasteLinkSubtitle,
-          accent: scheme.primary,
-          filled: true,
+          emphasize: true,
           onTap: onPasteLink,
         );
-        final edit = _CompactQuickButton(
+        final edit = _CompactQuickTile(
           icon: LucideIcons.squarePen,
           title: l10n.homeActionEditVideoTitle,
           subtitle: l10n.homeActionEditVideoSubtitle,
-          accent: scheme.tertiary,
-          filled: false,
+          emphasize: false,
           onTap: onEditVideo,
         );
         final gap = narrow ? 8.0 : 10.0;
@@ -62,21 +59,19 @@ class HomeQuickActions extends StatelessWidget {
   }
 }
 
-class _CompactQuickButton extends StatelessWidget {
-  const _CompactQuickButton({
+class _CompactQuickTile extends StatelessWidget {
+  const _CompactQuickTile({
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.accent,
-    required this.filled,
+    required this.emphasize,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final Color accent;
-  final bool filled;
+  final bool emphasize;
   final VoidCallback onTap;
 
   @override
@@ -85,14 +80,14 @@ class _CompactQuickButton extends StatelessWidget {
     final scheme = theme.colorScheme;
     final dark = theme.brightness == Brightness.dark;
 
-    final border = scheme.outline.withValues(alpha: dark ? 0.26 : 0.22);
-    final bg = filled
-        ? Color.alphaBlend(accent.withValues(alpha: dark ? 0.14 : 0.1), scheme.surfaceContainerHighest)
-        : scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.42 : 0.72);
+    final accent = emphasize ? scheme.primary : scheme.onSurfaceVariant;
+    final bg = emphasize
+        ? scheme.primary.withValues(alpha: dark ? 0.1 : 0.08)
+        : scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.42 : 0.55);
 
-    final iconColor = filled ? accent : scheme.onSurfaceVariant;
-    final titleColor = scheme.onSurface;
-    final subColor = scheme.onSurfaceVariant.withValues(alpha: 0.82);
+    final borderColor = emphasize
+        ? scheme.primary.withValues(alpha: dark ? 0.24 : 0.22)
+        : scheme.outline.withValues(alpha: dark ? 0.32 : 0.35);
 
     return Material(
       color: Colors.transparent,
@@ -105,14 +100,14 @@ class _CompactQuickButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: bg,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: filled ? accent.withValues(alpha: dark ? 0.35 : 0.42) : border),
+            border: Border.all(color: borderColor),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(icon, size: 20, color: iconColor),
+                Icon(icon, size: 18, color: accent.withValues(alpha: emphasize ? (dark ? 0.92 : 0.88) : 0.75)),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -124,23 +119,23 @@ class _CompactQuickButton extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.2,
-                          height: 1.15,
-                          color: titleColor,
-                          fontSize: (theme.textTheme.titleSmall?.fontSize ?? 15) * 0.96,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.15,
+                          height: 1.12,
+                          color: scheme.onSurface.withValues(alpha: 0.95),
+                          fontSize: (theme.textTheme.titleSmall?.fontSize ?? 15) * 0.95,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
                         subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: subColor,
-                          height: 1.15,
-                          fontWeight: FontWeight.w500,
-                          fontSize: (theme.textTheme.bodySmall?.fontSize ?? 12) * 0.94,
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
+                          height: 1.12,
+                          fontWeight: FontWeight.w400,
+                          fontSize: (theme.textTheme.bodySmall?.fontSize ?? 12) * 0.95,
                         ),
                       ),
                     ],

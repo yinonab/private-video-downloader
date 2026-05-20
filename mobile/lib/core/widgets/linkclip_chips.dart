@@ -14,10 +14,12 @@ class LinkClipPlatformChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final display = label.trim().toLowerCase();
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return _PremiumChip(
       label: display.isEmpty ? "—" : display,
-      background: scheme.primaryContainer.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.42 : 0.72),
-      foreground: scheme.onPrimaryContainer,
+      background:
+          scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.75 : 0.88),
+      foreground: scheme.onSurfaceVariant.withValues(alpha: dark ? 0.95 : 0.88),
     );
   }
 }
@@ -38,21 +40,21 @@ class LinkClipStatusChip extends StatelessWidget {
     switch (semantic) {
       case DownloadUiStatusLabel.running:
       case DownloadUiStatusLabel.queued:
-        bg = scheme.primaryContainer.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.5 : 0.85);
-        fg = scheme.onPrimaryContainer;
+        bg = palette.tiktokAccentSoft.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.45 : 0.55);
+        fg = palette.tiktokOnAccent.withValues(alpha: 0.95);
         break;
       case DownloadUiStatusLabel.done:
-        bg = palette.successState.withValues(alpha: 0.14);
+        bg = palette.successMutedBg.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.85 : 0.94);
         fg = palette.successState;
         break;
       case DownloadUiStatusLabel.failed:
       case DownloadUiStatusLabel.canceled:
-        bg = scheme.error.withValues(alpha: 0.12);
-        fg = scheme.error;
+        bg = palette.dangerMutedBg.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.75 : 0.88);
+        fg = scheme.error.withValues(alpha: 0.88);
         break;
       case DownloadUiStatusLabel.unknown:
-        bg = scheme.surfaceContainerHighest.withValues(alpha: 0.9);
-        fg = scheme.onSurfaceVariant;
+        bg = scheme.surfaceContainerHighest.withValues(alpha: 0.65);
+        fg = scheme.onSurfaceVariant.withValues(alpha: 0.9);
         break;
     }
 
@@ -70,7 +72,7 @@ class LinkClipTikTokChip extends StatelessWidget {
     final palette = context.lcPalette;
     return _PremiumChip(
       label: label,
-      background: palette.tiktokAccentSoft.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.55 : 0.9),
+      background: palette.tiktokAccentSoft.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.5 : 0.65),
       foreground: palette.tiktokOnAccent,
     );
   }
@@ -89,19 +91,22 @@ class _PremiumChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(
-        label,
-        style: GoogleFonts.notoSans(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          height: 1.15,
-          color: foreground,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        child: Text(
+          label,
+          style: GoogleFonts.notoSans(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            height: 1.12,
+            letterSpacing: 0.08,
+            color: foreground,
+          ),
         ),
       ),
     );

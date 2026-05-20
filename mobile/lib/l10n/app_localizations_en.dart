@@ -45,7 +45,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageSectionTitle => 'Language';
 
   @override
-  String get settingsLanguageRowTitle => '🌐 Language';
+  String get settingsLanguageRowTitle => 'Language';
 
   @override
   String get settingsLanguageRowSubtitle => 'Choose app language';

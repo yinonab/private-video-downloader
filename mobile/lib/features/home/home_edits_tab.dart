@@ -164,33 +164,46 @@ class _HomeEditsTabState extends State<HomeEditsTab> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.fromLTRB(24, 48, 24, bottomPad),
                     children: [
-                      Icon(LucideIcons.squarePen, size: 52, color: scheme.primary.withValues(alpha: 0.65)),
-                      const SizedBox(height: 18),
-                      Text(
-                        l10n.editsNoItemsTitle,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: scheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        l10n.editsNoItemsSubtitle,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          height: 1.45,
-                        ),
-                      ),
-                      const SizedBox(height: 22),
-                      FilledButton.icon(
-                        onPressed: widget.onEditVideo,
-                        icon: Icon(LucideIcons.clapperboard, color: scheme.onPrimary),
-                        label: Text(l10n.homeActionEditVideoTitle),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(LucideIcons.squarePen, size: 44, color: scheme.primary.withValues(alpha: 0.45)),
+                            const SizedBox(height: 16),
+                            Text(
+                              l10n.editsNoItemsTitle,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              l10n.editsNoItemsSubtitle,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                                height: 1.45,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            FilledButton.tonal(
+                              onPressed: widget.onEditVideo,
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(LucideIcons.clapperboard, size: 18, color: scheme.primary),
+                                  const SizedBox(width: 8),
+                                  Text(l10n.homeActionEditVideoTitle),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -291,20 +304,13 @@ class _EditHistoryCard extends StatelessWidget {
 
     final card = DecoratedBox(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            scheme.surface,
-            Color.alphaBlend(scheme.primary.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.12 : 0.06), scheme.surface),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: scheme.outline.withValues(alpha: exists ? 0.38 : 0.22)),
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outline.withValues(alpha: exists ? 0.4 : 0.26)),
         boxShadow: Theme.of(context).brightness == Brightness.dark ? const <BoxShadow>[] : palette.cardShadows,
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -315,10 +321,10 @@ class _EditHistoryCard extends StatelessWidget {
                   item: item,
                   fileExists: exists,
                   editHistory: editHistory,
-                  borderRadius: BorderRadius.circular(14),
-                  size: 72,
+                  borderRadius: BorderRadius.circular(12),
+                  size: 68,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -327,30 +333,48 @@ class _EditHistoryCard extends StatelessWidget {
                         displayTitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, height: 1.22),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         df.format(item.savedAt),
-                        style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                        style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant.withValues(alpha: 0.9)),
                       ),
-                      if (!exists) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          l10n.editsDeletedLocally,
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: scheme.error,
-                            fontWeight: FontWeight.w800,
+                      if (!exists)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: palette.dangerMutedBg.withValues(alpha: theme.brightness == Brightness.dark ? 0.5 : 0.55),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: scheme.error.withValues(alpha: 0.22)),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              child: Text(
+                                l10n.editsDeletedLocally,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: scheme.error.withValues(alpha: 0.88),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ],
                     ],
                   ),
                 ),
                 PopupMenuButton<String>(
+                  tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
                   padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  icon: Icon(LucideIcons.ellipsisVertical, color: scheme.onSurfaceVariant.withValues(alpha: 0.9), size: 20),
                   onSelected: (v) async {
-                    if (v == "delete_app") {
+                    if (v == "share") {
+                      await _share(context, item.localFilePath);
+                    } else if (v == "save") {
+                      await _save(context, item);
+                    } else if (v == "delete_app") {
                       await _confirmDeleteFromApp(context);
                     } else if (v == "remove_meta") {
                       await editHistory.removeByEditJobId(item.editJobId);
@@ -360,8 +384,18 @@ class _EditHistoryCard extends StatelessWidget {
                     if (exists) {
                       return [
                         PopupMenuItem<String>(
+                          value: "share",
+                          child: Text(l10n.editsShare),
+                        ),
+                        if (Platform.isAndroid && !item.publishedToPublicDownloads)
+                          PopupMenuItem<String>(
+                            value: "save",
+                            child: Text(l10n.editsSave),
+                          ),
+                        const PopupMenuDivider(),
+                        PopupMenuItem<String>(
                           value: "delete_app",
-                          child: Text(l10n.deleteEditFromApp),
+                          child: Text(l10n.deleteEditFromApp, style: TextStyle(color: scheme.error, fontWeight: FontWeight.w600)),
                         ),
                       ];
                     }
@@ -372,37 +406,37 @@ class _EditHistoryCard extends StatelessWidget {
                       ),
                     ];
                   },
-                  child: Icon(Icons.more_vert_rounded, color: scheme.onSurfaceVariant),
                 ),
               ],
             ),
             if (chips.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Wrap(spacing: 8, runSpacing: 6, children: chips),
+              const SizedBox(height: 8),
+              Wrap(spacing: 7, runSpacing: 6, children: chips),
             ],
             if (exists) ...[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: () => _open(context, item.localFilePath),
-                    icon: Icon(LucideIcons.externalLink, size: 18, color: scheme.primary),
-                    label: Text(l10n.editsOpen),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 40,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    elevation: 0,
+                    backgroundColor:
+                        Color.alphaBlend(scheme.primary.withValues(alpha: 0.18), scheme.surface),
+                    foregroundColor: scheme.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  OutlinedButton.icon(
-                    onPressed: () => _share(context, item.localFilePath),
-                    icon: Icon(LucideIcons.share2, size: 18, color: scheme.primary),
-                    label: Text(l10n.editsShare),
-                  ),
-                  if (Platform.isAndroid && !item.publishedToPublicDownloads)
-                    OutlinedButton.icon(
-                      onPressed: () => _save(context, item),
-                      icon: Icon(LucideIcons.download, size: 18, color: scheme.primary),
-                      label: Text(l10n.editsSave),
+                  onPressed: () => _open(context, item.localFilePath),
+                  icon: Icon(LucideIcons.externalLink, size: 17, color: scheme.primary),
+                  label: Text(
+                    l10n.editsOpen,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: scheme.primary,
                     ),
-                ],
+                  ),
+                ),
               ),
             ],
           ],
@@ -410,7 +444,7 @@ class _EditHistoryCard extends StatelessWidget {
       ),
     );
 
-    return Opacity(opacity: exists ? 1 : 0.72, child: card);
+    return Opacity(opacity: exists ? 1 : 0.78, child: card);
   }
 
   static Widget _chip(ThemeData theme, ColorScheme scheme, String text) {
@@ -421,10 +455,10 @@ class _EditHistoryCard extends StatelessWidget {
         border: Border.all(color: scheme.outline.withValues(alpha: 0.28)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         child: Text(
           text,
-          style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant),
+          style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
         ),
       ),
     );
