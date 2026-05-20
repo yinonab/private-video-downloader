@@ -50,3 +50,12 @@ Widget languagePickerButton(BuildContext context, LocalSession session) {
     child: Text(context.l10n.languageSelectButton),
   );
 }
+
+/// Icon-only control for tight AppBars (e.g. registration).
+Widget languagePickerIconButton(BuildContext context, LocalSession session) {
+  return IconButton(
+    icon: const Icon(Icons.language_rounded),
+    tooltip: context.l10n.languageSectionTitle,
+    onPressed: () => showAppLanguagePicker(context, session),
+  );
+}

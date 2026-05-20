@@ -4,10 +4,25 @@ import "package:dio/dio.dart";
 import "package:flutter/foundation.dart";
 
 import "../models/api_error.dart";
+import "../utils/url_utils.dart";
 
-/// Production API URL baked into release APK via:
+/// Default API host when neither `--dart-define=API_BASE_URL=…` nor a valid saved URL exists (fresh install).
+const String kDefaultProductionApiBaseUrl = "https://api.linkclip.win";
+
+/// Optional compile-time override:
 /// `flutter build apk --release --dart-define=API_BASE_URL=https://your-service.onrender.com`
+///
+/// When empty, release builds still resolve to [kDefaultProductionApiBaseUrl] via [kEffectiveCompileDefaultApiBaseUrl].
 const String kApiBaseUrlFromDefine = String.fromEnvironment("API_BASE_URL", defaultValue: "");
+
+/// Normalized base URL for non-custom mode: `--dart-define` wins, otherwise packaged production default.
+String get kEffectiveCompileDefaultApiBaseUrl {
+  final baked = kApiBaseUrlFromDefine.trim();
+  if (baked.isNotEmpty) {
+    return UrlUtils.normalizeServerBase(baked);
+  }
+  return UrlUtils.normalizeServerBase(kDefaultProductionApiBaseUrl);
+}
 
 /// Enable verbose `### DOWNLOAD_DEBUG ###` logs (default off for production).
 const bool kDownloadDebugLogs = bool.fromEnvironment("DOWNLOAD_DEBUG_LOGS", defaultValue: false);

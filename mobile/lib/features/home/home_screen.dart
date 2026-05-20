@@ -1,7 +1,9 @@
 import "dart:async";
 
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:flutter_animate/flutter_animate.dart";
+import "package:flutter_slidable/flutter_slidable.dart";
 import "package:lucide_icons_flutter/lucide_icons.dart";
 
 import "../../core/app_scope.dart";
@@ -41,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   List<DownloadItem> _items = [];
 
   late TabController _tabController;
+  int _lastHomeTabIndex = 0;
 
   Future<void> _load() async {
     final svc = AppScope.read(context).downloadService;
@@ -128,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ),
     );
     if (ok != true) return;
+    HapticFeedback.mediumImpact();
     try {
       await scope.downloadService.delete(j.id);
       await scope.files.deleteCached(j.id);
@@ -178,6 +182,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _lastHomeTabIndex = _tabController.index;
     _tabController.addListener(_onHomeTabChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _load();
@@ -186,6 +191,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   void _onHomeTabChanged() {
     if (_tabController.indexIsChanging) return;
+    final idx = _tabController.index;
+    if (idx != _lastHomeTabIndex) {
+      _lastHomeTabIndex = idx;
+      HapticFeedback.selectionClick();
+    }
     setState(() {});
   }
 
@@ -204,10 +214,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     final initialLoading = _first && _busy;
     final hasError = _err != null;
-    final listReady = !_first && !_busy && !hasError;
-    final hasItems = listReady && _items.isNotEmpty;
-    final showPasteFab = listReady && hasItems && _tabController.index == 0;
-
     return DecoratedBox(
       decoration: linkClipPageGradientDecoration(context),
       child: Scaffold(
@@ -230,13 +236,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
           ],
         ),
-      floatingActionButton: showPasteFab
-          ? FloatingActionButton.extended(
-              onPressed: _pasteDialog,
-              icon: Icon(LucideIcons.link2, color: scheme.onPrimary),
-              label: Text(l10n.homePasteLinkFab),
-            )
-          : null,
       body: initialLoading
           ? LoadingView(message: l10n.homeLoading)
           : hasError
@@ -249,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
                       child: HomeQuickActions(
                         onPasteLink: _pasteDialog,
                         onEditVideo: () {
@@ -278,9 +277,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               borderRadius: BorderRadius.circular(10),
                               boxShadow: [
                                 BoxShadow(
-                                  color: scheme.primary.withValues(alpha: 0.28),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
+                                  color: scheme.primary.withValues(alpha: 0.16),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
@@ -329,71 +328,79 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final scheme = theme.colorScheme;
     final l10n = context.l10n;
     final hasItems = _items.isNotEmpty;
-    final reserveFab = hasItems && _tabController.index == 0;
-    final bottomInset = MediaQuery.of(context).padding.bottom + (reserveFab ? 112 : 28);
+    final bottomInset = MediaQuery.of(context).padding.bottom + 24;
 
     if (!hasItems) {
-      return RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(16, 8, 16, bottomInset),
-          children: [
-            const SizedBox(height: 8),
-            _HomeEmptyIllustration(l10n: l10n, scheme: scheme, theme: theme),
-          ],
+      return SlidableAutoCloseBehavior(
+        closeWhenOpened: true,
+        closeWhenTapped: true,
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(16, 8, 16, bottomInset),
+            children: [
+              const SizedBox(height: 8),
+              _HomeEmptyIllustration(l10n: l10n, scheme: scheme, theme: theme),
+            ],
+          ),
         ),
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView.builder(
-        padding: EdgeInsets.fromLTRB(16, 4, 16, bottomInset),
-        itemCount: _items.length + 1,
-        itemBuilder: (context, i) {
-          if (i >= _items.length) {
-            return _busy ? const Padding(padding: EdgeInsets.all(22), child: LoadingView(compact: true)) : const SizedBox(height: 24);
-          }
-          final job = _items[i];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: FutureBuilder<String?>(
-              future: AppScope.read(context).session.localPathForJob(job.id),
-              builder: (context, snap) {
-                final exists = snap.hasData && (snap.data?.isNotEmpty ?? false);
-                final eligible = downloadItemEligibleForQuickEdit(job);
-                return DownloadCard(
-                  item: job,
-                  localFileExists: exists,
-                  showQuickEdit: eligible,
-                  onQuickEdit: eligible
-                      ? () async {
-                          await launchQuickEditForJob(
-                            context,
-                            jobId: job.id,
-                            serverRetentionReferenceUtc: job.createdAt,
-                            prefetchListItem: job,
-                          );
-                          await _load();
-                        }
-                      : null,
-                  onOpenStatus: () async {
-                    await Navigator.push<void>(
-                      context,
-                      MaterialPageRoute<void>(builder: (_) => DownloadStatusScreen(jobId: job.id)),
-                    );
-                    await _load();
-                  },
-                  onRetry: (job.status == "failed" || job.status == "canceled") ? () => _retry(job) : null,
-                  onDelete: () => _confirmDelete(job),
-                  onOpenLocal: exists ? () => _openLocal(job.id) : null,
-                  onShareLocal: exists ? () => _shareLocal(job.id, job.title) : null,
-                );
-              },
-            ),
-          );
-        },
+    return SlidableAutoCloseBehavior(
+      closeWhenOpened: true,
+      closeWhenTapped: true,
+      child: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView.builder(
+          padding: EdgeInsets.fromLTRB(16, 4, 16, bottomInset),
+          itemCount: _items.length + 1,
+          itemBuilder: (context, i) {
+            if (i >= _items.length) {
+              return _busy ? const Padding(padding: EdgeInsets.all(22), child: LoadingView(compact: true)) : const SizedBox(height: 24);
+            }
+            final job = _items[i];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: FutureBuilder<String?>(
+                future: AppScope.read(context).session.localPathForJob(job.id),
+                builder: (context, snap) {
+                  final exists = snap.hasData && (snap.data?.isNotEmpty ?? false);
+                  final eligible = downloadItemEligibleForQuickEdit(job);
+                  return DownloadCard(
+                    item: job,
+                    listAnimationIndex: i,
+                    localFileExists: exists,
+                    showQuickEdit: eligible,
+                    onQuickEdit: eligible
+                        ? () async {
+                            await launchQuickEditForJob(
+                              context,
+                              jobId: job.id,
+                              serverRetentionReferenceUtc: job.createdAt,
+                              prefetchListItem: job,
+                            );
+                            await _load();
+                          }
+                        : null,
+                    onOpenStatus: () async {
+                      await Navigator.push<void>(
+                        context,
+                        MaterialPageRoute<void>(builder: (_) => DownloadStatusScreen(jobId: job.id)),
+                      );
+                      await _load();
+                    },
+                    onRetry: (job.status == "failed" || job.status == "canceled") ? () => _retry(job) : null,
+                    onDelete: () => _confirmDelete(job),
+                    onOpenLocal: exists ? () => _openLocal(job.id) : null,
+                    onShareLocal: exists ? () => _shareLocal(job.id, job.title) : null,
+                  );
+                },
+              ),
+            );
+          },
+        ),
       ),
     );
   }

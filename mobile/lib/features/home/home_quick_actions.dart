@@ -2,9 +2,8 @@ import "package:flutter/material.dart";
 import "package:lucide_icons_flutter/lucide_icons.dart";
 
 import "../../core/l10n/context_l10n.dart";
-import "../../core/theme/linkclip_palette.dart";
 
-/// Compact primary choices: paste a link vs edit from device.
+/// Compact horizontal row: paste link vs edit from device (RTL-safe).
 class HomeQuickActions extends StatelessWidget {
   const HomeQuickActions({
     super.key,
@@ -18,116 +17,67 @@ class HomeQuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final palette = context.lcPalette;
-    final dark = theme.brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            scheme.surface,
-            Color.alphaBlend(
-              scheme.primary.withValues(alpha: dark ? 0.07 : 0.045),
-              scheme.surface,
-            ),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: scheme.outline.withValues(alpha: dark ? 0.38 : 0.26),
-          width: 1,
-        ),
-        boxShadow: dark ? const <BoxShadow>[] : palette.cardShadows.map((s) {
-          return BoxShadow(
-            color: s.color.withValues(alpha: s.color.a * 0.45),
-            blurRadius: s.blurRadius * 0.65,
-            offset: Offset(s.offset.dx, s.offset.dy * 0.7),
-            spreadRadius: s.spreadRadius,
+    return LayoutBuilder(
+      builder: (context, c) {
+        final narrow = c.maxWidth < 320;
+        final paste = _CompactQuickButton(
+          icon: LucideIcons.link2,
+          title: l10n.homeActionPasteLinkTitle,
+          subtitle: l10n.homeActionPasteLinkSubtitle,
+          accent: scheme.primary,
+          filled: true,
+          onTap: onPasteLink,
+        );
+        final edit = _CompactQuickButton(
+          icon: LucideIcons.squarePen,
+          title: l10n.homeActionEditVideoTitle,
+          subtitle: l10n.homeActionEditVideoSubtitle,
+          accent: scheme.tertiary,
+          filled: false,
+          onTap: onEditVideo,
+        );
+        final gap = narrow ? 8.0 : 10.0;
+        if (narrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              paste,
+              SizedBox(height: gap),
+              edit,
+            ],
           );
-        }).toList(),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              l10n.homeQuickActionsTitle,
-              style: theme.textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.1,
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            LayoutBuilder(
-              builder: (context, c) {
-                final narrow = c.maxWidth < 340;
-                final gap = 8.0;
-                final paste = _QuickActionTile(
-                  icon: LucideIcons.link2,
-                  title: l10n.homeActionPasteLinkTitle,
-                  subtitle: l10n.homeActionPasteLinkSubtitle,
-                  accent: scheme.primary,
-                  onTap: onPasteLink,
-                  emphasizePrimary: true,
-                );
-                final edit = _QuickActionTile(
-                  icon: LucideIcons.squarePen,
-                  title: l10n.homeActionEditVideoTitle,
-                  subtitle: l10n.homeActionEditVideoSubtitle,
-                  accent: scheme.tertiary,
-                  onTap: onEditVideo,
-                  emphasizePrimary: false,
-                );
-                if (narrow) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      paste,
-                      SizedBox(height: gap),
-                      edit,
-                    ],
-                  );
-                }
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: paste),
-                    SizedBox(width: gap),
-                    Expanded(child: edit),
-                  ],
-                );
-              },
-            ),
+            Expanded(child: paste),
+            SizedBox(width: gap),
+            Expanded(child: edit),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
-class _QuickActionTile extends StatelessWidget {
-  const _QuickActionTile({
+class _CompactQuickButton extends StatelessWidget {
+  const _CompactQuickButton({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.accent,
+    required this.filled,
     required this.onTap,
-    required this.emphasizePrimary,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final Color accent;
+  final bool filled;
   final VoidCallback onTap;
-  final bool emphasizePrimary;
 
   @override
   Widget build(BuildContext context) {
@@ -135,27 +85,14 @@ class _QuickActionTile extends StatelessWidget {
     final scheme = theme.colorScheme;
     final dark = theme.brightness == Brightness.dark;
 
-    final bg = emphasizePrimary
-        ? LinearGradient(
-            colors: [
-              accent.withValues(alpha: dark ? 0.32 : 0.42),
-              accent.withValues(alpha: dark ? 0.16 : 0.26),
-            ],
-          )
-        : LinearGradient(
-            colors: [
-              scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.48 : 0.62),
-              scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.34 : 0.48),
-            ],
-          );
+    final border = scheme.outline.withValues(alpha: dark ? 0.26 : 0.22);
+    final bg = filled
+        ? Color.alphaBlend(accent.withValues(alpha: dark ? 0.14 : 0.1), scheme.surfaceContainerHighest)
+        : scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.42 : 0.72);
 
-    final borderColor =
-        emphasizePrimary ? accent.withValues(alpha: 0.42) : scheme.outline.withValues(alpha: 0.38);
-
-    final titleColor = emphasizePrimary ? scheme.onPrimary : scheme.onSurface;
-    final subColor = emphasizePrimary
-        ? scheme.onPrimary.withValues(alpha: 0.88)
-        : scheme.onSurfaceVariant;
+    final iconColor = filled ? accent : scheme.onSurfaceVariant;
+    final titleColor = scheme.onSurface;
+    final subColor = scheme.onSurfaceVariant.withValues(alpha: 0.82);
 
     return Material(
       color: Colors.transparent,
@@ -166,42 +103,44 @@ class _QuickActionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         child: Ink(
           decoration: BoxDecoration(
-            gradient: bg,
+            color: bg,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: borderColor, width: emphasizePrimary ? 1.15 : 1),
+            border: Border.all(color: filled ? accent.withValues(alpha: dark ? 0.35 : 0.42) : border),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(icon, size: 20, color: titleColor),
-                const SizedBox(width: 8),
+                Icon(icon, size: 20, color: iconColor),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         title,
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          height: 1.12,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                          height: 1.15,
                           color: titleColor,
-                          fontSize: (theme.textTheme.labelLarge?.fontSize ?? 14) * 0.98,
+                          fontSize: (theme.textTheme.titleSmall?.fontSize ?? 15) * 0.96,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: subColor,
-                          height: 1.2,
-                          fontWeight: FontWeight.w600,
-                          fontSize: (theme.textTheme.bodySmall?.fontSize ?? 12) * 0.97,
+                          height: 1.15,
+                          fontWeight: FontWeight.w500,
+                          fontSize: (theme.textTheme.bodySmall?.fontSize ?? 12) * 0.94,
                         ),
                       ),
                     ],

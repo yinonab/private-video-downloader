@@ -63,7 +63,7 @@ class ApiClient {
   final LocalSession _session;
   late final Dio _dio;
 
-  String get _base => _session.serverUrl.trim();
+  String get _base => _session.effectiveApiBaseUrl;
 
   Future<T> _unwrap<T>(
     Future<Response<dynamic>> future,

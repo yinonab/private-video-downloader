@@ -45,6 +45,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageSectionTitle => 'Language';
 
   @override
+  String get settingsLanguageRowTitle => '🌐 Language';
+
+  @override
+  String get settingsLanguageRowSubtitle => 'Choose app language';
+
+  @override
   String get appearance => 'Appearance';
 
   @override
@@ -227,6 +233,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadCardDelete => 'Delete';
+
+  @override
+  String get downloadCardActionsTitle => 'Quick actions';
 
   @override
   String durationChip(String duration) {
@@ -421,6 +430,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'We couldn\'t read this Facebook video right now. This link may require special access or Facebook may be blocking access to it. Try another link or try again later.';
 
   @override
+  String get errorServerUrlInvalidConfig =>
+      'The server address is invalid. Check settings and try again.';
+
+  @override
   String get settingsTitle => 'Settings';
 
   @override
@@ -428,6 +441,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDeviceId => 'Device ID';
+
+  @override
+  String get settingsBundledProductionSubtitle =>
+      'Bundled default production server (https://api.linkclip.win).';
+
+  @override
+  String get settingsBundledFromBuildSubtitle =>
+      'Using URL from app build (--dart-define).';
 
   @override
   String get settingsRefreshDevice => 'Refresh device info';
@@ -439,7 +460,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAdvancedCustomSubtitle => 'Custom server';
 
   @override
-  String get settingsAdvancedDefaultSubtitle => 'Default server from app build';
+  String get settingsAdvancedDefaultSubtitle => 'Bundled default server';
 
   @override
   String get settingsServerFieldLabel => 'Server URL (LAN / testing)';
@@ -451,11 +472,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSaveCustomServer => 'Save custom server and reconnect';
 
   @override
-  String get settingsRevertToBakedServer => 'Use server URL from app build';
+  String get settingsRevertToBakedServer => 'Use bundled default server';
 
   @override
   String get settingsAdvancedFooterNote =>
-      'Production builds normally use the URL baked into the APK. This section is for development or a temporary server.';
+      'Advanced: use a LAN or staging API base URL. Clearing the field restores the bundled default (production, or the URL from --dart-define when set). You will sign in again after changing servers.';
 
   @override
   String get settingsFactoryResetTitle => 'Reset app';
@@ -480,13 +501,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsNoBakedUrlSnack => 'No baked-in server URL in this build.';
 
   @override
-  String get settingsRevertSnack => 'Using the server URL from the app build.';
+  String get settingsRevertSnack =>
+      'Using the bundled default server. Sign in again.';
 
   @override
   String get settingsEmptyPlaceholder => '(empty)';
 
   @override
   String get registerTitle => 'Register device';
+
+  @override
+  String get registerIntroHelper =>
+      'Tap Register device to start. No manual server setup is needed.';
+
+  @override
+  String get registerSecureServerLine =>
+      'Secure server: https://api.linkclip.win';
+
+  @override
+  String get registerHaveInviteCode => 'Have an invite code?';
 
   @override
   String get registerSettingsTooltip => 'Settings';
@@ -499,7 +532,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get registerServerBakedHint =>
-      'The server URL is set by the app build. To change it, open Settings → Advanced.';
+      'Using the bundled default server URL. For a custom staging or LAN server, open Settings → Advanced.';
 
   @override
   String get registerServerUrlLabel => 'Server URL';

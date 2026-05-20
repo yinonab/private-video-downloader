@@ -106,15 +106,25 @@ class LocalSession extends ChangeNotifier {
   bool get hydrated => _hydrated;
 
   bool get isRegistered =>
-      (_deviceToken.trim().isNotEmpty) && UrlUtils.looksLikeHttpUrl(_serverUrl);
+      (_deviceToken.trim().isNotEmpty) && UrlUtils.looksLikeHttpUrl(effectiveApiBaseUrl);
 
   /// User chose "manual setup" after auto-register failed; cleared on successful registration or factory reset.
   bool get preferManualRegister => _preferManualRegister;
 
-  /// True when the user chose a manual server URL (developer / LAN); otherwise [kApiBaseUrlFromDefine] applies when set.
+  /// True when the user chose a manual server URL (developer / LAN).
+  /// Otherwise the effective server is [--dart-define `API_BASE_URL`] if set, else [kDefaultProductionApiBaseUrl].
   bool get usesCustomServerUrl => _customServerEnabled;
 
   String get serverUrl => _serverUrl;
+
+  /// Guaranteed API base for requests: valid saved/custom URL, else compile-time default (production or `--dart-define`).
+  /// Never blank — safe for registration and [ApiClient] before prefs are fully repaired.
+  String get effectiveApiBaseUrl {
+    final u = _serverUrl.trim();
+    if (UrlUtils.looksLikeHttpUrl(u)) return u;
+    return kEffectiveCompileDefaultApiBaseUrl;
+  }
+
   String get deviceId => _deviceId;
 
   /// Raw bearer string (already trimmed when stored).
@@ -130,15 +140,26 @@ class LocalSession extends ChangeNotifier {
 
     _customServerEnabled = prefs.getBool(_prefsCustomServerKey) ?? false;
 
+    final fromPrefs = UrlUtils.normalizeServerBase(prefs.getString(_prefsServerKey) ?? "");
+
     if (_customServerEnabled) {
-      _serverUrl = UrlUtils.normalizeServerBase(prefs.getString(_prefsServerKey) ?? "");
+      _serverUrl = fromPrefs;
+      if (!UrlUtils.looksLikeHttpUrl(_serverUrl)) {
+        _customServerEnabled = false;
+        await prefs.setBool(_prefsCustomServerKey, false);
+        _serverUrl = kEffectiveCompileDefaultApiBaseUrl;
+        await prefs.setString(_prefsServerKey, _serverUrl);
+      }
     } else {
       final baked = kApiBaseUrlFromDefine.trim();
       if (baked.isNotEmpty) {
         _serverUrl = UrlUtils.normalizeServerBase(baked);
         await prefs.setString(_prefsServerKey, _serverUrl);
+      } else if (UrlUtils.looksLikeHttpUrl(fromPrefs)) {
+        _serverUrl = fromPrefs;
       } else {
-        _serverUrl = UrlUtils.normalizeServerBase(prefs.getString(_prefsServerKey) ?? "");
+        _serverUrl = kEffectiveCompileDefaultApiBaseUrl;
+        await prefs.setString(_prefsServerKey, _serverUrl);
       }
     }
 
@@ -227,7 +248,19 @@ class LocalSession extends ChangeNotifier {
 
   Future<void> updateServerUrl(String rawUrl) async {
     final prefs = await SharedPreferences.getInstance();
-    final normalized = UrlUtils.normalizeServerBase(rawUrl);
+    final trimmed = rawUrl.trim();
+    if (trimmed.isEmpty) {
+      await prefs.setBool(_prefsCustomServerKey, false);
+      _customServerEnabled = false;
+      _serverUrl = kEffectiveCompileDefaultApiBaseUrl;
+      await prefs.setString(_prefsServerKey, _serverUrl);
+      notifyListeners();
+      return;
+    }
+    final normalized = UrlUtils.normalizeServerBase(trimmed);
+    if (!UrlUtils.looksLikeHttpUrl(normalized)) {
+      return;
+    }
     await prefs.setString(_prefsServerKey, normalized);
     _serverUrl = normalized;
     notifyListeners();
@@ -244,19 +277,19 @@ class LocalSession extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Persist manual-server mode and optionally set URL. When [enabled] is false, reapplies baked-in [kApiBaseUrlFromDefine] when present.
+  /// Persist manual-server mode and optionally set URL. When [enabled] is false, reapplies [kEffectiveCompileDefaultApiBaseUrl].
   Future<void> setCustomServerEnabled(bool enabled, {String? serverUrlRaw}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefsCustomServerKey, enabled);
     _customServerEnabled = enabled;
 
     if (!enabled) {
-      final baked = kApiBaseUrlFromDefine.trim();
-      if (baked.isNotEmpty) {
-        _serverUrl = UrlUtils.normalizeServerBase(baked);
-        await prefs.setString(_prefsServerKey, _serverUrl);
-      }
-    } else if (serverUrlRaw != null && serverUrlRaw.trim().isNotEmpty) {
+      _serverUrl = kEffectiveCompileDefaultApiBaseUrl;
+      await prefs.setString(_prefsServerKey, _serverUrl);
+      notifyListeners();
+      return;
+    }
+    if (serverUrlRaw != null && serverUrlRaw.trim().isNotEmpty) {
       await updateServerUrl(serverUrlRaw);
       return;
     }

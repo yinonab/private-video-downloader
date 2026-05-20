@@ -26,7 +26,7 @@ class BootstrapGate extends StatelessWidget {
               PositionedDirectional(
                 top: 4,
                 end: 4,
-                child: languagePickerButton(context, session),
+                child: languagePickerIconButton(context, session),
               ),
             ],
           ),

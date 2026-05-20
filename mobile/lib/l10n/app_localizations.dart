@@ -170,6 +170,18 @@ abstract class AppLocalizations {
   /// **'Language'**
   String get languageSectionTitle;
 
+  /// No description provided for @settingsLanguageRowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'🌐 Language'**
+  String get settingsLanguageRowTitle;
+
+  /// No description provided for @settingsLanguageRowSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose app language'**
+  String get settingsLanguageRowSubtitle;
+
   /// No description provided for @appearance.
   ///
   /// In en, this message translates to:
@@ -524,6 +536,12 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get downloadCardDelete;
 
+  /// No description provided for @downloadCardActionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick actions'**
+  String get downloadCardActionsTitle;
+
   /// No description provided for @durationChip.
   ///
   /// In en, this message translates to:
@@ -866,6 +884,12 @@ abstract class AppLocalizations {
   /// **'We couldn\'t read this Facebook video right now. This link may require special access or Facebook may be blocking access to it. Try another link or try again later.'**
   String get errorFacebookExtractFailed;
 
+  /// No description provided for @errorServerUrlInvalidConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'The server address is invalid. Check settings and try again.'**
+  String get errorServerUrlInvalidConfig;
+
   /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:
@@ -883,6 +907,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Device ID'**
   String get settingsDeviceId;
+
+  /// No description provided for @settingsBundledProductionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bundled default production server (https://api.linkclip.win).'**
+  String get settingsBundledProductionSubtitle;
+
+  /// No description provided for @settingsBundledFromBuildSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Using URL from app build (--dart-define).'**
+  String get settingsBundledFromBuildSubtitle;
 
   /// No description provided for @settingsRefreshDevice.
   ///
@@ -905,7 +941,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAdvancedDefaultSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Default server from app build'**
+  /// **'Bundled default server'**
   String get settingsAdvancedDefaultSubtitle;
 
   /// No description provided for @settingsServerFieldLabel.
@@ -929,13 +965,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsRevertToBakedServer.
   ///
   /// In en, this message translates to:
-  /// **'Use server URL from app build'**
+  /// **'Use bundled default server'**
   String get settingsRevertToBakedServer;
 
   /// No description provided for @settingsAdvancedFooterNote.
   ///
   /// In en, this message translates to:
-  /// **'Production builds normally use the URL baked into the APK. This section is for development or a temporary server.'**
+  /// **'Advanced: use a LAN or staging API base URL. Clearing the field restores the bundled default (production, or the URL from --dart-define when set). You will sign in again after changing servers.'**
   String get settingsAdvancedFooterNote;
 
   /// No description provided for @settingsFactoryResetTitle.
@@ -983,7 +1019,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsRevertSnack.
   ///
   /// In en, this message translates to:
-  /// **'Using the server URL from the app build.'**
+  /// **'Using the bundled default server. Sign in again.'**
   String get settingsRevertSnack;
 
   /// No description provided for @settingsEmptyPlaceholder.
@@ -997,6 +1033,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Register device'**
   String get registerTitle;
+
+  /// No description provided for @registerIntroHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Register device to start. No manual server setup is needed.'**
+  String get registerIntroHelper;
+
+  /// No description provided for @registerSecureServerLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Secure server: https://api.linkclip.win'**
+  String get registerSecureServerLine;
+
+  /// No description provided for @registerHaveInviteCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Have an invite code?'**
+  String get registerHaveInviteCode;
 
   /// No description provided for @registerSettingsTooltip.
   ///
@@ -1019,7 +1073,7 @@ abstract class AppLocalizations {
   /// No description provided for @registerServerBakedHint.
   ///
   /// In en, this message translates to:
-  /// **'The server URL is set by the app build. To change it, open Settings → Advanced.'**
+  /// **'Using the bundled default server URL. For a custom staging or LAN server, open Settings → Advanced.'**
   String get registerServerBakedHint;
 
   /// No description provided for @registerServerUrlLabel.

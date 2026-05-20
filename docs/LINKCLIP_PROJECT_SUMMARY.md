@@ -2,7 +2,7 @@
 
 | Metadata | |
 |----------|--|
-| **Last updated** | 2026-05-06 |
+| **Last updated** | 2026-05-19 |
 | **Status** | Android Quick Edit MVP implemented; in QA/polish. |
 | **Primary platform** | Android |
 | **Backend** | Production Docker Compose deployment (see `backend/docker-compose.prod.yml`, `backend/DEPLOY_HETZNER.md`) |
@@ -184,7 +184,7 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 
 | Path | Role |
 |------|------|
-| `lib/features/home/` | Home, paste banner, download cards |
+| `lib/features/home/` | Home: compact **Paste link** / **Edit video** row, segmented **Downloads** / **Edits** tabs, compact download cards (primary action + menu / long-press / swipe) |
 | `lib/features/analyze/` | Analyze flow, quality selector, brain SVG hero (`brain_side_profile.svg` via `flutter_svg`) |
 | `lib/features/download_status/` | Progress, success actions (open/share/edit) |
 | `lib/features/edit/` | Quick Edit UI, expired-source sheet, trim/crop/compression/audio tabs |
@@ -194,7 +194,9 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 
 ### Behavior
 
-- **Session:** Device registration + persisted **device token**; optional prefs for download-create payloads (`LocalSession` prefixes such as `dl_create_` for redownload params).
+- **Session:** Device registration + persisted **device token**; API base URL defaults to **`https://api.linkclip.win`** when prefs are empty and `--dart-define=API_BASE_URL` is not set (`build_flags.dart`, `LocalSession.bootstrap`, persisted on first resolve). **`LocalSession.effectiveApiBaseUrl`** is never blank for API calls. **Unregistered** users see **Register device** and must tap it (no silent client-side auto-register on cold start); optional Advanced URL override for LAN/staging. Optional prefs for download-create payloads (`LocalSession` prefixes such as `dl_create_` for redownload params).
+- **Registration onboarding (`RegisterDeviceScreen`):** Default UI is **helper copy + muted bundled-server line + Register device** — no empty text fields, no device-name field, no editable server field on this screen. Optional **invite code** appears only after **Have an invite code?** / **יש לך קוד הזמנה?**. Registration payload uses a short default device label (**Android** / **iOS** / OS id). Language is available from an **AppBar** icon (`language_picker.dart`) plus **Settings**.
+- **Settings language:** One tappable row (**🌐 Language** / **🌐 שפה**) with subtitle and trailing current locale — opens the existing picker (no side-by-side **Language** + **Select language** duplication).
 - **Downloads list:** Recent jobs on home; **Edit** available for completed **video** items (not audio-only — enforced in UI logic).
 - **Analyze screen:** Orbital rings backdrop + **vector brain** asset (`assets/illustrations/brain_side_profile.svg`), pulse animation (`pulsing_analyze_brain_svg.dart`).
 - **Saved exports:** User-visible folder messaging aligns with **Downloads → PrivateVideoDownloader** (see `media_export_constants.dart` / l10n path helpers); RTL-safe path display.
@@ -207,6 +209,7 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 
 Recent iteration focused on clarity and layout stability (some areas may still be refined in QA):
 
+- **Home:** **Single** visible **Paste link** entry on downloads list (top quick action; duplicate floating Paste FAB removed). Compact quick-action row (no heavy banner title). **Downloads** cards emphasize **one primary CTA** per state (e.g. save / open / retry); **Open**, **Share**, **Edit**, **Status**, **Retry**, **Delete** remain via overflow menu, **long-press** bottom sheet, and **`flutter_slidable`** swipe (**Delete** still uses the existing confirmation dialog). Subtle staggered list entrance (`flutter_animate`), **Downloads** list wrapped in **`SlidableAutoCloseBehavior`**, tab-change **haptics**, softer tab indicator glow; page gradient slightly deeper navy (`linkclip_palette.dart`).
 - **Analyze:** Hero uses a **lateral human-brain style SVG** (public-domain diagram lineage, LinkClip palette) plus existing **orbital rings** behind it; gentle pulse/glow (`analyze_processing_animation.dart`, `pulsing_analyze_brain_svg.dart`).
 - **Quick Edit processing:** Animation emphasizes **scissors**, **filmstrip** shards, and **orbital rings** (purple/indigo family), aligned with other LinkClip loaders (`edit_processing_animation.dart`).
 - **Edit screen:** Four tabs — **Trim**, **Aspect ratio**, **Compression**, **Audio** (`edit_video_screen.dart`).
@@ -347,7 +350,7 @@ No `linkclip_ios_build_instructions.md` file exists **in this repository** (draf
 
 | Limitation | Notes |
 |------------|--------|
-| **Local-only video edit** | Home **banner Edit** shows **“Editing a video from your device is coming soon”** (`home_screen.dart`, `editLocalVideoComingSoon`) — no gallery picker → server edit pipeline for arbitrary local files. |
+| **Local-only video edit** | Home **Edit video** opens the device picker → **`launchLocalVideoEdit`** → upload/edit pipeline (**Phase A/B**, limits **175MB / 7min**); **Edits** tab shows local edit history. Older “coming soon” Home banner copy is **not** current. |
 | **Server retention** | Edits require server source file; expired → redownload (`forceNew`). |
 | **Threads** | Explicitly unsupported at analyze (`hostnameIsThreads`). |
 | **iOS** | Not built/shipped as MVP. |

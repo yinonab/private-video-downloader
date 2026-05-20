@@ -49,9 +49,9 @@ final class LinkClipPalette extends ThemeExtension<LinkClipPalette> {
   );
 
   static const LinkClipPalette dark = LinkClipPalette(
-    gradientTop: Color(0xFF15162A),
-    gradientMid: Color(0xFF0F1020),
-    gradientBottom: Color(0xFF0F1020),
+    gradientTop: Color(0xFF12132A),
+    gradientMid: Color(0xFF0B0C18),
+    gradientBottom: Color(0xFF070814),
     tiktokAccent: Color(0xFF2DD4BF),
     tiktokAccentSoft: Color(0xFF134E4A),
     tiktokOnAccent: Color(0xFFCCFBF1),

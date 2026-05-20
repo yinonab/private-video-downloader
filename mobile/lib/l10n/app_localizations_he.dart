@@ -45,6 +45,12 @@ class AppLocalizationsHe extends AppLocalizations {
   String get languageSectionTitle => 'שפה';
 
   @override
+  String get settingsLanguageRowTitle => '🌐 שפה';
+
+  @override
+  String get settingsLanguageRowSubtitle => 'בחירת שפת האפליקציה';
+
+  @override
   String get appearance => 'מראה';
 
   @override
@@ -224,6 +230,9 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get downloadCardDelete => 'מחק';
+
+  @override
+  String get downloadCardActionsTitle => 'פעולות מהירות';
 
   @override
   String durationChip(String duration) {
@@ -416,6 +425,10 @@ class AppLocalizationsHe extends AppLocalizations {
       'לא הצלחנו לקרוא את הסרטון מפייסבוק כרגע. ייתכן שהקישור דורש גישה מיוחדת או שפייסבוק חסמה את הגישה אליו. נסה קישור אחר או נסה שוב מאוחר יותר.';
 
   @override
+  String get errorServerUrlInvalidConfig =>
+      'כתובת השרת לא תקינה. בדוק את ההגדרות ונסה שוב.';
+
+  @override
   String get settingsTitle => 'הגדרות';
 
   @override
@@ -423,6 +436,14 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get settingsDeviceId => 'מזהה מכשיר';
+
+  @override
+  String get settingsBundledProductionSubtitle =>
+      'שרת ייצור ברירת מחדל מהחבילה (https://api.linkclip.win).';
+
+  @override
+  String get settingsBundledFromBuildSubtitle =>
+      'משתמשים בכתובת מהגדרות הבנייה (--dart-define).';
 
   @override
   String get settingsRefreshDevice => 'רענון נתוני מכשיר';
@@ -434,7 +455,7 @@ class AppLocalizationsHe extends AppLocalizations {
   String get settingsAdvancedCustomSubtitle => 'שרת מותאם אישית';
 
   @override
-  String get settingsAdvancedDefaultSubtitle => 'שרת ברירת מחדל מהאפליקציה';
+  String get settingsAdvancedDefaultSubtitle => 'שרת ברירת מחדל מהחבילה';
 
   @override
   String get settingsServerFieldLabel => 'כתובת שרת (LAN / בדיקות)';
@@ -446,11 +467,11 @@ class AppLocalizationsHe extends AppLocalizations {
   String get settingsSaveCustomServer => 'שמור שרת מותאם והתחבר מחדש';
 
   @override
-  String get settingsRevertToBakedServer => 'חזרה לשרת המוגדר בגרסת האפליקציה';
+  String get settingsRevertToBakedServer => 'חזרה לשרת ברירת המחדל מהחבילה';
 
   @override
   String get settingsAdvancedFooterNote =>
-      'גרסת ייצור רגילה משתמשת בכתובת המוטמעת ב־APK. כאן רק לפיתוח או שרת זמני.';
+      'מתקדם: הנתיב ל־API של שרת LAN או בדיקות. מחיקת השדה משחזרת את ברירת המחדל מהחבילה (ייצור, או כתובת מ־--dart-define אם הוגדרה). לאחר שינוי שרת יש להירשם מחדש.';
 
   @override
   String get settingsFactoryResetTitle => 'איפוס אפליקציה';
@@ -476,13 +497,24 @@ class AppLocalizationsHe extends AppLocalizations {
   String get settingsNoBakedUrlSnack => 'אין כתובת שרת מוטמעת בגרסה זו.';
 
   @override
-  String get settingsRevertSnack => 'חוזרים לשרת המוגדר בגרסת האפליקציה.';
+  String get settingsRevertSnack =>
+      'חוזרים לשרת ברירת המחדל מהחבילה. נדרש רישום מחדש.';
 
   @override
   String get settingsEmptyPlaceholder => '(ריק)';
 
   @override
   String get registerTitle => 'רישום מכשיר';
+
+  @override
+  String get registerIntroHelper =>
+      'לחץ על רישום מכשיר כדי להתחיל. אין צורך להגדיר שרת ידנית.';
+
+  @override
+  String get registerSecureServerLine => 'שרת מאובטח: https://api.linkclip.win';
+
+  @override
+  String get registerHaveInviteCode => 'יש לך קוד הזמנה?';
 
   @override
   String get registerSettingsTooltip => 'הגדרות';
@@ -495,7 +527,7 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get registerServerBakedHint =>
-      'כתובת השרת נקבעה בגרסת האפליקציה. לשינוי — הגדרות ← מתקדם.';
+      'משתמשים בכתובת השרת מברירת המחדל של החבילה. לשרת בדיקות או LAN — הגדרות ← מתקדם.';
 
   @override
   String get registerServerUrlLabel => 'כתובת שרת';

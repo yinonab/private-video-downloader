@@ -9,6 +9,7 @@ import "../../core/models/device_models.dart";
 import "../../core/network/api_client.dart";
 import "../../core/storage/local_session.dart";
 import "../../core/theme/linkclip_palette.dart";
+import "../../core/utils/url_utils.dart";
 import "../../core/widgets/branded_loading.dart";
 import "../../core/widgets/language_picker.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
@@ -42,7 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _syncServerField() {
     final s = AppScope.read(context).session;
-    _serverCtl.text = s.serverUrl;
+    _serverCtl.text = s.effectiveApiBaseUrl;
   }
 
   Future<void> _refreshMe() async {
@@ -88,14 +89,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _applyCustomServer() async {
     final l10n = context.l10n;
     final scope = AppScope.read(context);
-    final normalized = ApiClient.normalizeServerInput(_serverCtl.text.trim());
-    if (normalized.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsEnterServerSnack)));
+    final trimmed = _serverCtl.text.trim();
+
+    if (trimmed.isEmpty) {
+      setState(() => _advBusy = true);
+      try {
+        await scope.session.setCustomServerEnabled(false);
+        await scope.session.clearRegistrationToken();
+        if (!mounted) return;
+        _syncServerField();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.settingsRevertSnack)),
+        );
+        Navigator.of(context).pop();
+      } finally {
+        if (mounted) setState(() => _advBusy = false);
+      }
+      return;
+    }
+
+    final normalized = ApiClient.normalizeServerInput(trimmed);
+    if (!UrlUtils.looksLikeHttpUrl(normalized)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.errorServerUrlInvalidConfig)),
+      );
       return;
     }
     final parsed = Uri.tryParse(normalized);
     if (parsed == null || !parsed.hasScheme) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsInvalidServerSnack)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.errorServerUrlInvalidConfig)),
+      );
       return;
     }
 
@@ -113,21 +137,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _useBakedServerDefault() async {
+  Future<void> _useBundledDefaultServer() async {
     final l10n = context.l10n;
-    final baked = kApiBaseUrlFromDefine.trim();
-    if (baked.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.settingsNoBakedUrlSnack)),
-      );
-      return;
-    }
     final scope = AppScope.read(context);
     setState(() => _advBusy = true);
     try {
       await scope.session.setCustomServerEnabled(false);
       await scope.session.clearRegistrationToken();
       if (!mounted) return;
+      _syncServerField();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.settingsRevertSnack)),
       );
@@ -142,7 +160,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final l10n = context.l10n;
     final s = AppScope.read(context).session;
     final me = _me;
-    final baked = kApiBaseUrlFromDefine.trim().isNotEmpty;
 
     return DecoratedBox(
       decoration: linkClipPageGradientDecoration(context),
@@ -156,12 +173,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
             ListTile(
-              leading: const Icon(Icons.language_outlined),
-              title: Text(l10n.languageSectionTitle),
-              trailing: TextButton(
-                onPressed: () => showAppLanguagePicker(context, s),
-                child: Text(l10n.languageSelectButton),
+              leading: Icon(Icons.language_rounded, color: Theme.of(context).colorScheme.primary),
+              title: Text(l10n.settingsLanguageRowTitle),
+              subtitle: Text(
+                l10n.settingsLanguageRowSubtitle,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
+              trailing: Text(
+                s.locale.languageCode == "he" ? l10n.languageHebrewOption : l10n.languageEnglish,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              onTap: () => showAppLanguagePicker(context, s),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
             const Divider(height: 24),
             Text(l10n.appearance, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
@@ -190,7 +218,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Divider(height: 28),
             Text(l10n.settingsServerUrl, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
-            Text(s.serverUrl.isEmpty ? l10n.settingsEmptyPlaceholder : s.serverUrl, style: Theme.of(context).textTheme.bodyLarge),
+            SelectableText(s.effectiveApiBaseUrl, style: Theme.of(context).textTheme.bodyLarge),
+            if (!s.usesCustomServerUrl) ...[
+              const SizedBox(height: 6),
+              Text(
+                kApiBaseUrlFromDefine.trim().isNotEmpty ? l10n.settingsBundledFromBuildSubtitle : l10n.settingsBundledProductionSubtitle,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ],
             const SizedBox(height: 22),
             Text(l10n.settingsDeviceId, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
@@ -241,10 +276,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: _advBusy ? null : _applyCustomServer,
                   child: Text(l10n.settingsSaveCustomServer),
                 ),
-                if (baked) ...[
+                if (s.usesCustomServerUrl) ...[
                   const SizedBox(height: 8),
                   TextButton(
-                    onPressed: _advBusy ? null : _useBakedServerDefault,
+                    onPressed: _advBusy ? null : _useBundledDefaultServer,
                     child: Text(l10n.settingsRevertToBakedServer),
                   ),
                 ],

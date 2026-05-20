@@ -1,19 +1,14 @@
-import "dart:io" show Platform;
-
 import "package:flutter/material.dart";
 
 import "core/app_scope.dart";
-import "core/edit_history/local_edit_history_store.dart";
 import "core/config/build_flags.dart";
-import "core/models/device_models.dart";
+import "core/edit_history/local_edit_history_store.dart";
 import "core/network/api_client.dart";
 import "core/storage/local_session.dart";
 import "core/theme/app_theme.dart";
-import "core/utils/url_utils.dart";
 import "core/widgets/bootstrap_gate.dart";
 import "features/analyze/analyze_screen.dart";
 import "features/home/home_screen.dart";
-import "features/onboarding/auto_register_screen.dart";
 import "features/onboarding/register_device_screen.dart";
 import "services/analyze_service.dart";
 import "services/device_service.dart";
@@ -34,7 +29,6 @@ final class BootstrapCoordinator {
   ShareIntentService? _shareBridge;
 
   Future<void> bootstrap() async {
-    regDebugPrint("app bootstrap started");
     await session.bootstrap();
     await editHistory.hydrate();
 
@@ -80,9 +74,6 @@ class PrivateDownloaderApp extends StatefulWidget {
 class _PrivateDownloaderAppState extends State<PrivateDownloaderApp> {
   BootstrapCoordinator get c => widget.controller;
 
-  bool _autoBusy = false;
-  bool _autoRunning = false;
-  Object? _autoErr;
   bool _coordinatorBootstrapped = false;
 
   @override
@@ -119,59 +110,7 @@ class _PrivateDownloaderAppState extends State<PrivateDownloaderApp> {
       }
     }
 
-    if (s.deviceToken.trim().isEmpty && _autoErr != null && !s.preferManualRegister) {
-      setState(() => _autoErr = null);
-    }
-
-    if (!s.isRegistered &&
-        !s.preferManualRegister &&
-        UrlUtils.looksLikeHttpUrl(s.serverUrl) &&
-        s.deviceToken.trim().isEmpty) {
-      if (_autoBusy || _autoRunning || _autoErr != null) return;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _runAutoRegister());
-    }
-  }
-
-  Future<void> _runAutoRegister() async {
-    if (!mounted || _autoRunning) return;
-    final s = c.session;
-    if (s.preferManualRegister || s.isRegistered) return;
-    if (!UrlUtils.looksLikeHttpUrl(s.serverUrl)) return;
-    if (s.deviceToken.trim().isNotEmpty) return;
-
-    _autoRunning = true;
-    setState(() {
-      _autoBusy = true;
-      _autoErr = null;
-    });
-    try {
-      final platform =
-          Platform.isAndroid ? "android" : Platform.isIOS ? "ios" : Platform.operatingSystem;
-      final deviceNameLabel =
-          Platform.isAndroid ? "Android" : Platform.isIOS ? "iOS" : Platform.operatingSystem;
-      final req = RegisterDeviceRequest(
-        deviceId: s.deviceId,
-        deviceName: deviceNameLabel,
-        platform: platform,
-        inviteCode: null,
-      );
-      final res = await DeviceService(c.api).register(req, s.serverUrl);
-      final sid = res.deviceId.trim().isEmpty ? s.deviceId : res.deviceId.trim();
-      await s.applyRegistration(
-        rawServerUrl: s.serverUrl,
-        newDeviceToken: res.deviceToken,
-        stableDeviceId: sid,
-        deviceName: deviceNameLabel,
-      );
-      regDebugPrint("token saved=true");
-      regDebugPrint("navigating Home");
-    } catch (e, st) {
-      regDebugLogRegistrationFailure(e, st);
-      if (mounted) setState(() => _autoErr = e);
-    } finally {
-      _autoRunning = false;
-      if (mounted) setState(() => _autoBusy = false);
-    }
+    setState(() {});
   }
 
   Widget _homeGate() {
@@ -183,23 +122,7 @@ class _PrivateDownloaderAppState extends State<PrivateDownloaderApp> {
       return const HomeScreen(key: ValueKey("home"));
     }
 
-    final urlOk = UrlUtils.looksLikeHttpUrl(s.serverUrl);
-
-    if (!s.preferManualRegister && urlOk && s.deviceToken.trim().isEmpty) {
-      return AutoRegisterScreen(
-        key: const ValueKey("autoReg"),
-        busy: _autoBusy,
-        error: _autoErr,
-        onRetry: () {
-          setState(() => _autoErr = null);
-          _runAutoRegister();
-        },
-        onManualSetup: () {
-          c.session.setPreferManualRegister(true);
-        },
-      );
-    }
-
+    /// Fresh / unregistered users always tap **Register device** (no silent auto-register).
     return const RegisterDeviceScreen(key: ValueKey("register"));
   }
 
