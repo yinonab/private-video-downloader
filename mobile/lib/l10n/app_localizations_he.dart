@@ -838,10 +838,30 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editTrimReset => 'איפוס';
 
   @override
-  String get editCropSectionTitle => 'פורמט';
+  String get editCropOriginal => 'מקורי';
 
   @override
-  String get editCropOriginal => 'מקורי';
+  String get editFormatVideoShapeTitle => 'צורת הסרטון';
+
+  @override
+  String get editFormatVideoShapeSubtitle => 'בחר יחס גובה-רוחב.';
+
+  @override
+  String get editFormatFitModeSectionTitle => 'התאמה';
+
+  @override
+  String get editFormatFitOptionFill => 'מילוי';
+
+  @override
+  String get editFormatFitOptionFit => 'התאמה';
+
+  @override
+  String get editFormatFitFillExplanation =>
+      'מילוי ממלא את המסך ויכול לחתוך קצוות.';
+
+  @override
+  String get editFormatFitFitExplanation =>
+      'התאמה שומרת את כל הסרטון עם רקע מטושטש.';
 
   @override
   String get editMuteLabel => 'השתק קול';
@@ -1004,6 +1024,9 @@ class AppLocalizationsHe extends AppLocalizations {
   String get errorUnsupportedSpeedFactor => 'אפשרות המהירות הזו לא נתמכת.';
 
   @override
+  String get errorUnsupportedFormatMode => 'מצב הפורמט הזה לא נתמך.';
+
+  @override
   String get editStageQueued => 'ממתין להתחלה…';
 
   @override
@@ -1060,9 +1083,6 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get editMuteDescription => 'הסר את פס הקול מהסרטון הערוך';
-
-  @override
-  String get editCropTabHint => 'בחר את צורת הסרטון';
 
   @override
   String get editTrimFieldStart => 'התחלה';

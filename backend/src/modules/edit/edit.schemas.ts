@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { AppError, codes } from "../../types/errors";
-import type { EditSpeedFactor, ResolvedEditPlan } from "./edit.types";
+import type { EditFormatMode, EditSpeedFactor, ResolvedEditPlan } from "./edit.types";
 
+const UNSUPPORTED_FORMAT_EN = "This format mode is not supported.";
 const CANON_EDIT_SPEED_FACTORS = [0.5, 1.25, 1.5, 2] as const satisfies readonly EditSpeedFactor[];
 
 function normalizeEditSpeedFactor(n: unknown): EditSpeedFactor | undefined {
@@ -33,6 +34,14 @@ const cropOpSchema = z
   })
   .strict();
 
+const formatOpSchema = z
+  .object({
+    type: z.literal("format"),
+    aspectRatio: z.enum(["9:16", "1:1", "16:9", "4:5"]),
+    mode: z.enum(["fill", "fit_blur"]).optional(),
+  })
+  .strict();
+
 const muteOpSchema = z.object({ type: z.literal("mute") }).strict();
 
 const speedFactorSchema = z.union([
@@ -59,6 +68,7 @@ const compressOpSchema = z
 export const editOperationSchema = z.union([
   trimOpSchema,
   cropOpSchema,
+  formatOpSchema,
   speedOpSchema,
   muteOpSchema,
   compressOpSchema,
@@ -91,9 +101,27 @@ export function unsupportedSpeedFactorErrorFromUnknownBody(body: unknown): AppEr
   return null;
 }
 
+export function unsupportedFormatModeErrorFromUnknownBody(body: unknown): AppError | null {
+  if (body == null || typeof body !== "object") return null;
+  const ops = (body as { operations?: unknown }).operations;
+  if (!Array.isArray(ops)) return null;
+  const ALLOWED = new Set(["fill", "fit_blur"]);
+  for (const raw of ops) {
+    if (raw == null || typeof raw !== "object") continue;
+    const o = raw as { type?: unknown; mode?: unknown };
+    if (o.type !== "format") continue;
+    if (o.mode === undefined || o.mode === null) continue;
+    if (typeof o.mode !== "string" || !ALLOWED.has(o.mode)) {
+      return new AppError(codes.UNSUPPORTED_FORMAT_MODE, UNSUPPORTED_FORMAT_EN, 400);
+    }
+  }
+  return null;
+}
+
 export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
   let trim: ResolvedEditPlan["trim"];
   let aspectRatio: ResolvedEditPlan["aspectRatio"] = "original";
+  let formatModeApplied: EditFormatMode | undefined;
   let speedFactor: EditSpeedFactor | undefined;
   let mute = false;
   let compressPreset: ResolvedEditPlan["compressPreset"] = "social";
@@ -104,6 +132,11 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
         break;
       case "crop":
         aspectRatio = op.aspectRatio;
+        formatModeApplied = "fill";
+        break;
+      case "format":
+        aspectRatio = op.aspectRatio;
+        formatModeApplied = op.mode ?? "fill";
         break;
       case "speed":
         speedFactor = op.factor;
@@ -118,5 +151,14 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
         break;
     }
   }
-  return { trim, aspectRatio, speedFactor, mute, compressPreset };
+  const formatMode =
+    aspectRatio === "original" ? undefined : (formatModeApplied ?? "fill");
+  return {
+    trim,
+    aspectRatio,
+    formatMode,
+    speedFactor,
+    mute,
+    compressPreset,
+  };
 }

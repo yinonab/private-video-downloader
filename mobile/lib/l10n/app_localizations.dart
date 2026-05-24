@@ -1634,17 +1634,53 @@ abstract class AppLocalizations {
   /// **'Reset'**
   String get editTrimReset;
 
-  /// No description provided for @editCropSectionTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Format'**
-  String get editCropSectionTitle;
-
   /// No description provided for @editCropOriginal.
   ///
   /// In en, this message translates to:
   /// **'Original'**
   String get editCropOriginal;
+
+  /// No description provided for @editFormatVideoShapeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Video shape'**
+  String get editFormatVideoShapeTitle;
+
+  /// No description provided for @editFormatVideoShapeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose aspect presets.'**
+  String get editFormatVideoShapeSubtitle;
+
+  /// No description provided for @editFormatFitModeSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit mode'**
+  String get editFormatFitModeSectionTitle;
+
+  /// No description provided for @editFormatFitOptionFill.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill'**
+  String get editFormatFitOptionFill;
+
+  /// No description provided for @editFormatFitOptionFit.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit'**
+  String get editFormatFitOptionFit;
+
+  /// No description provided for @editFormatFitFillExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill fills the frame and may crop edges.'**
+  String get editFormatFitFillExplanation;
+
+  /// No description provided for @editFormatFitFitExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit keeps the full video with a blurred background.'**
+  String get editFormatFitFitExplanation;
 
   /// No description provided for @editMuteLabel.
   ///
@@ -1940,6 +1976,12 @@ abstract class AppLocalizations {
   /// **'This speed option is not supported.'**
   String get errorUnsupportedSpeedFactor;
 
+  /// No description provided for @errorUnsupportedFormatMode.
+  ///
+  /// In en, this message translates to:
+  /// **'This format mode is not supported.'**
+  String get errorUnsupportedFormatMode;
+
   /// No description provided for @editStageQueued.
   ///
   /// In en, this message translates to:
@@ -2053,12 +2095,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remove the audio track from the edited video'**
   String get editMuteDescription;
-
-  /// No description provided for @editCropTabHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose the video shape'**
-  String get editCropTabHint;
 
   /// No description provided for @editTrimFieldStart.
   ///

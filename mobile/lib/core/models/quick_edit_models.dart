@@ -188,6 +188,17 @@ extension QuickEditCropAspectApi on QuickEditCropAspect {
       };
 }
 
+enum QuickEditFormatMode {
+  fill,
+  fitBlur;
+
+  /// Backend `mode` (`format` operation).
+  String get apiMode => switch (this) {
+        QuickEditFormatMode.fill => "fill",
+        QuickEditFormatMode.fitBlur => "fit_blur",
+      };
+}
+
 enum QuickEditCompressPreset {
   original,
   social,
@@ -245,6 +256,7 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   required double trimStartSec,
   required double trimEndSec,
   required QuickEditCropAspect cropAspect,
+  required QuickEditFormatMode formatFitMode,
   required QuickEditSpeedFactor speedFactor,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
@@ -265,9 +277,9 @@ List<Map<String, dynamic>> buildQuickEditOperations({
 
   if (cropAspect != QuickEditCropAspect.original) {
     ops.add({
-      "type": "crop",
+      "type": "format",
       "aspectRatio": cropAspect.apiValue,
-      "mode": "centerCrop",
+      "mode": formatFitMode.apiMode,
     });
   }
 
@@ -298,6 +310,7 @@ bool quickEditHasChanges({
   required double trimStartSec,
   required double trimEndSec,
   required QuickEditCropAspect cropAspect,
+  required QuickEditFormatMode formatFitMode,
   required QuickEditSpeedFactor speedFactor,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
@@ -307,6 +320,7 @@ bool quickEditHasChanges({
     trimStartSec: trimStartSec,
     trimEndSec: trimEndSec,
     cropAspect: cropAspect,
+    formatFitMode: formatFitMode,
     speedFactor: speedFactor,
     mute: mute,
     compressPreset: compressPreset,

@@ -24,7 +24,7 @@ import "../../core/widgets/keep_app_open_hint.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
 import "../../l10n/app_localizations.dart";
 import "widgets/compression_selector.dart";
-import "widgets/crop_editor.dart";
+import "widgets/format_editor.dart";
 import "widgets/crop_preview_overlay.dart";
 import "edit_video_source_ref.dart";
 import "widgets/edit_processing_animation.dart";
@@ -114,6 +114,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   double _startSec = 0;
   late double _endSec;
   QuickEditCropAspect _crop = QuickEditCropAspect.original;
+  QuickEditFormatMode _formatFitMode = QuickEditFormatMode.fill;
   QuickEditSpeedFactor _speed = QuickEditSpeedFactor.x1;
   bool _mute = false;
   QuickEditCompressPreset _compress = QuickEditCompressPreset.original;
@@ -227,6 +228,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       trimStartSec: _startSec,
       trimEndSec: _endSec,
       cropAspect: _crop,
+      formatFitMode: _formatFitMode,
       speedFactor: _speed,
       mute: _mute,
       compressPreset: _compress,
@@ -410,6 +412,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         trimStartSec: _startSec,
         trimEndSec: _endSec,
         cropAspect: _crop,
+        formatFitMode: _formatFitMode,
         speedFactor: _speed,
         mute: _mute,
         compressPreset: _compress,
@@ -743,7 +746,9 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     final scope = AppScope.read(context);
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final showCropOverlay =
-        _tabController.index == 2 && _crop != QuickEditCropAspect.original;
+        _tabController.index == 2 &&
+            _crop != QuickEditCropAspect.original &&
+            _formatFitMode == QuickEditFormatMode.fill;
 
     Widget previewStack;
     if (_detailLoading) {
@@ -880,9 +885,17 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                     _composerPanelShell(
                       theme,
                       scheme,
-                      CropEditor(
-                        selected: _crop,
-                        onSelected: (c) => setState(() => _crop = c),
+                      FormatEditor(
+                        aspect: _crop,
+                        fitMode: _formatFitMode,
+                        onAspectChanged: (c) => setState(() {
+                          _crop = c;
+                          if (c == QuickEditCropAspect.original) {
+                            _formatFitMode = QuickEditFormatMode.fill;
+                          }
+                        }),
+                        onFitModeChanged: (m) =>
+                            setState(() => _formatFitMode = m),
                       ),
                     ),
                     _composerPanelShell(

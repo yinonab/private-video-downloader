@@ -846,10 +846,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editTrimReset => 'Reset';
 
   @override
-  String get editCropSectionTitle => 'Format';
+  String get editCropOriginal => 'Original';
 
   @override
-  String get editCropOriginal => 'Original';
+  String get editFormatVideoShapeTitle => 'Video shape';
+
+  @override
+  String get editFormatVideoShapeSubtitle => 'Choose aspect presets.';
+
+  @override
+  String get editFormatFitModeSectionTitle => 'Fit mode';
+
+  @override
+  String get editFormatFitOptionFill => 'Fill';
+
+  @override
+  String get editFormatFitOptionFit => 'Fit';
+
+  @override
+  String get editFormatFitFillExplanation =>
+      'Fill fills the frame and may crop edges.';
+
+  @override
+  String get editFormatFitFitExplanation =>
+      'Fit keeps the full video with a blurred background.';
 
   @override
   String get editMuteLabel => 'Mute audio';
@@ -1017,6 +1037,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'This speed option is not supported.';
 
   @override
+  String get errorUnsupportedFormatMode => 'This format mode is not supported.';
+
+  @override
   String get editStageQueued => 'Waiting to start…';
 
   @override
@@ -1075,9 +1098,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get editMuteDescription =>
       'Remove the audio track from the edited video';
-
-  @override
-  String get editCropTabHint => 'Choose the video shape';
 
   @override
   String get editTrimFieldStart => 'Start';

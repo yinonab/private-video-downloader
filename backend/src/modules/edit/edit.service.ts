@@ -9,6 +9,7 @@ import { logger } from "../../services/logger";
 import {
   createEditJobSchema,
   editOperationSchema,
+  unsupportedFormatModeErrorFromUnknownBody,
   unsupportedSpeedFactorErrorFromUnknownBody,
   type EditOperation,
 } from "./edit.schemas";
@@ -222,6 +223,8 @@ export async function createEditJob(opts: {
   if (!parsed.success) {
     const speedOnly = unsupportedSpeedFactorErrorFromUnknownBody(opts.body);
     if (speedOnly != null) throw speedOnly;
+    const formatOnly = unsupportedFormatModeErrorFromUnknownBody(opts.body);
+    if (formatOnly != null) throw formatOnly;
     throw new AppError(codes.BAD_REQUEST, "Invalid body", 400);
   }
 

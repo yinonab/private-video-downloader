@@ -46,8 +46,54 @@ export type BuiltEditFfmpeg = {
   segmentDurationSec: number;
 };
 
+const BLUR_SIGMA = 20;
+
+function buildSpatialVideo(opts: {
+  ts: string;
+  te: string;
+  spd: ResolvedEditPlan["speedFactor"];
+  dims: { w: number; h: number } | null;
+  formatMode: ResolvedEditPlan["formatMode"];
+}): string {
+  const { ts, te, spd, dims, formatMode } = opts;
+
+  /** Original aspect / no dims: unchanged single-chain trim + optional constant speed */
+  if (dims == null) {
+    let v = `[0:v]trim=start=${ts}:end=${te},setpts=PTS-STARTPTS`;
+    if (spd != null) v += `,setpts=PTS/${spd}`;
+    v += `[vout]`;
+    return v;
+  }
+
+  const w = dims.w;
+  const h = dims.h;
+  const fm = formatMode ?? "fill";
+
+  if (fm !== "fit_blur") {
+    /** Center-crop fill (legacy behavior): scale to cover frame, crop to exact WxH */
+    let v = `[0:v]trim=start=${ts}:end=${te},setpts=PTS-STARTPTS`;
+    v += `,scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`;
+    if (spd != null) v += `,setpts=PTS/${spd}`;
+    v += `[vout]`;
+    return v;
+  }
+
+  /** Fit + blurred background layer */
+  let g = `[0:v]trim=start=${ts}:end=${te},setpts=PTS-STARTPTS[v1];`;
+  g += `[v1]split=2[bg][fg];`;
+  g += `[bg]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},gblur=sigma=${BLUR_SIGMA}[bb];`;
+  g += `[fg]scale=${w}:${h}:force_original_aspect_ratio=decrease[ff];`;
+  if (spd != null) {
+    g += `[bb][ff]overlay=(W-w)/2:(H-h)/2,setsar=1[v2];`;
+    g += `[v2]setpts=PTS/${spd}[vout]`;
+  } else {
+    g += `[bb][ff]overlay=(W-w)/2:(H-h)/2,setsar=1[vout]`;
+  }
+  return g;
+}
+
 /**
- * Single-pass filter graph: trim → optional scale/crop → constant speed → encode H.264 (+ AAC if audio kept).
+ * Single-pass filter graph: trim → optional format (fill or fit/blur) → constant speed → encode H.264 (+ AAC if audio kept).
  */
 export function buildEditFfmpegArgs(opts: {
   inputPath: string;
@@ -74,16 +120,21 @@ export function buildEditFfmpegArgs(opts: {
   const te = trimEndClamped.toFixed(3);
 
   const dims = targetDims(plan.aspectRatio);
-  let vChain = `[0:v]trim=start=${ts}:end=${te},setpts=PTS-STARTPTS`;
-  if (dims != null) {
-    vChain += `,scale=${dims.w}:${dims.h}:force_original_aspect_ratio=increase,crop=${dims.w}:${dims.h}`;
-  }
-  if (spd != null) {
-    vChain += `,setpts=PTS/${spd}`;
-  }
-  vChain += `[vout]`;
 
-  const filters: string[] = [vChain];
+  let formatModeForGraph = plan.formatMode ?? "fill";
+  if (dims == null || plan.aspectRatio === "original") {
+    formatModeForGraph = "fill";
+  }
+
+  const vSpatial = buildSpatialVideo({
+    ts,
+    te,
+    spd,
+    dims,
+    formatMode: formatModeForGraph,
+  });
+
+  const filters: string[] = [vSpatial];
   const encodeAudio = !plan.mute && probe.hasAudio;
   if (encodeAudio) {
     let aChain = `[0:a]atrim=start=${ts}:end=${te},asetpts=PTS-STARTPTS`;

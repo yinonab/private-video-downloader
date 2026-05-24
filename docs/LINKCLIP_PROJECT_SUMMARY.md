@@ -2,7 +2,7 @@
 
 | Metadata | |
 |----------|--|
-| **Last updated** | 2026-05-19 |
+| **Last updated** | 2026-05-24 |
 | **Status** | Android Quick Edit MVP implemented; in QA/polish. |
 | **Primary platform** | Android |
 | **Backend** | Production Docker Compose deployment (see `backend/docker-compose.prod.yml`, `backend/DEPLOY_HETZNER.md`) |
@@ -16,7 +16,7 @@ Polished technical overview of the **private-video-downloader** / **LinkClip** r
 
 ## 1. Project Overview
 
-**LinkClip** is an Android-first MVP that lets users **analyze** a shared or pasted video URL, **download** media via a backend worker, **edit** videos from links or from the device (**Downloads** / **Edits** areas on Home), then **open**, **share**, or **save** files locally. **Quick Edit** runs **on the server** (ffmpeg): trim, crop/aspect ratio, **constant playback speed** (whole output: 0.5×–2× presets; **1× sends no operation** — not ramp/keyframes/beats/timeline curves), mute, compress — not on-device ffmpeg.
+**LinkClip** is an Android-first MVP that lets users **analyze** a shared or pasted video URL, **download** media via a backend worker, **edit** videos from links or from the device (**Downloads** / **Edits** areas on Home), then **open**, **share**, or **save** files locally. **Quick Edit** runs **on the server** (ffmpeg): trim, **format** (preset aspect ratios: **Fill** = center crop to frame, preserves legacy crop behavior; **Fit** = scaled-to-fit foreground + blurred full-frame background), **constant playback speed** (whole output: 0.5×–2× presets; **1× sends no operation** — not ramp/keyframes/beats/timeline curves), mute, compress — not on-device ffmpeg.
 
 | Layer | Technology |
 |-------|------------|
@@ -134,7 +134,7 @@ Verified **in repository / documented flows** (operators still run their own QA)
 
 ### Quick Edit
 
-- `POST /edits` — body includes **exactly one** of **`sourceDownloadJobId`** (completed download job, existing Quick Edit) **or** **`sourceUploadId`** (`UploadedMedia` id from Phase A upload API), plus **`operations`** (trim, crop, **`speed`** with fixed factors **0.5 / 1.25 / 1.5 / 2** — factor **1** must not appear; rejects **`UNSUPPORTED_SPEED_FACTOR`**), mute, compress — validated in `edit.schemas.ts`). Codes: **`EDIT_SOURCE_REQUIRED`**, **`EDIT_MULTIPLE_SOURCES`**, **`EDIT_UPLOAD_NOT_FOUND`**, **`EDIT_UPLOAD_NOT_READY`**, **`EDIT_SOURCE_FILE_MISSING`** where applicable.
+- `POST /edits` — body includes **exactly one** of **`sourceDownloadJobId`** (completed download job, existing Quick Edit) **or** **`sourceUploadId`** (`UploadedMedia` id from Phase A upload API), plus **`operations`** (trim, **`format`** with `aspectRatio` + **`mode`**: **`fill`** or **`fit_blur`** — omitted defaults to **`fill`**; legacy **`crop`** still accepted and implies fill; **`speed`** with fixed factors **0.5 / 1.25 / 1.5 / 2** — factor **1** must not appear; **`UNSUPPORTED_SPEED_FACTOR`**); invalid format **`mode`** → **`UNSUPPORTED_FORMAT_MODE`**; mute, compress — validated in `edit.schemas.ts`). Codes: **`EDIT_SOURCE_REQUIRED`**, **`EDIT_MULTIPLE_SOURCES`**, **`EDIT_UPLOAD_NOT_FOUND`**, **`EDIT_UPLOAD_NOT_READY`**, **`EDIT_SOURCE_FILE_MISSING`** where applicable.
 - `GET /edits/:id` — status / progress / errors; may include **`sourceKind`** (`download` \| `upload`), **`sourceUploadId`** when source is an upload ( **`sourceDownloadJobId`** remains for download-sourced jobs).
 - `GET /edits/:id/file` — output when `done` (supports range requests).
 - `POST /edits/:id/retry` — re-queue failed job.
@@ -213,10 +213,9 @@ Recent iteration focused on clarity and layout stability (some areas may still b
 - **Home — local edit history (`Edits` tab):** Shorter cards; **Share** / **Save** (Android) / **Delete from app** in overflow; **Open** stays on-card as the single primary CTA (`home_edits_tab.dart`).
 - **Analyze:** Hero uses a **lateral human-brain style SVG** (public-domain diagram lineage, LinkClip palette) plus existing **orbital rings** behind it; gentle pulse/glow (`analyze_processing_animation.dart`, `pulsing_analyze_brain_svg.dart`).
 - **Quick Edit processing:** Calm progress + optional framed hero animation; rings stay in the muted blue/slate family (`edit_processing_animation.dart`).
-- **Edit screen:** Premium minimal layout — large preview, **horizontal tool strip** (Trim → **Speed** → Format → Audio → Quality), **one tool panel at a time** (no 2×2 grid, no `TabBarView` swipe), soft panel surfaces, **Create edit** primary CTA (`edit_video_screen.dart`, trim/crop/speed/compression widgets, l10n). **Speed** is **constant for the entire output only** (`setpts`/conditional `atempo` server-side — no ramps, curves, beats, timeline markers).
+- **Edit screen:** Premium minimal layout — large preview, **horizontal tool strip** (Trim → **Speed** → Format → Audio → Quality), **one tool panel at a time** (no 2×2 grid, no `TabBarView` swipe), soft panel surfaces, **Create edit** primary CTA (`edit_video_screen.dart`, trim/format/speed/compression widgets, l10n). **Speed** is **constant for the entire output only** (`setpts`/conditional `atempo` server-side — no ramps, curves, beats, timeline markers).
 - **Trim:** Digit-only **MM:SS** input (silent clamp), sheet opens **empty** with raw digits while editing + subtle **preview** line, **Apply** skips change if no digits (**Cancel** restores), **S/E** thumbs (large touch targets) (`trim_editor.dart`, `trim_mm_ss_input.dart`, `trim_labeled_thumb_shape.dart`).
-- **Aspect ratio:** Presets on a **fixed grid** so selection does not resize cells (`crop_editor.dart`).
-- **Crop preview:** Dimmed overlay outside crop, clear crop rectangle, and **thirds** grid (`crop_preview_overlay.dart`, `crop_editor.dart`).
+- **Aspect ratio & fit:** **`format_editor.dart`** — **video shape** presets plus **Fit mode**: **Fill** (scale-to-cover + center crop / previous behavior), **Fit** (scale-to-fit + blurred background via split/overlay inside the existing pipeline). Crop preview overlay applies only when **Fill** + non-original shape (`crop_preview_overlay.dart`).
 - **Save path copy:** Folder path strings use **RTL-safe** presentation for **Downloads → PrivateVideoDownloader** / **הורדות > PrivateVideoDownloader** (`media_export_display_path.dart`, l10n).
 - **Settings:** Cleaner consumer layout — **Language** row (**Language** / **שפה** + trailing locale), theme choice in bordered panel, bundled server/device info in quiet cards, **Advanced** collapsed by default (**ExpansionTile**) with contained URL field; **factory reset** as subdued **Outlined** button (`settings_screen.dart`).
 
@@ -247,7 +246,7 @@ mobile/build/app/outputs/flutter-apk/app-release.apk
 ### Backend
 
 - **Phase 1 implemented:** Prisma **`EditJob`** model, `edit` module, ffmpeg pipeline (`edit.ffmpeg.ts`), BullMQ **edit queue**, worker consumer (`edit.worker.ts`).
-- **Operations:** trim (time range), crop/aspect ratio (center crop MVP), **speed** (**0.5× / 1.25× / 1.5× / 2×**; normal **1×** omits the op entirely), mute, compress (tiered encoding — see schemas/service). FFmpeg order within the worker keeps trim/spatial transforms before constant-speed retiming (`setpts`/optional `atempo` when audio is kept).
+- **Operations:** trim (time range), **`format`** (preset aspect ratios; **`fill`** = crop-to-cover; **`fit_blur`** = fit-in-frame + blurred background; legacy **`crop`** = fill), **speed** (**0.5× / 1.25× / 1.5× / 2×**; normal **1×** omits the op entirely), mute, compress (tiered encoding — see schemas/service). FFmpeg: trim/timebase first, spatial **format/crop**, then **`setpts`/`atempo`** speed when requested.
 
 ### Job lifecycle
 
@@ -258,7 +257,7 @@ mobile/build/app/outputs/flutter-apk/app-release.apk
 
 ### Flutter
 
-- **`EditVideoScreen`** — tool strip + single visible panel: **Trim**, **Format** (aspect / center crop), **Audio** (mute), **Quality** (compress preset); compose → `POST /edits` → poll → download.
+- **`EditVideoScreen`** — tool strip + single visible panel: **Trim**, **Speed**, **Format** (shape + Fill/Fit-blur modes in one panel), **Audio** (mute), **Quality** (compress preset); compose → `POST /edits` → poll → download.
 - **Preview:** `video_player` — local file if present, else network URL to authenticated download file endpoint; crop overlay / preview widgets.
 - **Trim:** Manual time parsing (`trim_time_parse.dart`), bottom-sheet friendly controls.
 - **Export:** Processing animation (`edit_processing_animation.dart`), done/error states, **retry** via API where applicable.
@@ -373,7 +372,7 @@ Until (1) and (2) are done, **this summary + source code** supersede conflicting
 
 ### Product / engineering
 
-1. **Android QA pass** — analyze → download → open/share/save → Quick Edit (trim/**speed**/crop/mute/compress/combo) → expired → redownload → edit.
+1. **Android QA pass** — analyze → download → open/share/save → Quick Edit (trim/**speed**/format fill & fit-blur/mute/compress/combo) → expired → redownload → edit.
 2. **Server-driven edit eligibility** — Expose `editableUntil` / `canEdit` from backend instead of pure heuristics.
 3. **Policy & product** — Decide scope for **local upload/edit** (heavy product + infra implications).
 4. **iOS** — If pursued: Mac CI, signing, TestFlight checklist, Share Extension design.
