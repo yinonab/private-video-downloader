@@ -1084,6 +1084,39 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editTabAudio => 'קול';
 
   @override
+  String get editTabCaptions => 'כתוביות';
+
+  @override
+  String get editCaptionsSectionTitle => 'כתוביות';
+
+  @override
+  String get editCaptionsSectionSubtitle => 'צור כתוביות מהשמע של הסרטון.';
+
+  @override
+  String get editCaptionsAutoToggle => 'כתוביות אוטומטיות';
+
+  @override
+  String get editCaptionsBurnInHelper => 'הכתוביות ייצרבו על הסרטון הסופי.';
+
+  @override
+  String get editCaptionsMayTakeLongerNote => 'הפעולה עשויה לקחת יותר זמן.';
+
+  @override
+  String get editCaptionsProcessingNoteLine =>
+      'יצירת כתוביות עשויה לקחת מעט יותר זמן.';
+
+  @override
+  String get errorCaptionsTranscriptionUnavailable =>
+      'כתוביות אינן זמינות כרגע.';
+
+  @override
+  String get errorCaptionsGenerationFailed =>
+      'לא ניתן ליצור כתוביות לסרטון הזה.';
+
+  @override
+  String get errorCaptionsOptionNotSupported => 'אפשרות הכתוביות הזו לא נתמכת.';
+
+  @override
   String get editSpeedSectionTitle => 'מהירות';
 
   @override

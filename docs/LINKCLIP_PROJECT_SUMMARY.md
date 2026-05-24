@@ -2,7 +2,7 @@
 
 | Metadata | |
 |----------|--|
-| **Last updated** | 2026-05-24 |
+| **Last updated** | 2026-05-19 |
 | **Status** | Android Quick Edit MVP implemented; in QA/polish. |
 | **Primary platform** | Android |
 | **Backend** | Production Docker Compose deployment (see `backend/docker-compose.prod.yml`, `backend/DEPLOY_HETZNER.md`) |
@@ -16,7 +16,7 @@ Polished technical overview of the **private-video-downloader** / **LinkClip** r
 
 ## 1. Project Overview
 
-**LinkClip** is an Android-first MVP that lets users **analyze** a shared or pasted video URL, **download** media via a backend worker, **edit** videos from links or from the device (**Downloads** / **Edits** areas on Home), then **open**, **share**, or **save** files locally. **Quick Edit** runs **on the server** (ffmpeg): trim, optional **rotate** (clockwise **90° / 180° / 270°** pixel rotation — **0° omits the op**; from the **Format** panel, not a separate tab), **format** (Fill / Fit+blur; applied **after** rotation), **constant playback speed** (0.5×–2× presets; **1×** omits the op), mute, compress. **Captions V1 (backend foundation):** optional **`captions`** operation → OpenAI **Whisper** transcription (original language, **auto**) + temporary **ASS** + **burned-in** MP4; **requires `OPENAI_API_KEY`** (see `.env.production.example`); **no mobile UI, translation, or manual subtitle editor** in this step. **No** flip/mirror, free-angle rotation, or client-side ffmpeg for Quick Edit.
+**LinkClip** is an Android-first MVP that lets users **analyze** a shared or pasted video URL, **download** media via a backend worker, **edit** videos from links or from the device (**Downloads** / **Edits** areas on Home), then **open**, **share**, or **save** files locally. **Quick Edit** runs **on the server** (ffmpeg): trim, optional **rotate** (clockwise **90° / 180° / 270°** pixel rotation — **0° omits the op**; from the **Format** panel, not a separate tab), **format** (Fill / Fit+blur; applied **after** rotation), **constant playback speed** (0.5×–2× presets; **1×** omits the op), optional **captions** (Android **Captions / כתוביות** toolbar tab — toggle **Auto captions**; **`captions`** op only when enabled; Whisper + burned-in MP4 server-side — **requires `OPENAI_API_KEY`** on backend), mute, compress. **No translation, language picker, style picker, downloadable subtitles, karaoke, manual caption editor, or client-side OpenAI.** **No** flip/mirror, free-angle rotation, or client-side ffmpeg for Quick Edit.
 
 | Layer | Technology |
 |-------|------------|
@@ -171,7 +171,7 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 
 ### Errors
 
-- Central **`AppError`** / **`codes`** in `backend/src/types/errors.ts`; Flutter maps known codes via `mobile/lib/core/models/api_error.dart` and l10n.
+- Central **`AppError`** / **`codes`** in `backend/src/types/errors.ts`; Flutter maps known codes via `mobile/lib/core/models/api_error.dart` and **`mobile/lib/core/l10n/api_error_localizations.dart`** (captions-related: **`CAPTIONS_TRANSCRIPTION_UNAVAILABLE`**, **`CAPTIONS_GENERATION_FAILED`**, **`UNSUPPORTED_CAPTIONS_*`**).
 - **`DRM_PROTECTED`** — DRM-blocked yt-dlp flows (e.g. Spotify); Flutter **`errorDrmProtected`** (EN/HE).
 
 ---
@@ -187,7 +187,7 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 | `lib/features/home/` | Home: compact **Paste link** / **Edit video** row, segmented **Downloads** / **Edits** tabs, compact download cards (primary action + menu / long-press / swipe) |
 | `lib/features/analyze/` | Analyze flow, quality selector, brain SVG hero (`brain_side_profile.svg` via `flutter_svg`) |
 | `lib/features/download_status/` | Progress, success actions (open/share/edit) |
-| `lib/features/edit/` | Quick Edit UI (horizontal tool strip: Trim → Speed → Format → Audio → Quality), expired-source sheet, trim/speed/format/audio/quality controls |
+| `lib/features/edit/` | Quick Edit UI (horizontal tool strip: Trim → Speed → Format → Captions → Audio → Quality), captions panel + toggle, expired-source sheet, trim/speed/format/audio/quality controls |
 | `lib/features/onboarding/` | Register device |
 | `lib/features/settings/` | Settings |
 | `lib/core/` | API client, theme (`linkclip_palette.dart`, `app_theme.dart`), storage (`local_session.dart`), l10n helpers |
@@ -213,7 +213,7 @@ Recent iteration focused on clarity and layout stability (some areas may still b
 - **Home — local edit history (`Edits` tab):** Shorter cards; **Share** / **Save** (Android) / **Delete from app** in overflow; **Open** stays on-card as the single primary CTA (`home_edits_tab.dart`).
 - **Analyze:** Hero uses a **lateral human-brain style SVG** (public-domain diagram lineage, LinkClip palette) plus existing **orbital rings** behind it; gentle pulse/glow (`analyze_processing_animation.dart`, `pulsing_analyze_brain_svg.dart`).
 - **Quick Edit processing:** Calm progress + optional framed hero animation; rings stay in the muted blue/slate family (`edit_processing_animation.dart`).
-- **Edit screen:** Premium minimal layout — large preview, **horizontal tool strip** (Trim → **Speed** → Format → Audio → Quality), **one tool panel at a time** (no 2×2 grid, no `TabBarView` swipe), soft panel surfaces, **Create edit** primary CTA (`edit_video_screen.dart`, trim/format/speed/compression widgets, l10n). **Format** panel: video shape, Fill vs Keep-all, and **Rotation (0° default; 90° / 180° / 270° clockwise pixel rotation before fill/fit)**. **Speed** is **constant for the entire output only** (`setpts`/conditional `atempo` server-side — no ramps, curves, beats, timeline markers).
+- **Edit screen:** Premium minimal layout — large preview, **horizontal tool strip** (Trim → **Speed** → Format → **Captions** → Audio → Quality), **one tool panel at a time** (no 2×2 grid, no `TabBarView` swipe), soft panel surfaces, **Create edit** primary CTA (`edit_video_screen.dart`, trim/format/speed/captions/compression widgets, l10n). **Format** panel: video shape, Fill vs Keep-all, and **Rotation (0° default; 90° / 180° / 270° clockwise pixel rotation before fill/fit)**. **Speed** is **constant for the entire output only** (`setpts`/conditional `atempo` server-side — no ramps, curves, beats, timeline markers). **Captions:** optional **Auto captions** toggle (**off** by default — no `captions` op unless enabled).
 - **Trim:** Digit-only **MM:SS** input (silent clamp), sheet opens **empty** with raw digits while editing + subtle **preview** line, **Apply** skips change if no digits (**Cancel** restores), **S/E** thumbs (large touch targets) (`trim_editor.dart`, `trim_mm_ss_input.dart`, `trim_labeled_thumb_shape.dart`).
 - **Aspect ratio & fit:** **`format_editor.dart`** — **video shape** presets plus **Fit mode**: **Fill** (scale-to-cover + center crop / previous behavior), **Fit** (scale-to-fit + blurred background via split/overlay inside the existing pipeline). Crop preview overlay applies only when **Fill** + non-original shape (`crop_preview_overlay.dart`).
 - **Save path copy:** Folder path strings use **RTL-safe** presentation for **Downloads → PrivateVideoDownloader** / **הורדות > PrivateVideoDownloader** (`media_export_display_path.dart`, l10n).
@@ -257,7 +257,7 @@ mobile/build/app/outputs/flutter-apk/app-release.apk
 
 ### Flutter
 
-- **`EditVideoScreen`** — tool strip + single visible panel: **Trim**, **Speed**, **Format** (shape + Fill/Fit-blur + **rotation** in the same panel — not a separate tab), **Audio** (mute), **Quality** (compress preset); compose → `POST /edits` → poll → download.
+- **`EditVideoScreen`** — tool strip + single visible panel: **Trim**, **Speed**, **Format** (shape + Fill/Fit-blur + **rotation** in the same panel — not a separate tab), **Captions** (auto burned-in subtitles — toggle **off** unless user enables **Auto captions**), **Audio** (mute), **Quality** (compress preset); compose → `POST /edits` → poll → download.
 - **Preview:** `video_player` — local file if present, else network URL to authenticated download file endpoint; crop overlay / preview widgets.
 - **Trim:** Manual time parsing (`trim_time_parse.dart`), bottom-sheet friendly controls.
 - **Export:** Processing animation (`edit_processing_animation.dart`), done/error states, **retry** via API where applicable.
@@ -372,7 +372,7 @@ Until (1) and (2) are done, **this summary + source code** supersede conflicting
 
 ### Product / engineering
 
-1. **Android QA pass** — analyze → download → open/share/save → Quick Edit (trim/**speed**/format fill & fit-blur/mute/compress/combo) → expired → redownload → edit.
+1. **Android QA pass** — analyze → download → open/share/save → Quick Edit (trim/**speed**/format fill & fit-blur/**captions**/mute/compress/combo) → expired → redownload → edit.
 2. **Server-driven edit eligibility** — Expose `editableUntil` / `canEdit` from backend instead of pure heuristics.
 3. **Policy & product** — Decide scope for **local upload/edit** (heavy product + infra implications).
 4. **iOS** — If pursued: Mac CI, signing, TestFlight checklist, Share Extension design.

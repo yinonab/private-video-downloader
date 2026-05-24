@@ -1098,6 +1098,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editTabAudio => 'Audio';
 
   @override
+  String get editTabCaptions => 'Captions';
+
+  @override
+  String get editCaptionsSectionTitle => 'Captions';
+
+  @override
+  String get editCaptionsSectionSubtitle =>
+      'Create captions from the video audio.';
+
+  @override
+  String get editCaptionsAutoToggle => 'Auto captions';
+
+  @override
+  String get editCaptionsBurnInHelper =>
+      'Captions will be burned into the final video.';
+
+  @override
+  String get editCaptionsMayTakeLongerNote => 'This may take longer.';
+
+  @override
+  String get editCaptionsProcessingNoteLine =>
+      'Generating captions may take a little longer.';
+
+  @override
+  String get errorCaptionsTranscriptionUnavailable =>
+      'Captions are temporarily unavailable.';
+
+  @override
+  String get errorCaptionsGenerationFailed =>
+      'Could not create captions for this video.';
+
+  @override
+  String get errorCaptionsOptionNotSupported =>
+      'This captions option is not supported.';
+
+  @override
   String get editSpeedSectionTitle => 'Speed';
 
   @override

@@ -31,6 +31,7 @@ import "widgets/edit_processing_animation.dart";
 import "widgets/edit_video_preview.dart";
 import "widgets/edit_video_preview_source.dart";
 import "quick_edit_source_expired_sheet.dart";
+import "widgets/captions_editor_panel.dart";
 import "widgets/speed_editor.dart";
 import "widgets/trim_editor.dart";
 
@@ -120,6 +121,9 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   bool _mute = false;
   QuickEditCompressPreset _compress = QuickEditCompressPreset.original;
 
+  /// Auto captions burn-in (**V1**); off unless user enables.
+  bool _captionsAuto = false;
+
   _FlowPhase _phase = _FlowPhase.composing;
   Timer? _pollTimer;
   bool _pollBusy = false;
@@ -136,7 +140,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this)
+    _tabController = TabController(length: 6, vsync: this)
       ..addListener(() {
         if (mounted) setState(() {});
       });
@@ -232,6 +236,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       formatFitMode: _formatFitMode,
       rotation: _rotation,
       speedFactor: _speed,
+      captionsAutoEnabled: _captionsAuto,
       mute: _mute,
       compressPreset: _compress,
     );
@@ -417,6 +422,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         formatFitMode: _formatFitMode,
         rotation: _rotation,
         speedFactor: _speed,
+        captionsAutoEnabled: _captionsAuto,
         mute: _mute,
         compressPreset: _compress,
       );
@@ -711,12 +717,14 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   Widget _buildEditToolStrip(
       ThemeData theme, ColorScheme scheme, AppLocalizations l10n) {
     final idx = _tabController.index;
+    final accent = context.lcPalette.tiktokAccent;
     final tabs = <(int, IconData, String)>[
       (0, Icons.content_cut_rounded, l10n.editTabTrim),
       (1, Icons.speed_rounded, l10n.editTabSpeed),
       (2, Icons.aspect_ratio_rounded, l10n.editTabAspectRatio),
-      (3, Icons.volume_up_rounded, l10n.editTabAudio),
-      (4, Icons.high_quality_rounded, l10n.editTabCompression),
+      (3, Icons.closed_caption_rounded, l10n.editTabCaptions),
+      (4, Icons.volume_up_rounded, l10n.editTabAudio),
+      (5, Icons.high_quality_rounded, l10n.editTabCompression),
     ];
 
     return Padding(
@@ -730,6 +738,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                 icon: t.$2,
                 label: t.$3,
                 selected: idx == t.$1,
+                accentColor: accent,
                 onTap: () {
                   if (_tabController.index != t.$1) {
                     _tabController.animateTo(t.$1);
@@ -908,6 +917,15 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                     _composerPanelShell(
                       theme,
                       scheme,
+                      CaptionsEditorPanel(
+                        autoCaptionsEnabled: _captionsAuto,
+                        onAutoCaptionsChanged: (v) =>
+                            setState(() => _captionsAuto = v),
+                      ),
+                    ),
+                    _composerPanelShell(
+                      theme,
+                      scheme,
                       _buildAudioMutePanel(theme, scheme, l10n),
                     ),
                     _composerPanelShell(
@@ -997,6 +1015,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     final headline = _downloadingFile
         ? l10n.editProcessingDownloading
         : l10n.editCreatingEdit;
+    final showCaptionsNote =
+        !_downloadingFile && _captionsAuto;
     final subtitle = _downloadingFile
         ? l10n.editProcessingSubtitle
         : l10n.editCreatingEditKeepOpen;
@@ -1035,6 +1055,15 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                 ?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
+          if (showCaptionsNote) ...[
+            Text(
+              l10n.editCaptionsProcessingNoteLine,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
+            ),
+            const SizedBox(height: 8),
+          ],
           Text(
             subtitle,
             textAlign: TextAlign.center,
@@ -1271,12 +1300,14 @@ class _EditToolChip extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.selected,
+    required this.accentColor,
     required this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
+  final Color accentColor;
   final VoidCallback onTap;
 
   @override
@@ -1287,14 +1318,14 @@ class _EditToolChip extends StatelessWidget {
 
     return Material(
       color: selected
-          ? scheme.primary.withValues(alpha: dark ? 0.18 : 0.11)
+          ? accentColor.withValues(alpha: dark ? 0.18 : 0.11)
           : scheme.surfaceContainerHighest
               .withValues(alpha: dark ? 0.32 : 0.48),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(999),
         side: BorderSide(
           color: selected
-              ? scheme.primary.withValues(alpha: 0.45)
+              ? accentColor.withValues(alpha: 0.45)
               : scheme.outline.withValues(alpha: 0.28),
         ),
       ),
@@ -1311,7 +1342,7 @@ class _EditToolChip extends StatelessWidget {
                 icon,
                 size: 18,
                 color: selected
-                    ? scheme.primary.withValues(alpha: 0.95)
+                    ? accentColor.withValues(alpha: 0.95)
                     : scheme.onSurfaceVariant.withValues(alpha: 0.82),
               ),
               const SizedBox(width: 6),
@@ -1320,7 +1351,7 @@ class _EditToolChip extends StatelessWidget {
                 style: theme.textTheme.labelMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: selected
-                      ? scheme.primary.withValues(alpha: 0.95)
+                      ? accentColor.withValues(alpha: 0.96)
                       : scheme.onSurface.withValues(alpha: 0.84),
                 ),
               ),

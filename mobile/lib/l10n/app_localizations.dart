@@ -2090,6 +2090,66 @@ abstract class AppLocalizations {
   /// **'Audio'**
   String get editTabAudio;
 
+  /// No description provided for @editTabCaptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Captions'**
+  String get editTabCaptions;
+
+  /// No description provided for @editCaptionsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Captions'**
+  String get editCaptionsSectionTitle;
+
+  /// No description provided for @editCaptionsSectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create captions from the video audio.'**
+  String get editCaptionsSectionSubtitle;
+
+  /// No description provided for @editCaptionsAutoToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto captions'**
+  String get editCaptionsAutoToggle;
+
+  /// No description provided for @editCaptionsBurnInHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Captions will be burned into the final video.'**
+  String get editCaptionsBurnInHelper;
+
+  /// No description provided for @editCaptionsMayTakeLongerNote.
+  ///
+  /// In en, this message translates to:
+  /// **'This may take longer.'**
+  String get editCaptionsMayTakeLongerNote;
+
+  /// No description provided for @editCaptionsProcessingNoteLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating captions may take a little longer.'**
+  String get editCaptionsProcessingNoteLine;
+
+  /// No description provided for @errorCaptionsTranscriptionUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Captions are temporarily unavailable.'**
+  String get errorCaptionsTranscriptionUnavailable;
+
+  /// No description provided for @errorCaptionsGenerationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not create captions for this video.'**
+  String get errorCaptionsGenerationFailed;
+
+  /// No description provided for @errorCaptionsOptionNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This captions option is not supported.'**
+  String get errorCaptionsOptionNotSupported;
+
   /// No description provided for @editSpeedSectionTitle.
   ///
   /// In en, this message translates to:

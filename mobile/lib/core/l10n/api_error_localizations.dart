@@ -75,6 +75,14 @@ String localizedApiErrorMessage(AppLocalizations l10n, ApiError e) {
       return l10n.errorEditSourceRequired;
     case "EDIT_MULTIPLE_SOURCES":
       return l10n.errorEditMultipleSources;
+    case "UNSUPPORTED_CAPTIONS_MODE":
+    case "UNSUPPORTED_CAPTIONS_LANGUAGE":
+    case "UNSUPPORTED_CAPTIONS_STYLE":
+      return l10n.errorCaptionsOptionNotSupported;
+    case "CAPTIONS_TRANSCRIPTION_UNAVAILABLE":
+      return l10n.errorCaptionsTranscriptionUnavailable;
+    case "CAPTIONS_GENERATION_FAILED":
+      return l10n.errorCaptionsGenerationFailed;
     case "DOWNLOAD_FAILED":
       return l10n.downloadJobErrorGeneric;
     case "UNKNOWN":

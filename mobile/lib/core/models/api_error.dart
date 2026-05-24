@@ -138,6 +138,14 @@ class ApiError implements Exception {
         return "לא נבחר מקור לעריכה.";
       case "EDIT_MULTIPLE_SOURCES":
         return "נבחרו יותר מדי מקורות לעריכה. נסה שוב.";
+      case "UNSUPPORTED_CAPTIONS_MODE":
+      case "UNSUPPORTED_CAPTIONS_LANGUAGE":
+      case "UNSUPPORTED_CAPTIONS_STYLE":
+        return "אפשרות הכתוביות הזו לא נתמכת.";
+      case "CAPTIONS_TRANSCRIPTION_UNAVAILABLE":
+        return "כתוביות אינן זמינות כרגע.";
+      case "CAPTIONS_GENERATION_FAILED":
+        return "לא ניתן ליצור כתוביות לסרטון הזה.";
       case "NETWORK":
         return http != null ? "שגיאת רשת (קוד $http)" : "שגיאת רשת";
       default:

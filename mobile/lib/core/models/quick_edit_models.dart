@@ -273,6 +273,15 @@ bool downloadItemEligibleForQuickEdit(DownloadItem item) {
   return true;
 }
 
+/// Captions **V1** burn-in payload (must match backend [edit.schemas]).
+Map<String, dynamic> quickEditCaptionsV1Operation() => const {
+      "type": "captions",
+      "mode": "auto",
+      "language": "auto",
+      "burnIn": true,
+      "style": "default",
+    };
+
 /// Builds POST `/edits` operations array; empty if nothing changed from defaults.
 List<Map<String, dynamic>> buildQuickEditOperations({
   required double videoDurationSec,
@@ -282,6 +291,7 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   required QuickEditFormatMode formatFitMode,
   required QuickEditRotation rotation,
   required QuickEditSpeedFactor speedFactor,
+  required bool captionsAutoEnabled,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
 }) {
@@ -323,6 +333,10 @@ List<Map<String, dynamic>> buildQuickEditOperations({
     });
   }
 
+  if (captionsAutoEnabled) {
+    ops.add(quickEditCaptionsV1Operation());
+  }
+
   if (mute) {
     ops.add({"type": "mute"});
   }
@@ -345,6 +359,7 @@ bool quickEditHasChanges({
   required QuickEditFormatMode formatFitMode,
   required QuickEditRotation rotation,
   required QuickEditSpeedFactor speedFactor,
+  required bool captionsAutoEnabled,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
 }) {
@@ -356,6 +371,7 @@ bool quickEditHasChanges({
     formatFitMode: formatFitMode,
     rotation: rotation,
     speedFactor: speedFactor,
+    captionsAutoEnabled: captionsAutoEnabled,
     mute: mute,
     compressPreset: compressPreset,
   );
