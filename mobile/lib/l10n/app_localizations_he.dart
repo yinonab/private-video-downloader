@@ -847,21 +847,25 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editFormatVideoShapeSubtitle => 'בחר יחס גובה-רוחב.';
 
   @override
-  String get editFormatFitModeSectionTitle => 'התאמה';
+  String get editFormatFitModeSectionTitle => 'איך להתאים?';
 
   @override
-  String get editFormatFitOptionFill => 'מילוי';
+  String get editFormatFitModeNeedsShapeHint =>
+      'בחר פורמט כמו 9:16 כדי לבחור אם לחתוך או לשמור את כל הסרטון.';
 
   @override
-  String get editFormatFitOptionFit => 'התאמה';
+  String get editFormatFitOptionFill => 'מלא מסך';
+
+  @override
+  String get editFormatFitOptionFit => 'שמור הכול';
 
   @override
   String get editFormatFitFillExplanation =>
-      'מילוי ממלא את המסך ויכול לחתוך קצוות.';
+      'מלא מסך — ממלא את הפורמט ויכול לחתוך קצוות.';
 
   @override
   String get editFormatFitFitExplanation =>
-      'התאמה שומרת את כל הסרטון עם רקע מטושטש.';
+      'שמור הכול — שומר את כל הסרטון ומוסיף רקע מטושטש.';
 
   @override
   String get editMuteLabel => 'השתק קול';

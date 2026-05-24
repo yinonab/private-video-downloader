@@ -855,21 +855,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editFormatVideoShapeSubtitle => 'Choose aspect presets.';
 
   @override
-  String get editFormatFitModeSectionTitle => 'Fit mode';
+  String get editFormatFitModeSectionTitle => 'How should it fit?';
 
   @override
-  String get editFormatFitOptionFill => 'Fill';
+  String get editFormatFitModeNeedsShapeHint =>
+      'Choose a format like 9:16 to decide whether to crop or keep the full video.';
 
   @override
-  String get editFormatFitOptionFit => 'Fit';
+  String get editFormatFitOptionFill => 'Fill screen';
+
+  @override
+  String get editFormatFitOptionFit => 'Keep all';
 
   @override
   String get editFormatFitFillExplanation =>
-      'Fill fills the frame and may crop edges.';
+      'Fill screen — fills the frame and may crop edges.';
 
   @override
   String get editFormatFitFitExplanation =>
-      'Fit keeps the full video with a blurred background.';
+      'Keep all — keeps the full video with a blurred background.';
 
   @override
   String get editMuteLabel => 'Mute audio';

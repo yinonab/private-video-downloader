@@ -1655,31 +1655,37 @@ abstract class AppLocalizations {
   /// No description provided for @editFormatFitModeSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Fit mode'**
+  /// **'How should it fit?'**
   String get editFormatFitModeSectionTitle;
+
+  /// No description provided for @editFormatFitModeNeedsShapeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a format like 9:16 to decide whether to crop or keep the full video.'**
+  String get editFormatFitModeNeedsShapeHint;
 
   /// No description provided for @editFormatFitOptionFill.
   ///
   /// In en, this message translates to:
-  /// **'Fill'**
+  /// **'Fill screen'**
   String get editFormatFitOptionFill;
 
   /// No description provided for @editFormatFitOptionFit.
   ///
   /// In en, this message translates to:
-  /// **'Fit'**
+  /// **'Keep all'**
   String get editFormatFitOptionFit;
 
   /// No description provided for @editFormatFitFillExplanation.
   ///
   /// In en, this message translates to:
-  /// **'Fill fills the frame and may crop edges.'**
+  /// **'Fill screen — fills the frame and may crop edges.'**
   String get editFormatFitFillExplanation;
 
   /// No description provided for @editFormatFitFitExplanation.
   ///
   /// In en, this message translates to:
-  /// **'Fit keeps the full video with a blurred background.'**
+  /// **'Keep all — keeps the full video with a blurred background.'**
   String get editFormatFitFitExplanation;
 
   /// No description provided for @editMuteLabel.
