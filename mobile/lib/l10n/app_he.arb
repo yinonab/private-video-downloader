@@ -289,6 +289,23 @@
   "editScreenTitle": "עריכת וידאו",
   "editExit": "יציאה",
   "editSave": "שמירה",
+  "editCreateEdit": "צור עריכה",
+  "editDoneButton": "סיום",
+  "editTrimSelectedRange": "הקטע שנבחר: {start}–{end}",
+  "@editTrimSelectedRange": {
+    "placeholders": {
+      "start": {"type": "String"},
+      "end": {"type": "String"}
+    }
+  },
+  "editTrimRemovedLine": "יוסר: {duration}",
+  "@editTrimRemovedLine": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "editCreatingEdit": "יוצר את העריכה...",
+  "editCreatingEditKeepOpen": "מומלץ להשאיר את האפליקציה פתוחה עד סיום הפעולה.",
   "editTrimSectionTitle": "חיתוך",
   "editTrimVideoDuration": "משך הסרטון",
   "editTrimSelectedClip": "הקטע שנבחר",
@@ -296,12 +313,12 @@
   "editTrimStart": "התחלה",
   "editTrimEnd": "סיום",
   "editTrimReset": "איפוס",
-  "editCropSectionTitle": "יחס גובה־רוחב",
+  "editCropSectionTitle": "פורמט",
   "editCropOriginal": "מקורי",
   "editMuteLabel": "השתק קול",
-  "editCompressSectionTitle": "דחיסה",
+  "editCompressSectionTitle": "איכות",
   "editCompressOriginal": "איכות מקורית",
-  "editCompressSocial": "מותאם לרשתות",
+  "editCompressSocial": "מתאים לרשתות",
   "editCompressSmall": "קובץ קטן",
   "editChooseAtLeastOneChange": "בחר לפחות שינוי אחד לעריכה",
   "editPreviewLoading": "טוען תצוגה מקדימה…",
@@ -337,7 +354,7 @@
   },
   "editExportOpen": "פתח",
   "editExportShare": "שתף",
-  "editExportSave": "שמור",
+  "editExportSave": "שמור למכשיר",
   "editFailedTitle": "העריכה נכשלה",
   "editTryAgain": "נסה שוב",
   "editSavedToDownloads": "הסרטון נשמר בתיקייה:\n{path}",
@@ -372,12 +389,12 @@
   "editLeaveWhileProcessingTitle": "לצאת מהעריכה?",
   "editLeaveWhileProcessingBody": "העריכה עדיין בתהליך. יציאה עכשיו לא תבטל את העיבוד בשרת, אבל תצטרך לפתוח את המסך שוב כדי לראות את ההתקדמות.",
   "editTabTrim": "חיתוך",
-  "editTabAspectRatio": "יחס גובה־רוחב",
-  "editTabCompression": "דחיסה",
+  "editTabAspectRatio": "פורמט",
+  "editTabCompression": "איכות",
   "editTabAudio": "קול",
-  "editCompressHelperHint": "בחר כמה לדחוס את הסרטון הסופי",
+  "editCompressHelperHint": "בחר איכות וגודל קובץ סופי",
   "editMuteDescription": "הסר את פס הקול מהסרטון הערוך",
-  "editCropTabHint": "התצוגה מדגימה את האזור שישמר (חיתוך ממורכז).",
+  "editCropTabHint": "בחר את צורת הסרטון",
   "editTrimFieldStart": "התחלה",
   "editTrimFieldEnd": "סיום",
   "editTrimTimeExample": "לדוגמה: 02:04",
@@ -391,5 +408,12 @@
   "editTrimSheetTitleStart": "זמן התחלה",
   "editTrimSheetTitleEnd": "זמן סיום",
   "editTrimSheetApply": "החל",
-  "editTrimTapToEditHint": "הקש להזנה מדויקת"
+  "editTrimTimeFieldHint": "MM:SS",
+  "editTrimPreview": "תצוגה: {formatted}",
+  "@editTrimPreview": {
+    "placeholders": {
+      "formatted": {"type": "String"}
+    }
+  },
+  "editTrimTapToEditHint": "הקישו כדי להתחיל — הקלידו ספרות כאן; החל שומר בתבנית MM:SS."
 }

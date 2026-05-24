@@ -794,6 +794,29 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editSave => 'שמירה';
 
   @override
+  String get editCreateEdit => 'צור עריכה';
+
+  @override
+  String get editDoneButton => 'סיום';
+
+  @override
+  String editTrimSelectedRange(String start, String end) {
+    return 'הקטע שנבחר: $start–$end';
+  }
+
+  @override
+  String editTrimRemovedLine(String duration) {
+    return 'יוסר: $duration';
+  }
+
+  @override
+  String get editCreatingEdit => 'יוצר את העריכה...';
+
+  @override
+  String get editCreatingEditKeepOpen =>
+      'מומלץ להשאיר את האפליקציה פתוחה עד סיום הפעולה.';
+
+  @override
   String get editTrimSectionTitle => 'חיתוך';
 
   @override
@@ -815,7 +838,7 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editTrimReset => 'איפוס';
 
   @override
-  String get editCropSectionTitle => 'יחס גובה־רוחב';
+  String get editCropSectionTitle => 'פורמט';
 
   @override
   String get editCropOriginal => 'מקורי';
@@ -824,13 +847,13 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editMuteLabel => 'השתק קול';
 
   @override
-  String get editCompressSectionTitle => 'דחיסה';
+  String get editCompressSectionTitle => 'איכות';
 
   @override
   String get editCompressOriginal => 'איכות מקורית';
 
   @override
-  String get editCompressSocial => 'מותאם לרשתות';
+  String get editCompressSocial => 'מתאים לרשתות';
 
   @override
   String get editCompressSmall => 'קובץ קטן';
@@ -919,7 +942,7 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editExportShare => 'שתף';
 
   @override
-  String get editExportSave => 'שמור';
+  String get editExportSave => 'שמור למכשיר';
 
   @override
   String get editFailedTitle => 'העריכה נכשלה';
@@ -1009,22 +1032,22 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editTabTrim => 'חיתוך';
 
   @override
-  String get editTabAspectRatio => 'יחס גובה־רוחב';
+  String get editTabAspectRatio => 'פורמט';
 
   @override
-  String get editTabCompression => 'דחיסה';
+  String get editTabCompression => 'איכות';
 
   @override
   String get editTabAudio => 'קול';
 
   @override
-  String get editCompressHelperHint => 'בחר כמה לדחוס את הסרטון הסופי';
+  String get editCompressHelperHint => 'בחר איכות וגודל קובץ סופי';
 
   @override
   String get editMuteDescription => 'הסר את פס הקול מהסרטון הערוך';
 
   @override
-  String get editCropTabHint => 'התצוגה מדגימה את האזור שישמר (חיתוך ממורכז).';
+  String get editCropTabHint => 'בחר את צורת הסרטון';
 
   @override
   String get editTrimFieldStart => 'התחלה';
@@ -1066,5 +1089,14 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editTrimSheetApply => 'החל';
 
   @override
-  String get editTrimTapToEditHint => 'הקש להזנה מדויקת';
+  String get editTrimTimeFieldHint => 'MM:SS';
+
+  @override
+  String editTrimPreview(String formatted) {
+    return 'תצוגה: $formatted';
+  }
+
+  @override
+  String get editTrimTapToEditHint =>
+      'הקישו כדי להתחיל — הקלידו ספרות כאן; החל שומר בתבנית MM:SS.';
 }

@@ -802,6 +802,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editSave => 'Save';
 
   @override
+  String get editCreateEdit => 'Create edit';
+
+  @override
+  String get editDoneButton => 'Done';
+
+  @override
+  String editTrimSelectedRange(String start, String end) {
+    return 'Selected range: $start–$end';
+  }
+
+  @override
+  String editTrimRemovedLine(String duration) {
+    return 'Removed: $duration';
+  }
+
+  @override
+  String get editCreatingEdit => 'Creating your edit...';
+
+  @override
+  String get editCreatingEditKeepOpen =>
+      'We recommend keeping the app open until this finishes.';
+
+  @override
   String get editTrimSectionTitle => 'Trim';
 
   @override
@@ -823,7 +846,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editTrimReset => 'Reset';
 
   @override
-  String get editCropSectionTitle => 'Aspect ratio';
+  String get editCropSectionTitle => 'Format';
 
   @override
   String get editCropOriginal => 'Original';
@@ -832,20 +855,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editMuteLabel => 'Mute audio';
 
   @override
-  String get editCompressSectionTitle => 'Compression';
+  String get editCompressSectionTitle => 'Quality';
 
   @override
   String get editCompressOriginal => 'Original quality';
 
   @override
-  String get editCompressSocial => 'Social optimized';
+  String get editCompressSocial => 'Social';
 
   @override
   String get editCompressSmall => 'Small file';
 
   @override
   String get editChooseAtLeastOneChange =>
-      'Choose at least one edit to continue';
+      'Choose at least one change to create an edit';
 
   @override
   String get editPreviewLoading => 'Loading preview…';
@@ -930,7 +953,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editExportShare => 'Share';
 
   @override
-  String get editExportSave => 'Save';
+  String get editExportSave => 'Save to device';
 
   @override
   String get editFailedTitle => 'Editing failed';
@@ -1021,25 +1044,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editTabTrim => 'Trim';
 
   @override
-  String get editTabAspectRatio => 'Aspect ratio';
+  String get editTabAspectRatio => 'Format';
 
   @override
-  String get editTabCompression => 'Compression';
+  String get editTabCompression => 'Quality';
 
   @override
   String get editTabAudio => 'Audio';
 
   @override
-  String get editCompressHelperHint =>
-      'Choose how much to compress the final video';
+  String get editCompressHelperHint => 'Choose final quality and file size';
 
   @override
   String get editMuteDescription =>
       'Remove the audio track from the edited video';
 
   @override
-  String get editCropTabHint =>
-      'Preview shows the framed area that will be kept (center crop).';
+  String get editCropTabHint => 'Choose the video shape';
 
   @override
   String get editTrimFieldStart => 'Start';
@@ -1081,5 +1102,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editTrimSheetApply => 'Apply';
 
   @override
-  String get editTrimTapToEditHint => 'Tap to enter exactly';
+  String get editTrimTimeFieldHint => 'MM:SS';
+
+  @override
+  String editTrimPreview(String formatted) {
+    return 'Preview: $formatted';
+  }
+
+  @override
+  String get editTrimTapToEditHint =>
+      'Tap to start fresh — type digits here; apply saves as MM:SS.';
 }

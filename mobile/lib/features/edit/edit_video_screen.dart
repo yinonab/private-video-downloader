@@ -21,7 +21,6 @@ import "../../core/theme/linkclip_palette.dart";
 import "../../core/media/backend_media_expired.dart";
 import "../../core/widgets/internet_download_expired_sheet.dart";
 import "../../core/widgets/keep_app_open_hint.dart";
-import "../../core/widgets/app_button.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
 import "../../l10n/app_localizations.dart";
 import "widgets/compression_selector.dart";
@@ -236,29 +235,6 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       _startSec = 0;
       _endSec = _durationSec;
     });
-  }
-
-  String _localizedStage(AppLocalizations l10n, String? stage) {
-    switch ((stage ?? "").trim().toLowerCase()) {
-      case "queued":
-      case "running":
-        return l10n.editStageQueued;
-      case "validating_source":
-      case "validating":
-        return l10n.editStageValidating;
-      case "probing":
-        return l10n.editStageProbing;
-      case "processing":
-        return l10n.editStageProcessing;
-      case "finalizing":
-        return l10n.editStageFinalizing;
-      case "done":
-        return l10n.editStageDone;
-      case "failed":
-        return l10n.editStageFailed;
-      default:
-        return l10n.editStageQueued;
-    }
   }
 
   String _trimUxMessage(String raw, int maxChars) {
@@ -653,116 +629,105 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     );
   }
 
-  Widget _buildEditTabSelector(
+  Widget _composerPanelShell(
+      ThemeData theme, ColorScheme scheme, Widget child) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      physics: const ClampingScrollPhysics(),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.surface.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.34 : 0.62),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: scheme.outline.withValues(alpha: 0.26),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAudioMutePanel(
+      ThemeData theme, ColorScheme scheme, AppLocalizations l10n) {
+    return MergeSemantics(
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(
+          l10n.editMuteLabel,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            l10n.editMuteDescription,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              height: 1.35,
+            ),
+          ),
+        ),
+        trailing: Theme(
+          data: theme.copyWith(
+            switchTheme: SwitchThemeData(
+              thumbColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return scheme.onPrimary;
+                }
+                return scheme.outline;
+              }),
+              trackColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return scheme.primary.withValues(alpha: 0.42);
+                }
+                return scheme.surfaceContainerHighest;
+              }),
+            ),
+          ),
+          child: Switch.adaptive(
+            value: _mute,
+            onChanged: (v) => setState(() => _mute = v),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditToolStrip(
       ThemeData theme, ColorScheme scheme, AppLocalizations l10n) {
     final idx = _tabController.index;
     final tabs = <(int, IconData, String)>[
       (0, Icons.content_cut_rounded, l10n.editTabTrim),
       (1, Icons.aspect_ratio_rounded, l10n.editTabAspectRatio),
-      (2, Icons.compress_rounded, l10n.editTabCompression),
-      (3, Icons.volume_up_rounded, l10n.editTabAudio),
+      (2, Icons.volume_up_rounded, l10n.editTabAudio),
+      (3, Icons.high_quality_rounded, l10n.editTabCompression),
     ];
-    const spacing = 10.0;
-    const tileHeight = 74.0;
-
-    Widget tile((int, IconData, String) item) {
-      final i = item.$1;
-      final icon = item.$2;
-      final label = item.$3;
-      final sel = idx == i;
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            if (_tabController.index != i) _tabController.animateTo(i);
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Ink(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              color: sel
-                  ? scheme.primary.withValues(alpha: 0.26)
-                  : scheme.surfaceContainerHighest.withValues(
-                      alpha: theme.brightness == Brightness.dark ? 0.38 : 0.72),
-              border: Border.all(
-                color: sel
-                    ? scheme.primary
-                    : scheme.outline.withValues(alpha: 0.42),
-                width: sel ? 2.5 : 1,
-              ),
-            ),
-            child: SizedBox(
-              height: tileHeight,
-              width: double.infinity,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      icon,
-                      size: 24,
-                      color: sel ? scheme.primary : scheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      label,
-                      maxLines: 2,
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        height: 1.05,
-                        fontWeight: FontWeight.w800,
-                        color: sel ? scheme.primary : scheme.onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: scheme.surface.withValues(
-              alpha: theme.brightness == Brightness.dark ? 0.42 : 0.78),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: scheme.outline.withValues(alpha: 0.38),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: LayoutBuilder(
-            builder: (context, c) {
-              final tileW = (c.maxWidth - spacing) / 2;
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      SizedBox(width: tileW, child: tile(tabs[0])),
-                      SizedBox(width: spacing),
-                      SizedBox(width: tileW, child: tile(tabs[1])),
-                    ],
-                  ),
-                  SizedBox(height: spacing),
-                  Row(
-                    children: [
-                      SizedBox(width: tileW, child: tile(tabs[2])),
-                      SizedBox(width: spacing),
-                      SizedBox(width: tileW, child: tile(tabs[3])),
-                    ],
-                  ),
-                ],
-              );
-            },
-          ),
+      padding: const EdgeInsets.fromLTRB(10, 2, 10, 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (final t in tabs) ...[
+              _EditToolChip(
+                icon: t.$2,
+                label: t.$3,
+                selected: idx == t.$1,
+                onTap: () {
+                  if (_tabController.index != t.$1) {
+                    _tabController.animateTo(t.$1);
+                  }
+                },
+              ),
+              const SizedBox(width: 8),
+            ],
+          ],
         ),
       ),
     );
@@ -780,7 +745,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       previewStack = AspectRatio(
         aspectRatio: 16 / 9,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(22),
           child: ColoredBox(
             color: scheme.surfaceContainerHighest.withValues(alpha: 0.9),
             child: const Center(child: CircularProgressIndicator()),
@@ -791,7 +756,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       previewStack = _buildPreview(context, l10n, scheme);
     } else {
       previewStack = ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         child: Stack(
           fit: StackFit.loose,
           children: [
@@ -838,27 +803,20 @@ class _EditVideoScreenState extends State<EditVideoScreen>
 
     final previewCard = DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: scheme.outline.withValues(
-              alpha: theme.brightness == Brightness.dark ? 0.48 : 0.42),
+          color: scheme.outline.withValues(alpha: 0.28),
         ),
         boxShadow: [
           BoxShadow(
-            color: scheme.primary.withValues(alpha: 0.14),
-            blurRadius: 28,
-            spreadRadius: -4,
-            offset: const Offset(0, 14),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 18,
+            color: Colors.black.withValues(alpha: 0.28),
+            blurRadius: 20,
             offset: const Offset(0, 10),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         child: previewStack,
       ),
     );
@@ -871,26 +829,30 @@ class _EditVideoScreenState extends State<EditVideoScreen>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                 child: previewCard,
               ),
               if (_showDurationApproxHint)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
                   child: Text(
                     l10n.editDurationApproxHint,
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: scheme.onSurfaceVariant),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
+                    ),
                   ),
                 ),
-              _buildEditTabSelector(theme, scheme, l10n),
+              _buildEditToolStrip(theme, scheme, l10n),
               Expanded(
-                child: TabBarView(
-                  controller: _tabController,
+                child: IndexedStack(
+                  index: _tabController.index,
+                  sizing: StackFit.expand,
                   children: [
-                    SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                      child: TrimEditor(
+                    _composerPanelShell(
+                      theme,
+                      scheme,
+                      TrimEditor(
                         durationSec: _durationSec,
                         startSec: _startSec,
                         endSec: _endSec,
@@ -902,48 +864,25 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                         onReset: _resetTrim,
                       ),
                     ),
-                    SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                      child: CropEditor(
+                    _composerPanelShell(
+                      theme,
+                      scheme,
+                      CropEditor(
                         selected: _crop,
                         onSelected: (c) => setState(() => _crop = c),
                       ),
                     ),
-                    SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                      child: CompressionSelector(
+                    _composerPanelShell(
+                      theme,
+                      scheme,
+                      _buildAudioMutePanel(theme, scheme, l10n),
+                    ),
+                    _composerPanelShell(
+                      theme,
+                      scheme,
+                      CompressionSelector(
                         selected: _compress,
                         onSelected: (p) => setState(() => _compress = p),
-                      ),
-                    ),
-                    SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            l10n.editTabAudio,
-                            style: theme.textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            l10n.editMuteDescription,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                                color: scheme.onSurfaceVariant, height: 1.35),
-                          ),
-                          const SizedBox(height: 18),
-                          SwitchListTile.adaptive(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              l10n.editMuteLabel,
-                              style: theme.textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            value: _mute,
-                            onChanged: (v) => setState(() => _mute = v),
-                          ),
-                        ],
                       ),
                     ),
                   ],
@@ -960,12 +899,14 @@ class _EditVideoScreenState extends State<EditVideoScreen>
               children: [
                 if (!_hasChanges)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
                       l10n.editChooseAtLeastOneChange,
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+                        height: 1.35,
+                      ),
                     ),
                   ),
                 Row(
@@ -974,20 +915,37 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                       child: OutlinedButton(
                         onPressed: () => Navigator.maybePop(context),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          foregroundColor: scheme.onSurfaceVariant,
+                          side: BorderSide(
+                            color: scheme.outline.withValues(alpha: 0.4),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18)),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                         child: Text(l10n.editExit),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       flex: 2,
-                      child: PremiumGradientCta(
-                        label: l10n.editSave,
-                        icon: const Icon(Icons.save_rounded),
+                      child: FilledButton(
                         onPressed: _hasChanges ? _submitEdit : null,
+                        style: FilledButton.styleFrom(
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          disabledBackgroundColor:
+                              scheme.surfaceContainerHighest.withValues(
+                                  alpha: 0.95),
+                          backgroundColor:
+                              scheme.primary.withValues(alpha: 0.88),
+                          foregroundColor: scheme.onPrimary,
+                        ),
+                        child: Text(l10n.editCreateEdit),
                       ),
                     ),
                   ],
@@ -1005,10 +963,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     final palette = context.lcPalette;
     final headline = _downloadingFile
         ? l10n.editProcessingDownloading
-        : _localizedStage(l10n, _latestJob?.stage);
+        : l10n.editCreatingEdit;
     final subtitle = _downloadingFile
         ? l10n.editProcessingSubtitle
-        : l10n.editProcessingServerSubtitle;
+        : l10n.editCreatingEditKeepOpen;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
@@ -1017,36 +975,46 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
-            child: EditProcessingAnimation(
-              size: 280,
-              color: scheme.primary,
-              accentGlow: palette.loaderBubble,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(
+                  color: scheme.outline.withValues(alpha: 0.22),
+                ),
+                color:
+                    scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                child: EditProcessingAnimation(
+                  size: 220,
+                  color: scheme.primary,
+                  accentGlow: palette.loaderBubble,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 28),
           Text(
             headline,
             textAlign: TextAlign.center,
-            style: theme.textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.w800),
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium
+            style: theme.textTheme.bodySmall
                 ?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
           ),
-          KeepAppOpenHint(
-            _downloadingFile
-                ? l10n.keepAppOpenUntilDownloadFinished
-                : l10n.keepAppOpenUntilEditFinished,
-          ),
-          const SizedBox(height: 22),
+          if (_downloadingFile)
+            KeepAppOpenHint(l10n.keepAppOpenUntilDownloadFinished),
+          const SizedBox(height: 18),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
-              minHeight: 8,
+              minHeight: 5,
               value: pct != null ? (pct.clamp(0, 100) / 100.0) : null,
             ),
           ),
@@ -1058,30 +1026,31 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   Widget _buildDoneBody(
       ThemeData theme, ColorScheme scheme, AppLocalizations l10n) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      padding: const EdgeInsets.fromLTRB(22, 16, 22, 22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Spacer(),
-          Icon(LucideIcons.circleCheck, size: 72, color: scheme.primary),
-          const SizedBox(height: 22),
+          Icon(LucideIcons.circleCheck,
+              size: 56, color: scheme.primary.withValues(alpha: 0.88)),
+          const SizedBox(height: 18),
           Text(
             l10n.editDoneTitle,
             textAlign: TextAlign.center,
-            style: theme.textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.w900),
+            style: theme.textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             l10n.editDoneSubtitle(
               MediaExportDisplayPath.downloadsThenFolder(
                   l10n, kLinkClipMediaStoreFolderName),
             ),
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyLarge
-                ?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: scheme.onSurfaceVariant, height: 1.4),
           ),
-          const SizedBox(height: 36),
+          const SizedBox(height: 26),
           Row(
             children: [
               Expanded(
@@ -1092,7 +1061,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                   dense: true,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: _DoneExportChip(
                   icon: LucideIcons.share2,
@@ -1101,7 +1070,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                   dense: true,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: _DoneExportChip(
                   icon: LucideIcons.download,
@@ -1116,11 +1085,14 @@ class _EditVideoScreenState extends State<EditVideoScreen>
           FilledButton(
             onPressed: () => Navigator.pop(context),
             style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(vertical: 13),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
+                  borderRadius: BorderRadius.circular(14)),
+              backgroundColor: scheme.primary.withValues(alpha: 0.88),
+              foregroundColor: scheme.onPrimary,
             ),
-            child: Text(l10n.homeContinue),
+            child: Text(l10n.editDoneButton),
           ),
         ],
       ),
@@ -1261,6 +1233,72 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   }
 }
 
+class _EditToolChip extends StatelessWidget {
+  const _EditToolChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+
+    return Material(
+      color: selected
+          ? scheme.primary.withValues(alpha: dark ? 0.18 : 0.11)
+          : scheme.surfaceContainerHighest
+              .withValues(alpha: dark ? 0.32 : 0.48),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(999),
+        side: BorderSide(
+          color: selected
+              ? scheme.primary.withValues(alpha: 0.45)
+              : scheme.outline.withValues(alpha: 0.28),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: selected
+                    ? scheme.primary.withValues(alpha: 0.95)
+                    : scheme.onSurfaceVariant.withValues(alpha: 0.82),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: selected
+                      ? scheme.primary.withValues(alpha: 0.95)
+                      : scheme.onSurface.withValues(alpha: 0.84),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DoneExportChip extends StatelessWidget {
   const _DoneExportChip({
     required this.icon,
@@ -1278,31 +1316,35 @@ class _DoneExportChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
+
     return Material(
-      color: scheme.primaryContainer.withValues(alpha: dark ? 0.35 : 0.55),
+      color:
+          scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.42 : 0.55),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: scheme.outline.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: scheme.outline.withValues(alpha: 0.3)),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
           padding: EdgeInsets.symmetric(
-              vertical: dense ? 10 : 12, horizontal: dense ? 4 : 8),
+              vertical: dense ? 9 : 11, horizontal: dense ? 4 : 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: dense ? 18 : 20, color: scheme.primary),
-              SizedBox(height: dense ? 6 : 8),
+              Icon(icon,
+                  size: dense ? 17 : 19,
+                  color: scheme.onSurface.withValues(alpha: 0.82)),
+              SizedBox(height: dense ? 5 : 7),
               Text(
                 label,
                 maxLines: 2,
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: scheme.primary,
-                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface.withValues(alpha: 0.88),
+                      fontWeight: FontWeight.w600,
                       height: 1.05,
                     ),
               ),

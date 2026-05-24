@@ -215,30 +215,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
               panel(
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Column(
-                    children: [
-                      for (final mode in ThemePreference.values)
-                        RadioListTile<ThemePreference>(
-                          value: mode,
-                          groupValue: s.themePreference,
-                          dense: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                          onChanged: (v) async {
-                            if (v == null) return;
-                            await s.setThemePreference(v);
-                            if (mounted) setState(() {});
-                          },
-                          title: Text(
-                            switch (mode) {
-                              ThemePreference.system => l10n.themeSystem,
-                              ThemePreference.light => l10n.themeLight,
-                              ThemePreference.dark => l10n.themeDark,
-                            },
-                            style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+                  child: RadioGroup<ThemePreference>(
+                    groupValue: s.themePreference,
+                    onChanged: (ThemePreference? v) async {
+                      if (v == null) return;
+                      await s.setThemePreference(v);
+                      if (mounted) setState(() {});
+                    },
+                    child: Column(
+                      children: [
+                        for (final mode in ThemePreference.values)
+                          RadioListTile<ThemePreference>(
+                            value: mode,
+                            dense: true,
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 12),
+                            title: Text(
+                              switch (mode) {
+                                ThemePreference.system => l10n.themeSystem,
+                                ThemePreference.light => l10n.themeLight,
+                                ThemePreference.dark => l10n.themeDark,
+                              },
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.w500),
+                            ),
+                            visualDensity:
+                                const VisualDensity(horizontal: 0, vertical: -2),
                           ),
-                          visualDensity: const VisualDensity(horizontal: 0, vertical: -2),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

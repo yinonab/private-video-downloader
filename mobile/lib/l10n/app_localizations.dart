@@ -1556,6 +1556,42 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get editSave;
 
+  /// No description provided for @editCreateEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Create edit'**
+  String get editCreateEdit;
+
+  /// No description provided for @editDoneButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get editDoneButton;
+
+  /// No description provided for @editTrimSelectedRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected range: {start}–{end}'**
+  String editTrimSelectedRange(String start, String end);
+
+  /// No description provided for @editTrimRemovedLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed: {duration}'**
+  String editTrimRemovedLine(String duration);
+
+  /// No description provided for @editCreatingEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating your edit...'**
+  String get editCreatingEdit;
+
+  /// No description provided for @editCreatingEditKeepOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'We recommend keeping the app open until this finishes.'**
+  String get editCreatingEditKeepOpen;
+
   /// No description provided for @editTrimSectionTitle.
   ///
   /// In en, this message translates to:
@@ -1601,7 +1637,7 @@ abstract class AppLocalizations {
   /// No description provided for @editCropSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Aspect ratio'**
+  /// **'Format'**
   String get editCropSectionTitle;
 
   /// No description provided for @editCropOriginal.
@@ -1619,7 +1655,7 @@ abstract class AppLocalizations {
   /// No description provided for @editCompressSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Compression'**
+  /// **'Quality'**
   String get editCompressSectionTitle;
 
   /// No description provided for @editCompressOriginal.
@@ -1631,7 +1667,7 @@ abstract class AppLocalizations {
   /// No description provided for @editCompressSocial.
   ///
   /// In en, this message translates to:
-  /// **'Social optimized'**
+  /// **'Social'**
   String get editCompressSocial;
 
   /// No description provided for @editCompressSmall.
@@ -1643,7 +1679,7 @@ abstract class AppLocalizations {
   /// No description provided for @editChooseAtLeastOneChange.
   ///
   /// In en, this message translates to:
-  /// **'Choose at least one edit to continue'**
+  /// **'Choose at least one change to create an edit'**
   String get editChooseAtLeastOneChange;
 
   /// No description provided for @editPreviewLoading.
@@ -1799,7 +1835,7 @@ abstract class AppLocalizations {
   /// No description provided for @editExportSave.
   ///
   /// In en, this message translates to:
-  /// **'Save'**
+  /// **'Save to device'**
   String get editExportSave;
 
   /// No description provided for @editFailedTitle.
@@ -1961,13 +1997,13 @@ abstract class AppLocalizations {
   /// No description provided for @editTabAspectRatio.
   ///
   /// In en, this message translates to:
-  /// **'Aspect ratio'**
+  /// **'Format'**
   String get editTabAspectRatio;
 
   /// No description provided for @editTabCompression.
   ///
   /// In en, this message translates to:
-  /// **'Compression'**
+  /// **'Quality'**
   String get editTabCompression;
 
   /// No description provided for @editTabAudio.
@@ -1979,7 +2015,7 @@ abstract class AppLocalizations {
   /// No description provided for @editCompressHelperHint.
   ///
   /// In en, this message translates to:
-  /// **'Choose how much to compress the final video'**
+  /// **'Choose final quality and file size'**
   String get editCompressHelperHint;
 
   /// No description provided for @editMuteDescription.
@@ -1991,7 +2027,7 @@ abstract class AppLocalizations {
   /// No description provided for @editCropTabHint.
   ///
   /// In en, this message translates to:
-  /// **'Preview shows the framed area that will be kept (center crop).'**
+  /// **'Choose the video shape'**
   String get editCropTabHint;
 
   /// No description provided for @editTrimFieldStart.
@@ -2072,10 +2108,22 @@ abstract class AppLocalizations {
   /// **'Apply'**
   String get editTrimSheetApply;
 
+  /// No description provided for @editTrimTimeFieldHint.
+  ///
+  /// In en, this message translates to:
+  /// **'MM:SS'**
+  String get editTrimTimeFieldHint;
+
+  /// No description provided for @editTrimPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview: {formatted}'**
+  String editTrimPreview(String formatted);
+
   /// No description provided for @editTrimTapToEditHint.
   ///
   /// In en, this message translates to:
-  /// **'Tap to enter exactly'**
+  /// **'Tap to start fresh — type digits here; apply saves as MM:SS.'**
   String get editTrimTapToEditHint;
 }
 

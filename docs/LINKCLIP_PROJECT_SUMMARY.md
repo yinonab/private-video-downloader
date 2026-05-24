@@ -187,7 +187,7 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 | `lib/features/home/` | Home: compact **Paste link** / **Edit video** row, segmented **Downloads** / **Edits** tabs, compact download cards (primary action + menu / long-press / swipe) |
 | `lib/features/analyze/` | Analyze flow, quality selector, brain SVG hero (`brain_side_profile.svg` via `flutter_svg`) |
 | `lib/features/download_status/` | Progress, success actions (open/share/edit) |
-| `lib/features/edit/` | Quick Edit UI, expired-source sheet, trim/crop/compression/audio tabs |
+| `lib/features/edit/` | Quick Edit UI (minimal strip + single panel), expired-source sheet, trim/format/audio/quality controls |
 | `lib/features/onboarding/` | Register device |
 | `lib/features/settings/` | Settings |
 | `lib/core/` | API client, theme (`linkclip_palette.dart`, `app_theme.dart`), storage (`local_session.dart`), l10n helpers |
@@ -212,9 +212,9 @@ Recent iteration focused on clarity and layout stability (some areas may still b
 - **Home:** Compact **Paste link** / **Edit video** row; **downloads** cards are **dense** — top row (**thumbnail**, **title**, overflow **⋮**), metadata row (**platform**, **muted status pill**, size/date); **single primary action** when applicable (retry / save / open) as a soft-tonal button; secondary actions (**status**, save, share, edit, retry, delete) via **overflow menu**, optional **long-press** sheet, and restrained **`flutter_slidable`** swipe (**icon-only** tiles, **`extentRatio` ~0.22–0.32**, muted navy/danger capsules — **no** truncated swipe labels); **`SlidableAutoCloseBehavior`** limits one open row. Segmented Downloads/Edits tabs use understated selection. **`flutter_animate`** list polish. **Theme:** navy/slate base, muted steel-blue accent `#4E8FBF`, soft success/error surfaces (`linkclip_palette.dart`, `app_theme.dart`, `download_card.dart`, `home_screen.dart`).
 - **Home — local edit history (`Edits` tab):** Shorter cards; **Share** / **Save** (Android) / **Delete from app** in overflow; **Open** stays on-card as the single primary CTA (`home_edits_tab.dart`).
 - **Analyze:** Hero uses a **lateral human-brain style SVG** (public-domain diagram lineage, LinkClip palette) plus existing **orbital rings** behind it; gentle pulse/glow (`analyze_processing_animation.dart`, `pulsing_analyze_brain_svg.dart`).
-- **Quick Edit processing:** Animation emphasizes **scissors**, **filmstrip** shards, and orbital rings toned to match the muted blue/slate theme (`edit_processing_animation.dart`).
-- **Edit screen:** Four tabs — **Trim**, **Aspect ratio**, **Compression**, **Audio** (`edit_video_screen.dart`).
-- **Trim:** Manual start/end time entry uses a **bottom sheet** pattern to reduce keyboard overlap with the main layout (`trim_editor.dart`).
+- **Quick Edit processing:** Calm progress + optional framed hero animation; rings stay in the muted blue/slate family (`edit_processing_animation.dart`).
+- **Edit screen:** Premium minimal layout — large preview, **horizontal tool strip** (Trim → Format → Audio → Quality), **one tool panel at a time** (no 2×2 grid, no `TabBarView` swipe), soft panel surfaces, **Create edit** primary CTA (`edit_video_screen.dart` + trim/crop/compression widgets + l10n).
+- **Trim:** Digit-only **MM:SS** input (silent clamp), sheet opens **empty** with raw digits while editing + subtle **preview** line, **Apply** skips change if no digits (**Cancel** restores), **S/E** thumbs (large touch targets) (`trim_editor.dart`, `trim_mm_ss_input.dart`, `trim_labeled_thumb_shape.dart`).
 - **Aspect ratio:** Presets on a **fixed grid** so selection does not resize cells (`crop_editor.dart`).
 - **Crop preview:** Dimmed overlay outside crop, clear crop rectangle, and **thirds** grid (`crop_preview_overlay.dart`, `crop_editor.dart`).
 - **Save path copy:** Folder path strings use **RTL-safe** presentation for **Downloads → PrivateVideoDownloader** / **הורדות > PrivateVideoDownloader** (`media_export_display_path.dart`, l10n).
@@ -258,7 +258,7 @@ mobile/build/app/outputs/flutter-apk/app-release.apk
 
 ### Flutter
 
-- **`EditVideoScreen`** — tabbed UI: **Trim**, **Aspect ratio**, **Compression**, **Audio**.
+- **`EditVideoScreen`** — tool strip + single visible panel: **Trim**, **Format** (aspect / center crop), **Audio** (mute), **Quality** (compress preset); compose → `POST /edits` → poll → download.
 - **Preview:** `video_player` — local file if present, else network URL to authenticated download file endpoint; crop overlay / preview widgets.
 - **Trim:** Manual time parsing (`trim_time_parse.dart`), bottom-sheet friendly controls.
 - **Export:** Processing animation (`edit_processing_animation.dart`), done/error states, **retry** via API where applicable.

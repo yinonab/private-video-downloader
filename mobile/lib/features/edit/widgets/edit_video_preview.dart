@@ -322,17 +322,36 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
               ),
             ),
             Material(
-              color: Colors.black.withValues(alpha: 0.28),
+              color: Colors.black.withValues(alpha: 0.22),
               type: MaterialType.transparency,
               child: InkWell(
                 onTap: _togglePlay,
                 child: Center(
-                  child: Icon(
-                    c.value.isPlaying
-                        ? Icons.pause_circle_filled_rounded
-                        : Icons.play_circle_filled_rounded,
-                    size: 72,
-                    color: Colors.white.withValues(alpha: 0.92),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.38),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.14),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Icon(
+                        c.value.isPlaying
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        size: 36,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
+                    ),
                   ),
                 ),
               ),

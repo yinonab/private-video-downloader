@@ -289,6 +289,23 @@
   "editScreenTitle": "Edit video",
   "editExit": "Exit",
   "editSave": "Save",
+  "editCreateEdit": "Create edit",
+  "editDoneButton": "Done",
+  "editTrimSelectedRange": "Selected range: {start}–{end}",
+  "@editTrimSelectedRange": {
+    "placeholders": {
+      "start": {"type": "String"},
+      "end": {"type": "String"}
+    }
+  },
+  "editTrimRemovedLine": "Removed: {duration}",
+  "@editTrimRemovedLine": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "editCreatingEdit": "Creating your edit...",
+  "editCreatingEditKeepOpen": "We recommend keeping the app open until this finishes.",
   "editTrimSectionTitle": "Trim",
   "editTrimVideoDuration": "Video duration",
   "editTrimSelectedClip": "Selected clip",
@@ -296,14 +313,14 @@
   "editTrimStart": "Start",
   "editTrimEnd": "End",
   "editTrimReset": "Reset",
-  "editCropSectionTitle": "Aspect ratio",
+  "editCropSectionTitle": "Format",
   "editCropOriginal": "Original",
   "editMuteLabel": "Mute audio",
-  "editCompressSectionTitle": "Compression",
+  "editCompressSectionTitle": "Quality",
   "editCompressOriginal": "Original quality",
-  "editCompressSocial": "Social optimized",
+  "editCompressSocial": "Social",
   "editCompressSmall": "Small file",
-  "editChooseAtLeastOneChange": "Choose at least one edit to continue",
+  "editChooseAtLeastOneChange": "Choose at least one change to create an edit",
   "editPreviewLoading": "Loading preview…",
   "editPreviewError": "Could not load video info.",
   "editDurationApproxHint": "Duration is approximate until loaded.",
@@ -337,7 +354,7 @@
   },
   "editExportOpen": "Open",
   "editExportShare": "Share",
-  "editExportSave": "Save",
+  "editExportSave": "Save to device",
   "editFailedTitle": "Editing failed",
   "editTryAgain": "Try again",
   "editSavedToDownloads": "The video was saved to:\n{path}",
@@ -372,12 +389,12 @@
   "editLeaveWhileProcessingTitle": "Leave editing?",
   "editLeaveWhileProcessingBody": "Your edit is still processing. Leaving now will not cancel the server job, but you will need to reopen this screen to see progress.",
   "editTabTrim": "Trim",
-  "editTabAspectRatio": "Aspect ratio",
-  "editTabCompression": "Compression",
+  "editTabAspectRatio": "Format",
+  "editTabCompression": "Quality",
   "editTabAudio": "Audio",
-  "editCompressHelperHint": "Choose how much to compress the final video",
+  "editCompressHelperHint": "Choose final quality and file size",
   "editMuteDescription": "Remove the audio track from the edited video",
-  "editCropTabHint": "Preview shows the framed area that will be kept (center crop).",
+  "editCropTabHint": "Choose the video shape",
   "editTrimFieldStart": "Start",
   "editTrimFieldEnd": "End",
   "editTrimTimeExample": "Example: 02:04",
@@ -391,5 +408,12 @@
   "editTrimSheetTitleStart": "Start time",
   "editTrimSheetTitleEnd": "End time",
   "editTrimSheetApply": "Apply",
-  "editTrimTapToEditHint": "Tap to enter exactly"
+  "editTrimTimeFieldHint": "MM:SS",
+  "editTrimPreview": "Preview: {formatted}",
+  "@editTrimPreview": {
+    "placeholders": {
+      "formatted": {"type": "String"}
+    }
+  },
+  "editTrimTapToEditHint": "Tap to start fresh — type digits here; apply saves as MM:SS."
 }

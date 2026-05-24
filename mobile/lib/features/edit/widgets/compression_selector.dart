@@ -18,6 +18,7 @@ class CompressionSelector extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
 
     final opts = <({QuickEditCompressPreset p, String label})>[
       (p: QuickEditCompressPreset.original, label: l10n.editCompressOriginal),
@@ -31,9 +32,9 @@ class CompressionSelector extends StatelessWidget {
         Text(
           l10n.editCompressSectionTitle,
           style: theme.textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.w800),
+              ?.copyWith(fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text(
           l10n.editCompressHelperHint,
           style: theme.textTheme.bodySmall
@@ -43,43 +44,58 @@ class CompressionSelector extends StatelessWidget {
         ...opts.map((o) {
           final sel = selected == o.p;
           return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: 8),
             child: Material(
               color: sel
-                  ? scheme.primaryContainer.withValues(alpha: 0.55)
-                  : scheme.surfaceContainerHighest,
+                  ? scheme.primary.withValues(alpha: dark ? 0.14 : 0.1)
+                  : scheme.surfaceContainerHighest.withValues(
+                      alpha: dark ? 0.35 : 0.48),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(14),
                 side: BorderSide(
-                    color: sel
-                        ? scheme.primary
-                        : scheme.outline.withValues(alpha: 0.35),
-                    width: sel ? 2 : 1),
+                  color: sel
+                      ? scheme.primary.withValues(alpha: 0.42)
+                      : scheme.outline.withValues(alpha: 0.28),
+                  width: sel ? 1.15 : 1,
+                ),
               ),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: () => onSelected(o.p),
                 child: Padding(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   child: Row(
                     children: [
-                      Icon(
-                        sel
-                            ? Icons.radio_button_checked
-                            : Icons.radio_button_off,
-                        color: sel ? scheme.primary : scheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 14),
                       Expanded(
                         child: Text(
                           o.label,
                           style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: scheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurface.withValues(alpha: 0.92),
                           ),
                         ),
                       ),
+                      if (sel)
+                        Icon(
+                          Icons.check_rounded,
+                          size: 20,
+                          color: scheme.primary.withValues(alpha: 0.9),
+                        )
+                      else
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color:
+                                    scheme.outline.withValues(alpha: 0.35),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),

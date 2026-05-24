@@ -3,7 +3,7 @@ import "package:flutter/material.dart";
 import "../../../core/l10n/context_l10n.dart";
 import "../../../core/models/quick_edit_models.dart";
 
-/// Aspect-ratio presets on a fixed grid (stable layout — selection never resizes cells).
+/// Aspect-ratio presets as compact selectable chips (center crop semantics unchanged server-side).
 class CropEditor extends StatelessWidget {
   const CropEditor({
     super.key,
@@ -34,49 +34,34 @@ class CropEditor extends StatelessWidget {
         Text(
           l10n.editCropSectionTitle,
           style: theme.textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.w800),
+              ?.copyWith(fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 4),
         Text(
           l10n.editCropTabHint,
           style: theme.textTheme.bodySmall
               ?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
         ),
-        const SizedBox(height: 14),
-        LayoutBuilder(
-          builder: (context, c) {
-            final maxW = c.maxWidth;
-            const spacing = 10.0;
-            const runSpacing = 10.0;
-            final cols = maxW >= 360 ? 3 : 2;
-            final cellW = (maxW - spacing * (cols - 1)) / cols;
-            const cellH = 52.0;
-
-            return Wrap(
-              spacing: spacing,
-              runSpacing: runSpacing,
-              children: [
-                for (final o in options)
-                  SizedBox(
-                    width: cellW,
-                    height: cellH,
-                    child: _AspectCell(
-                      label: o.label,
-                      selected: selected == o.aspect,
-                      onTap: () => onSelected(o.aspect),
-                    ),
-                  ),
-              ],
-            );
-          },
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final o in options)
+              _AspectChip(
+                label: o.label,
+                selected: selected == o.aspect,
+                onTap: () => onSelected(o.aspect),
+              ),
+          ],
         ),
       ],
     );
   }
 }
 
-class _AspectCell extends StatelessWidget {
-  const _AspectCell({
+class _AspectChip extends StatelessWidget {
+  const _AspectChip({
     required this.label,
     required this.selected,
     required this.onTap,
@@ -90,50 +75,37 @@ class _AspectCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final borderColor =
-        selected ? scheme.primary : scheme.outline.withValues(alpha: 0.45);
+    final dark = theme.brightness == Brightness.dark;
+    final borderColor = selected
+        ? scheme.primary.withValues(alpha: 0.55)
+        : scheme.outline.withValues(alpha: 0.32);
     final bg = selected
-        ? scheme.primary.withValues(alpha: 0.22)
-        : scheme.surfaceContainerHighest.withValues(alpha: 0.55);
+        ? scheme.primary.withValues(alpha: dark ? 0.16 : 0.12)
+        : scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.38 : 0.5);
 
     return Material(
       color: bg,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: borderColor, width: selected ? 2 : 1),
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: borderColor, width: selected ? 1.2 : 1),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: selected ? scheme.primary : scheme.onSurface,
-                  ),
-                ),
-              ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: selected
+                  ? scheme.primary.withValues(alpha: 0.95)
+                  : scheme.onSurface.withValues(alpha: 0.88),
             ),
-            if (selected)
-              PositionedDirectional(
-                top: 6,
-                end: 6,
-                child: Icon(
-                  Icons.check_circle_rounded,
-                  size: 18,
-                  color: scheme.primary,
-                ),
-              ),
-          ],
+          ),
         ),
       ),
     );

@@ -253,7 +253,7 @@ class _FilmCutBackdropPainter extends CustomPainter {
           end: Alignment.bottomCenter,
           colors: [
             Color.lerp(primary, Colors.white, 0.28 + pulse)!,
-            Color.lerp(primary, Colors.deepPurple, 0.42)!,
+            Color.lerp(primary, const Color(0xFF1E293B), 0.48)!,
             Colors.black.withValues(alpha: 0.72),
           ],
           stops: const [0.0, 0.42, 1.0],
