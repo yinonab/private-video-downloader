@@ -785,6 +785,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                     ),
               session: scope.session,
               apiBaseForUrl: scope.session.serverUrl,
+              previewRotation: _rotation,
               trimStartSec: _startSec,
               trimEndSec: _endSec,
               videoDurationSec: _durationSec,

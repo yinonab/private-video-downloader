@@ -1,9 +1,11 @@
 import "dart:async";
 import "dart:io";
+import "dart:math" as math;
 
 import "package:flutter/material.dart";
 import "package:video_player/video_player.dart";
 
+import "../../../core/models/quick_edit_models.dart";
 import "../../../core/network/api_client.dart";
 import "../../../core/storage/local_session.dart";
 import "edit_video_preview_source.dart";
@@ -19,6 +21,7 @@ class EditVideoPreview extends StatefulWidget {
     required this.previewSource,
     required this.session,
     required this.apiBaseForUrl,
+    required this.previewRotation,
     required this.trimStartSec,
     required this.trimEndSec,
     required this.videoDurationSec,
@@ -30,6 +33,9 @@ class EditVideoPreview extends StatefulWidget {
   final EditVideoPreviewSource previewSource;
   final LocalSession session;
   final String apiBaseForUrl;
+
+  /// Clockwise preview-only orientation (does not affect `/edits` payload).
+  final QuickEditRotation previewRotation;
   final double trimStartSec;
   final double trimEndSec;
   final double videoDurationSec;
@@ -229,6 +235,145 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
     await c.seekTo(Duration(milliseconds: (start * 1000).round()));
   }
 
+  Widget _playOverlayInk(VideoPlayerController c) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.22),
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: _togglePlay,
+        child: Center(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.38),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.14),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Icon(
+                c.value.isPlaying
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded,
+                size: 36,
+                color: Colors.white.withValues(alpha: 0.9),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// **0°** — matches legacy preview: fixed 16:9 + cover.
+  Widget _previewZeroDegrees(VideoPlayerController c) {
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Stack(
+          fit: StackFit.expand,
+          alignment: Alignment.center,
+          children: [
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: c.value.size.width,
+                height: c.value.size.height,
+                child: VideoPlayer(c),
+              ),
+            ),
+            _playOverlayInk(c),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// **180°** — same framing as **0°**; video paint rotates inside cover (no stretched card).
+  Widget _previewInverted(VideoPlayerController c) {
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Stack(
+          fit: StackFit.expand,
+          alignment: Alignment.center,
+          children: [
+            FittedBox(
+              fit: BoxFit.cover,
+              child: Transform.rotate(
+                angle: math.pi,
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: c.value.size.width,
+                  height: c.value.size.height,
+                  child: VideoPlayer(c),
+                ),
+              ),
+            ),
+            _playOverlayInk(c),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// **90° / 270°** — outer aspect swaps W/H projection; [`BoxFit.contain`] avoids clipping the rotated raster.
+  Widget _previewSideways(
+    VideoPlayerController c, {
+    required double radians,
+    required double sourceAspectWidthOverHeight,
+  }) {
+    final displayAspect =
+        sourceAspectWidthOverHeight >= 1e-8 ? 1 / sourceAspectWidthOverHeight : 9 / 16;
+    final outerAr = math.min(2.05, math.max(0.28, displayAspect));
+
+    Widget core = SizedBox(
+      width: c.value.size.width,
+      height: c.value.size.height,
+      child: VideoPlayer(c),
+    );
+    core = Transform.rotate(
+      angle: radians,
+      alignment: Alignment.center,
+      filterQuality: FilterQuality.medium,
+      child: core,
+    );
+
+    return AspectRatio(
+      aspectRatio: outerAr,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Stack(
+          fit: StackFit.expand,
+          alignment: Alignment.center,
+          children: [
+            ColoredBox(
+              color: Colors.black,
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  alignment: Alignment.center,
+                  child: core,
+                ),
+              ),
+            ),
+            _playOverlayInk(c),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _togglePlay() async {
     final c = _controller;
     if (c == null || !c.value.isInitialized) return;
@@ -305,60 +450,25 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
     }
 
     final c = _controller!;
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: Stack(
-          fit: StackFit.expand,
-          alignment: Alignment.center,
-          children: [
-            FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: c.value.size.width,
-                height: c.value.size.height,
-                child: VideoPlayer(c),
-              ),
-            ),
-            Material(
-              color: Colors.black.withValues(alpha: 0.22),
-              type: MaterialType.transparency,
-              child: InkWell(
-                onTap: _togglePlay,
-                child: Center(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.38),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.14),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.35),
-                          blurRadius: 18,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Icon(
-                        c.value.isPlaying
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                        size: 36,
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+    final w = c.value.size.width;
+    final h = c.value.size.height;
+    final ok = w > 8 && h > 8;
+    final srcAr =
+        ok ? (w / h) : (16 / 9); /* fallback aligns with legacy placeholder */
+
+    return switch (widget.previewRotation) {
+      QuickEditRotation.deg0 => _previewZeroDegrees(c),
+      QuickEditRotation.deg180 => _previewInverted(c),
+      QuickEditRotation.deg90 => _previewSideways(
+          c,
+          radians: math.pi / 2,
+          sourceAspectWidthOverHeight: srcAr,
         ),
-      ),
-    );
+      QuickEditRotation.deg270 => _previewSideways(
+          c,
+          radians: 3 * math.pi / 2,
+          sourceAspectWidthOverHeight: srcAr,
+        ),
+    };
   }
 }
