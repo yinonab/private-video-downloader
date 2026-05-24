@@ -202,6 +202,32 @@ extension QuickEditCompressPresetApi on QuickEditCompressPreset {
       };
 }
 
+enum QuickEditSpeedFactor {
+  x05,
+  x1,
+  x125,
+  x15,
+  x2;
+
+  /// Labels like **0.5x** — same in EN/HE per product spec.
+  String get chipLabel => switch (this) {
+        QuickEditSpeedFactor.x05 => "0.5x",
+        QuickEditSpeedFactor.x1 => "1x",
+        QuickEditSpeedFactor.x125 => "1.25x",
+        QuickEditSpeedFactor.x15 => "1.5x",
+        QuickEditSpeedFactor.x2 => "2x",
+      };
+
+  /// Omit from API when **1×** (no ffmpeg speed op).
+  double? get apiFactor => switch (this) {
+        QuickEditSpeedFactor.x1 => null,
+        QuickEditSpeedFactor.x05 => 0.5,
+        QuickEditSpeedFactor.x125 => 1.25,
+        QuickEditSpeedFactor.x15 => 1.5,
+        QuickEditSpeedFactor.x2 => 2.0,
+      };
+}
+
 /// Whether the list screen row may offer Quick Edit (server-side source exists).
 bool downloadItemEligibleForQuickEdit(DownloadItem item) {
   if (item.status != "done") return false;
@@ -219,6 +245,7 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   required double trimStartSec,
   required double trimEndSec,
   required QuickEditCropAspect cropAspect,
+  required QuickEditSpeedFactor speedFactor,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
 }) {
@@ -244,6 +271,14 @@ List<Map<String, dynamic>> buildQuickEditOperations({
     });
   }
 
+  final sp = speedFactor.apiFactor;
+  if (sp != null) {
+    ops.add({
+      "type": "speed",
+      "factor": sp,
+    });
+  }
+
   if (mute) {
     ops.add({"type": "mute"});
   }
@@ -263,6 +298,7 @@ bool quickEditHasChanges({
   required double trimStartSec,
   required double trimEndSec,
   required QuickEditCropAspect cropAspect,
+  required QuickEditSpeedFactor speedFactor,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
 }) {
@@ -271,6 +307,7 @@ bool quickEditHasChanges({
     trimStartSec: trimStartSec,
     trimEndSec: trimEndSec,
     cropAspect: cropAspect,
+    speedFactor: speedFactor,
     mute: mute,
     compressPreset: compressPreset,
   );

@@ -6,7 +6,12 @@ import type { Queue } from "bullmq";
 import { AppError, codes } from "../../types/errors";
 import { resolveAbsoluteFromStorageKey } from "../../services/storage";
 import { logger } from "../../services/logger";
-import { createEditJobSchema, editOperationSchema, type EditOperation } from "./edit.schemas";
+import {
+  createEditJobSchema,
+  editOperationSchema,
+  unsupportedSpeedFactorErrorFromUnknownBody,
+  type EditOperation,
+} from "./edit.schemas";
 import type { EditQueuePayload } from "./edit.types";
 import { z } from "zod";
 
@@ -215,6 +220,8 @@ export async function createEditJob(opts: {
 }): Promise<{ editJobId: string; status: string }> {
   const parsed = createEditJobSchema.safeParse(opts.body);
   if (!parsed.success) {
+    const speedOnly = unsupportedSpeedFactorErrorFromUnknownBody(opts.body);
+    if (speedOnly != null) throw speedOnly;
     throw new AppError(codes.BAD_REQUEST, "Invalid body", 400);
   }
 

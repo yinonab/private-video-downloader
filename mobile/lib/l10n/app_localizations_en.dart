@@ -1013,6 +1013,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Too many edit sources were selected. Try again.';
 
   @override
+  String get errorUnsupportedSpeedFactor =>
+      'This speed option is not supported.';
+
+  @override
   String get editStageQueued => 'Waiting to start…';
 
   @override
@@ -1044,6 +1048,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editTabTrim => 'Trim';
 
   @override
+  String get editTabSpeed => 'Speed';
+
+  @override
   String get editTabAspectRatio => 'Format';
 
   @override
@@ -1051,6 +1058,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editTabAudio => 'Audio';
+
+  @override
+  String get editSpeedSectionTitle => 'Speed';
+
+  @override
+  String get editSpeedSectionSubtitle => 'Choose playback speed';
+
+  @override
+  String get editSpeedDurationHint =>
+      'Changing speed changes the final video duration.';
 
   @override
   String get editCompressHelperHint => 'Choose final quality and file size';

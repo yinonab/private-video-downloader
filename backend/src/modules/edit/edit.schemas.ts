@@ -1,5 +1,18 @@
 import { z } from "zod";
-import type { ResolvedEditPlan } from "./edit.types";
+import { AppError, codes } from "../../types/errors";
+import type { EditSpeedFactor, ResolvedEditPlan } from "./edit.types";
+
+const CANON_EDIT_SPEED_FACTORS = [0.5, 1.25, 1.5, 2] as const satisfies readonly EditSpeedFactor[];
+
+function normalizeEditSpeedFactor(n: unknown): EditSpeedFactor | undefined {
+  if (typeof n !== "number" || !Number.isFinite(n)) return undefined;
+  for (const f of CANON_EDIT_SPEED_FACTORS) {
+    if (Math.abs(f - n) < 1e-6) return f;
+  }
+  return undefined;
+}
+
+const UNSUPPORTED_SPEED_EN = "This speed option is not supported.";
 
 const trimOpSchema = z
   .object({
@@ -22,6 +35,20 @@ const cropOpSchema = z
 
 const muteOpSchema = z.object({ type: z.literal("mute") }).strict();
 
+const speedFactorSchema = z.union([
+  z.literal(0.5),
+  z.literal(1.25),
+  z.literal(1.5),
+  z.literal(2),
+]);
+
+const speedOpSchema = z
+  .object({
+    type: z.literal("speed"),
+    factor: speedFactorSchema,
+  })
+  .strict();
+
 const compressOpSchema = z
   .object({
     type: z.literal("compress"),
@@ -32,6 +59,7 @@ const compressOpSchema = z
 export const editOperationSchema = z.union([
   trimOpSchema,
   cropOpSchema,
+  speedOpSchema,
   muteOpSchema,
   compressOpSchema,
 ]);
@@ -48,9 +76,25 @@ export type CreateEditJobBody = z.infer<typeof createEditJobSchema>;
 
 export type EditOperation = z.infer<typeof editOperationSchema>;
 
+export function unsupportedSpeedFactorErrorFromUnknownBody(body: unknown): AppError | null {
+  if (body == null || typeof body !== "object") return null;
+  const ops = (body as { operations?: unknown }).operations;
+  if (!Array.isArray(ops)) return null;
+  for (const raw of ops) {
+    if (raw == null || typeof raw !== "object") continue;
+    const o = raw as { type?: unknown; factor?: unknown };
+    if (o.type !== "speed") continue;
+    if (typeof o.factor !== "number" || !Number.isFinite(o.factor)) continue;
+    if (normalizeEditSpeedFactor(o.factor) !== undefined) continue;
+    return new AppError(codes.UNSUPPORTED_SPEED_FACTOR, UNSUPPORTED_SPEED_EN, 400);
+  }
+  return null;
+}
+
 export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
   let trim: ResolvedEditPlan["trim"];
   let aspectRatio: ResolvedEditPlan["aspectRatio"] = "original";
+  let speedFactor: EditSpeedFactor | undefined;
   let mute = false;
   let compressPreset: ResolvedEditPlan["compressPreset"] = "social";
   for (const op of ops) {
@@ -60,6 +104,9 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
         break;
       case "crop":
         aspectRatio = op.aspectRatio;
+        break;
+      case "speed":
+        speedFactor = op.factor;
         break;
       case "mute":
         mute = true;
@@ -71,5 +118,5 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
         break;
     }
   }
-  return { trim, aspectRatio, mute, compressPreset };
+  return { trim, aspectRatio, speedFactor, mute, compressPreset };
 }

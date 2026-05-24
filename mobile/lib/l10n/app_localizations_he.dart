@@ -1001,6 +1001,9 @@ class AppLocalizationsHe extends AppLocalizations {
       'נבחרו יותר מדי מקורות לעריכה. נסה שוב.';
 
   @override
+  String get errorUnsupportedSpeedFactor => 'אפשרות המהירות הזו לא נתמכת.';
+
+  @override
   String get editStageQueued => 'ממתין להתחלה…';
 
   @override
@@ -1032,6 +1035,9 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editTabTrim => 'חיתוך';
 
   @override
+  String get editTabSpeed => 'מהירות';
+
+  @override
   String get editTabAspectRatio => 'פורמט';
 
   @override
@@ -1039,6 +1045,15 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get editTabAudio => 'קול';
+
+  @override
+  String get editSpeedSectionTitle => 'מהירות';
+
+  @override
+  String get editSpeedSectionSubtitle => 'בחר את מהירות הסרטון';
+
+  @override
+  String get editSpeedDurationHint => 'שינוי המהירות ישנה את משך הסרטון הסופי.';
 
   @override
   String get editCompressHelperHint => 'בחר איכות וגודל קובץ סופי';

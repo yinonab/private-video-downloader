@@ -55,6 +55,8 @@ String localizedApiErrorMessage(AppLocalizations l10n, ApiError e) {
       return l10n.errorUploadVideoTooLong;
     case "UPLOAD_UNSUPPORTED_TYPE":
       return l10n.errorUploadUnsupportedType;
+    case "UNSUPPORTED_SPEED_FACTOR":
+      return l10n.errorUnsupportedSpeedFactor;
     case "UPLOAD_INVALID_VIDEO":
       return l10n.errorUploadInvalidVideo;
     case "UPLOAD_FAILED":

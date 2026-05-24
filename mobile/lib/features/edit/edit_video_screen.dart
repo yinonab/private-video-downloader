@@ -31,6 +31,7 @@ import "widgets/edit_processing_animation.dart";
 import "widgets/edit_video_preview.dart";
 import "widgets/edit_video_preview_source.dart";
 import "quick_edit_source_expired_sheet.dart";
+import "widgets/speed_editor.dart";
 import "widgets/trim_editor.dart";
 
 enum _FlowPhase { composing, working, done, failed }
@@ -113,6 +114,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   double _startSec = 0;
   late double _endSec;
   QuickEditCropAspect _crop = QuickEditCropAspect.original;
+  QuickEditSpeedFactor _speed = QuickEditSpeedFactor.x1;
   bool _mute = false;
   QuickEditCompressPreset _compress = QuickEditCompressPreset.original;
 
@@ -132,7 +134,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this)
+    _tabController = TabController(length: 5, vsync: this)
       ..addListener(() {
         if (mounted) setState(() {});
       });
@@ -225,6 +227,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       trimStartSec: _startSec,
       trimEndSec: _endSec,
       cropAspect: _crop,
+      speedFactor: _speed,
       mute: _mute,
       compressPreset: _compress,
     );
@@ -407,6 +410,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         trimStartSec: _startSec,
         trimEndSec: _endSec,
         cropAspect: _crop,
+        speedFactor: _speed,
         mute: _mute,
         compressPreset: _compress,
       );
@@ -703,9 +707,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     final idx = _tabController.index;
     final tabs = <(int, IconData, String)>[
       (0, Icons.content_cut_rounded, l10n.editTabTrim),
-      (1, Icons.aspect_ratio_rounded, l10n.editTabAspectRatio),
-      (2, Icons.volume_up_rounded, l10n.editTabAudio),
-      (3, Icons.high_quality_rounded, l10n.editTabCompression),
+      (1, Icons.speed_rounded, l10n.editTabSpeed),
+      (2, Icons.aspect_ratio_rounded, l10n.editTabAspectRatio),
+      (3, Icons.volume_up_rounded, l10n.editTabAudio),
+      (4, Icons.high_quality_rounded, l10n.editTabCompression),
     ];
 
     return Padding(
@@ -738,7 +743,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     final scope = AppScope.read(context);
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final showCropOverlay =
-        _tabController.index == 1 && _crop != QuickEditCropAspect.original;
+        _tabController.index == 2 && _crop != QuickEditCropAspect.original;
 
     Widget previewStack;
     if (_detailLoading) {
@@ -862,6 +867,14 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                           _endSec = b;
                         }),
                         onReset: _resetTrim,
+                      ),
+                    ),
+                    _composerPanelShell(
+                      theme,
+                      scheme,
+                      SpeedEditor(
+                        selected: _speed,
+                        onSelected: (s) => setState(() => _speed = s),
                       ),
                     ),
                     _composerPanelShell(

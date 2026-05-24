@@ -1934,6 +1934,12 @@ abstract class AppLocalizations {
   /// **'Too many edit sources were selected. Try again.'**
   String get errorEditMultipleSources;
 
+  /// No description provided for @errorUnsupportedSpeedFactor.
+  ///
+  /// In en, this message translates to:
+  /// **'This speed option is not supported.'**
+  String get errorUnsupportedSpeedFactor;
+
   /// No description provided for @editStageQueued.
   ///
   /// In en, this message translates to:
@@ -1994,6 +2000,12 @@ abstract class AppLocalizations {
   /// **'Trim'**
   String get editTabTrim;
 
+  /// No description provided for @editTabSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get editTabSpeed;
+
   /// No description provided for @editTabAspectRatio.
   ///
   /// In en, this message translates to:
@@ -2011,6 +2023,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Audio'**
   String get editTabAudio;
+
+  /// No description provided for @editSpeedSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get editSpeedSectionTitle;
+
+  /// No description provided for @editSpeedSectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose playback speed'**
+  String get editSpeedSectionSubtitle;
+
+  /// No description provided for @editSpeedDurationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Changing speed changes the final video duration.'**
+  String get editSpeedDurationHint;
 
   /// No description provided for @editCompressHelperHint.
   ///

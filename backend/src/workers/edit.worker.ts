@@ -167,6 +167,7 @@ export function createEditWorker(prisma: PrismaClient): Worker {
             ...(row.sourceDownloadJobId ? { sourceDownloadJobId: row.sourceDownloadJobId } : {}),
             ...(row.sourceUploadId ? { sourceUploadId: row.sourceUploadId } : {}),
             segmentDurationSec: built.segmentDurationSec,
+            ...(plan.speedFactor != null ? { speedFactor: plan.speedFactor } : {}),
             mute: plan.mute,
             aspectRatio: plan.aspectRatio,
             compressPreset: plan.compressPreset,

@@ -47,7 +47,7 @@ export type BuiltEditFfmpeg = {
 };
 
 /**
- * Single-pass filter graph: trim → optional scale/crop → encode H.264 (+ AAC if audio kept).
+ * Single-pass filter graph: trim → optional scale/crop → constant speed → encode H.264 (+ AAC if audio kept).
  */
 export function buildEditFfmpegArgs(opts: {
   inputPath: string;
@@ -64,7 +64,11 @@ export function buildEditFfmpegArgs(opts: {
   }
   const trimStartClamped = Math.max(0, Math.min(trimStart, trimEnd - 0.05));
   const trimEndClamped = Math.max(trimStartClamped + 0.05, trimEnd);
-  const segmentDurationSec = trimEndClamped - trimStartClamped;
+  const trimmedSourceSegmentSec = trimEndClamped - trimStartClamped;
+  const spd = plan.speedFactor;
+  /** Output mux timeline duration (after speed changes playback length). Used for ffmpeg progress ratios. */
+  const segmentDurationSec =
+    spd != null && spd > 0 ? trimmedSourceSegmentSec / spd : trimmedSourceSegmentSec;
 
   const ts = trimStartClamped.toFixed(3);
   const te = trimEndClamped.toFixed(3);
@@ -74,12 +78,20 @@ export function buildEditFfmpegArgs(opts: {
   if (dims != null) {
     vChain += `,scale=${dims.w}:${dims.h}:force_original_aspect_ratio=increase,crop=${dims.w}:${dims.h}`;
   }
+  if (spd != null) {
+    vChain += `,setpts=PTS/${spd}`;
+  }
   vChain += `[vout]`;
 
   const filters: string[] = [vChain];
   const encodeAudio = !plan.mute && probe.hasAudio;
   if (encodeAudio) {
-    filters.push(`[0:a]atrim=start=${ts}:end=${te},asetpts=PTS-STARTPTS[aout]`);
+    let aChain = `[0:a]atrim=start=${ts}:end=${te},asetpts=PTS-STARTPTS`;
+    if (spd != null) {
+      aChain += `,atempo=${spd}`;
+    }
+    aChain += "[aout]";
+    filters.push(aChain);
   }
 
   const { crf, presetName } = x264EncodeOpts(plan.compressPreset);

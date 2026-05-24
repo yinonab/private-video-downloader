@@ -1,6 +1,11 @@
+/** Constant playback speed factor for the edited output (`1x` omitted from API). */
+export type EditSpeedFactor = 0.5 | 1.25 | 1.5 | 2;
+
 export type ResolvedEditPlan = {
   trim?: { startSec: number; endSec: number };
   aspectRatio: "original" | "9:16" | "1:1" | "16:9" | "4:5";
+  /** When set; constant speed applies to entire output timeline. Omit for normal (1×) playback. */
+  speedFactor?: EditSpeedFactor;
   mute: boolean;
   compressPreset: "original" | "social" | "small";
 };

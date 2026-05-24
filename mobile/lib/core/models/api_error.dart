@@ -118,6 +118,8 @@ class ApiError implements Exception {
         return "הסרטון ארוך מדי לעריכה כרגע. אפשר להעלות קליפים עד 7 דקות.";
       case "UPLOAD_UNSUPPORTED_TYPE":
         return "סוג הקובץ לא נתמך. נסה סרטון MP4.";
+      case "UNSUPPORTED_SPEED_FACTOR":
+        return "אפשרות המהירות הזו לא נתמכת.";
       case "UPLOAD_INVALID_VIDEO":
         return "לא הצלחנו לקרוא את הסרטון הזה. נסה סרטון אחר.";
       case "UPLOAD_FAILED":
