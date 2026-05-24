@@ -6,12 +6,15 @@ import type { Queue } from "bullmq";
 import { AppError, codes } from "../../types/errors";
 import { resolveAbsoluteFromStorageKey } from "../../services/storage";
 import { logger } from "../../services/logger";
+import { config } from "../../config";
 import {
   createEditJobSchema,
   editOperationSchema,
+  captionsFieldErrorsFromUnknownBody,
   unsupportedFormatModeErrorFromUnknownBody,
   unsupportedRotationErrorFromUnknownBody,
   unsupportedSpeedFactorErrorFromUnknownBody,
+  resolveEditOperations,
   type EditOperation,
 } from "./edit.schemas";
 import type { EditQueuePayload } from "./edit.types";
@@ -228,6 +231,8 @@ export async function createEditJob(opts: {
     if (formatOnly != null) throw formatOnly;
     const rotateOnly = unsupportedRotationErrorFromUnknownBody(opts.body);
     if (rotateOnly != null) throw rotateOnly;
+    const captionsOnly = captionsFieldErrorsFromUnknownBody(opts.body);
+    if (captionsOnly != null) throw captionsOnly;
     throw new AppError(codes.BAD_REQUEST, "Invalid body", 400);
   }
 
@@ -261,6 +266,15 @@ export async function createEditJob(opts: {
       deviceId: opts.deviceId,
       sourceUploadId: d.sourceUploadId!,
     });
+  }
+
+  const resolvedPlan = resolveEditOperations(d.operations);
+  if (resolvedPlan.captionsBurnInV1 != null && config.openaiApiKey.length === 0) {
+    throw new AppError(
+      codes.CAPTIONS_TRANSCRIPTION_UNAVAILABLE,
+      "Automatic captions are not configured on this server.",
+      503
+    );
   }
 
   const operationsJson = d.operations as unknown as Prisma.InputJsonValue;

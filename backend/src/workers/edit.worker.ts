@@ -6,7 +6,7 @@ import Redis from "ioredis";
 import type { PrismaClient } from "@prisma/client";
 import { config } from "../config";
 import { EDIT_QUEUE_NAME } from "../plugins/queues";
-import { buildEditFfmpegArgs, ffmpegProgressRatio } from "../modules/edit/edit.ffmpeg";
+import { buildEditFinalEncodeAfterCaptionsArgs, buildEditFfmpegArgs, ffmpegProgressRatio } from "../modules/edit/edit.ffmpeg";
 import {
   expectedEditOutputStorageKey,
   parseStoredOperations,
@@ -14,9 +14,13 @@ import {
 } from "../modules/edit/edit.service";
 import { resolveEditOperations } from "../modules/edit/edit.schemas";
 import type { EditQueuePayload } from "../modules/edit/edit.types";
+import type { TranscriptSegment } from "../services/transcription.service";
+import { segmentsToAssContent } from "../services/assSubtitles.service";
 import { ffprobeMedia } from "../services/ffmpegNormalize";
+import { ffmpegSubtitlesVFArgument } from "../services/ffmpegSubtitlePath";
 import { logger } from "../services/logger";
 import { ensureDeviceDirs, getEditsDir } from "../services/storage";
+import { transcribeAudioFile } from "../services/transcription.service";
 import { AppError, codes } from "../types/errors";
 
 const STDERR_CAP = 512_000;
@@ -64,6 +68,29 @@ async function markEditFailed(
   );
 }
 
+async function ffmpegExtractMonoWav16k(inputMp4: string, outputWav: string): Promise<number | null> {
+  return runFfmpeg(
+    [
+      "-hide_banner",
+      "-nostats",
+      "-y",
+      "-i",
+      inputMp4,
+      "-vn",
+      "-ac",
+      "1",
+      "-ar",
+      "16000",
+      "-c:a",
+      "pcm_s16le",
+      "-f",
+      "wav",
+      outputWav,
+    ],
+    () => undefined
+  );
+}
+
 export function createEditWorker(prisma: PrismaClient): Worker {
   const connection = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
 
@@ -76,6 +103,17 @@ export function createEditWorker(prisma: PrismaClient): Worker {
 
       const cleanupTmp = async (): Promise<void> => {
         await fs.unlink(tmpOut).catch(() => undefined);
+      };
+
+      const editsRoot = getEditsDir(deviceId);
+      const captionMidAbs = path.join(editsRoot, `${editJobId}.mid.tmp.mp4`);
+      const wavAbs = path.join(editsRoot, `${editJobId}.asr.wav`);
+      const assAbs = path.join(editsRoot, `${editJobId}.cap.tmp.ass`);
+
+      const unlinkCaptionArtifacts = async (): Promise<void> => {
+        await fs.unlink(captionMidAbs).catch(() => undefined);
+        await fs.unlink(wavAbs).catch(() => undefined);
+        await fs.unlink(assAbs).catch(() => undefined);
       };
 
       try {
@@ -147,16 +185,20 @@ export function createEditWorker(prisma: PrismaClient): Worker {
         await ensureDeviceDirs(deviceId);
         await fs.unlink(tmpOut).catch(() => undefined);
 
+        const captionsV1 = plan.captionsBurnInV1 != null;
+
         await prisma.editJob.update({
           where: { id: editJobId },
           data: { stage: "processing", progressPercent: 10 },
         });
 
-        const built = buildEditFfmpegArgs({
+        /** Single-pass timeline OR intermediate MP4 aligned to Whisper timeline (trim→rotate→format→speed→AAC). */
+        let builtIntermediate = buildEditFfmpegArgs({
           inputPath: source.absPath,
-          outputPath: tmpOut,
+          outputPath: captionsV1 ? captionMidAbs : tmpOut,
           probe: { durationSec, hasAudio: probe.audio != null },
           plan,
+          keepAudioDespiteMute: captionsV1 && probe.audio != null,
         });
 
         logger.info(
@@ -166,7 +208,8 @@ export function createEditWorker(prisma: PrismaClient): Worker {
             sourceKind: source.sourceKind,
             ...(row.sourceDownloadJobId ? { sourceDownloadJobId: row.sourceDownloadJobId } : {}),
             ...(row.sourceUploadId ? { sourceUploadId: row.sourceUploadId } : {}),
-            segmentDurationSec: built.segmentDurationSec,
+            segmentDurationSec: builtIntermediate.segmentDurationSec,
+            captionsBurnInPipeline: captionsV1,
           ...(plan.speedFactor != null ? { speedFactor: plan.speedFactor } : {}),
           ...(plan.rotationDegrees != null ? { rotationDegrees: plan.rotationDegrees } : {}),
           ...(plan.formatMode != null ? { formatMode: plan.formatMode } : {}),
@@ -181,12 +224,14 @@ export function createEditWorker(prisma: PrismaClient): Worker {
         let lastDbProgressAt = 0;
         let lastPct = 10;
 
-        const exitCode = await runFfmpeg(built.args, (full) => {
+        const exitIntermediate = await runFfmpeg(builtIntermediate.args, (full) => {
           stderrAcc = full;
           const t = ffmpegProgressRatio(full);
-          if (t == null || built.segmentDurationSec <= 0) return;
-          const ratio = Math.min(1, Math.max(0, t / built.segmentDurationSec));
-          const pct = Math.min(99, Math.round(10 + ratio * 89));
+          if (t == null || builtIntermediate.segmentDurationSec <= 0) return;
+          const ratio = Math.min(1, Math.max(0, t / builtIntermediate.segmentDurationSec));
+          const pct = captionsV1
+            ? Math.min(48, Math.round(11 + ratio * 36))
+            : Math.min(99, Math.round(10 + ratio * 89));
           const now = Date.now();
           if (now - lastDbProgressAt < 2000 && pct <= lastPct) return;
           lastDbProgressAt = now;
@@ -199,24 +244,159 @@ export function createEditWorker(prisma: PrismaClient): Worker {
             .catch(() => undefined);
         });
 
-        if (exitCode !== 0) {
+        if (exitIntermediate !== 0) {
+          await unlinkCaptionArtifacts();
           await cleanupTmp();
-          await markEditFailed(prisma, editJobId, codes.EDIT_FAILED, `ffmpeg exited with code ${exitCode}`, {
+          await markEditFailed(prisma, editJobId, codes.EDIT_FAILED, `ffmpeg exited with code ${exitIntermediate}`, {
             stderrTail: stderrAcc,
           });
           return;
+        }
+
+        if (captionsV1) {
+          let muxHasTimelineAudio = probe.audio != null;
+          let timelineDurationSecGuess = builtIntermediate.segmentDurationSec;
+
+          if (!config.openaiApiKey) {
+            await unlinkCaptionArtifacts();
+            await cleanupTmp();
+            await markEditFailed(
+              prisma,
+              editJobId,
+              codes.CAPTIONS_TRANSCRIPTION_UNAVAILABLE,
+              "Automatic captions are not configured on this server."
+            );
+            return;
+          }
+
+          let midDurSec = timelineDurationSecGuess;
+          try {
+            const midPb = await ffprobeMedia(captionMidAbs);
+            midDurSec = midPb.durationMs > 0 ? midPb.durationMs / 1000 : midDurSec;
+            muxHasTimelineAudio = midPb.audio != null;
+          } catch {
+            await unlinkCaptionArtifacts();
+            await cleanupTmp();
+            await markEditFailed(prisma, editJobId, codes.EDIT_FAILED, "ffprobe failed on intermediate timeline");
+            return;
+          }
+          timelineDurationSecGuess = midDurSec > 0 ? midDurSec : timelineDurationSecGuess;
+
+          await prisma.editJob.update({
+            where: { id: editJobId },
+            data: { stage: "captions_transcription", progressPercent: Math.max(lastPct, 49) },
+          });
+
+          let segments: TranscriptSegment[] = [];
+          if (!muxHasTimelineAudio) {
+            logger.warn({ editJobId }, "captions burn-in skipped: timeline has no audio track");
+          } else {
+            const wx = await ffmpegExtractMonoWav16k(captionMidAbs, wavAbs);
+            if (wx !== 0) {
+              await unlinkCaptionArtifacts();
+              await cleanupTmp();
+              await markEditFailed(
+                prisma,
+                editJobId,
+                codes.CAPTIONS_GENERATION_FAILED,
+                "Could not extract audio for transcription"
+              );
+              return;
+            }
+            try {
+              segments = (
+                await transcribeAudioFile({
+                  audioPath: wavAbs,
+                  apiKey: config.openaiApiKey,
+                  model: config.openaiTranscriptionModel,
+                  editJobId,
+                })
+              ).segments;
+            } catch (txErr) {
+              await unlinkCaptionArtifacts();
+              await cleanupTmp();
+              if (txErr instanceof AppError) {
+                await markEditFailed(prisma, editJobId, txErr.code, txErr.message);
+              } else {
+                await markEditFailed(
+                  prisma,
+                  editJobId,
+                  codes.CAPTIONS_GENERATION_FAILED,
+                  "Transcription failed"
+                );
+              }
+              return;
+            }
+          }
+
+          let subtitlesVfClause: string | null = null;
+          if (segments.length > 0) {
+            const assTxt = segmentsToAssContent(segments, { title: `edit-${editJobId}-cap` });
+            await fs.writeFile(assAbs, assTxt, "utf8");
+            subtitlesVfClause = ffmpegSubtitlesVFArgument(assAbs);
+          } else {
+            logger.warn({ editJobId }, "captions: no subtitle segments — exporting without burn-in overlays");
+          }
+
+          await prisma.editJob.update({
+            where: { id: editJobId },
+            data: { stage: "captions_encode", progressPercent: Math.max(lastPct + 2, 55) },
+          });
+
+          /** Final compress + mute on mux + optional subtitles burn (`subtitles`/libass filter). */
+          const builtFinal = buildEditFinalEncodeAfterCaptionsArgs({
+            intermediatePath: captionMidAbs,
+            outputPath: tmpOut,
+            plan,
+            videoFilter: subtitlesVfClause,
+            intermediateHasAudio: muxHasTimelineAudio,
+            timelineDurationSec: timelineDurationSecGuess > 0 ? timelineDurationSecGuess : 1,
+          });
+
+          lastDbProgressAt = Date.now();
+          lastPct = 55;
+          const exitFinal = await runFfmpeg(builtFinal.args, (full) => {
+            stderrAcc = full;
+            const t = ffmpegProgressRatio(full);
+            if (t == null || builtFinal.segmentDurationSec <= 0) return;
+            const ratio = Math.min(1, Math.max(0, t / builtFinal.segmentDurationSec));
+            const pct = Math.min(98, Math.round(55 + ratio * 43));
+            const now = Date.now();
+            if (now - lastDbProgressAt < 2000 && pct <= lastPct) return;
+            lastDbProgressAt = now;
+            lastPct = pct;
+            void prisma.editJob
+              .update({
+                where: { id: editJobId },
+                data: { progressPercent: pct },
+              })
+              .catch(() => undefined);
+          });
+
+          if (exitFinal !== 0) {
+            await unlinkCaptionArtifacts();
+            await cleanupTmp();
+            await markEditFailed(prisma, editJobId, codes.EDIT_FAILED, `ffmpeg final encode exited with code ${exitFinal}`, {
+              stderrTail: stderrAcc,
+            });
+            return;
+          }
+
+          await unlinkCaptionArtifacts().catch(() => undefined);
         }
 
         let st;
         try {
           st = await fs.stat(tmpOut);
         } catch {
+          await unlinkCaptionArtifacts();
           await cleanupTmp();
           await markEditFailed(prisma, editJobId, codes.EDIT_FAILED, "Output missing after ffmpeg");
           return;
         }
 
         if (!st.isFile() || st.size <= 0) {
+          await unlinkCaptionArtifacts();
           await cleanupTmp();
           await markEditFailed(prisma, editJobId, codes.EDIT_FAILED, "Empty output after ffmpeg");
           return;
@@ -224,7 +404,7 @@ export function createEditWorker(prisma: PrismaClient): Worker {
 
         logger.info(
           { editJobId, deviceId, outputBytes: st.size },
-          "ffmpeg edit completed"
+          captionsV1 ? "ffmpeg captions pipeline completed" : "ffmpeg edit completed"
         );
 
         await prisma.editJob.update({
@@ -234,6 +414,8 @@ export function createEditWorker(prisma: PrismaClient): Worker {
 
         await fs.unlink(finalOut).catch(() => undefined);
         await fs.rename(tmpOut, finalOut);
+
+        await unlinkCaptionArtifacts().catch(() => undefined);
 
         const storageKey = expectedEditOutputStorageKey(deviceId, editJobId);
         const completedAt = new Date();
@@ -254,6 +436,7 @@ export function createEditWorker(prisma: PrismaClient): Worker {
           },
         });
       } catch (err) {
+        await unlinkCaptionArtifacts();
         await cleanupTmp();
         const msg = err instanceof AppError ? err.message : err instanceof Error ? err.message : String(err);
         const code = err instanceof AppError ? err.code : codes.EDIT_FAILED;

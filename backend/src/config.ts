@@ -61,6 +61,12 @@ export const config = {
     Math.floor(raw.MAX_LOCAL_VIDEO_UPLOAD_MB * 1024 * 1024)
   ),
   maxLocalVideoUploadDurationSeconds: raw.MAX_LOCAL_VIDEO_UPLOAD_DURATION_SECONDS,
+
+  /** Captions V1 (`operations` captions burn-in via OpenAI transcript). Omit to disable captions by default */
+  openaiApiKey: (process.env.OPENAI_API_KEY ?? "").trim(),
+  openaiTranscriptionModel: (
+    ((process.env.OPENAI_TRANSCRIPTION_MODEL ?? "").trim() || "whisper-1")
+  ).trim(),
 };
 
 export type AppConfig = typeof config;

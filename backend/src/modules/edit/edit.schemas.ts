@@ -1,9 +1,12 @@
 import { z } from "zod";
 import { AppError, codes } from "../../types/errors";
-import type { EditFormatMode, EditRotationDegrees, EditSpeedFactor, ResolvedEditPlan } from "./edit.types";
+import type { CaptionsBurnInV1Resolved, EditFormatMode, EditRotationDegrees, EditSpeedFactor, ResolvedEditPlan } from "./edit.types";
 
 const UNSUPPORTED_FORMAT_EN = "This format mode is not supported.";
 const UNSUPPORTED_ROTATION_EN = "This rotation option is not supported.";
+const UNSUPPORTED_CAPTIONS_MODE_EN = "This captions mode is not supported.";
+const UNSUPPORTED_CAPTIONS_LANGUAGE_EN = "This captions language setting is not supported.";
+const UNSUPPORTED_CAPTIONS_STYLE_EN = "This captions style is not supported.";
 const CANON_EDIT_SPEED_FACTORS = [0.5, 1.25, 1.5, 2] as const satisfies readonly EditSpeedFactor[];
 
 function normalizeEditSpeedFactor(n: unknown): EditSpeedFactor | undefined {
@@ -73,6 +76,16 @@ const rotateOpSchema = z
   })
   .strict();
 
+const captionsOpSchema = z
+  .object({
+    type: z.literal("captions"),
+    mode: z.literal("auto"),
+    language: z.literal("auto"),
+    burnIn: z.literal(true),
+    style: z.literal("default"),
+  })
+  .strict();
+
 export const editOperationSchema = z.union([
   trimOpSchema,
   cropOpSchema,
@@ -81,6 +94,7 @@ export const editOperationSchema = z.union([
   speedOpSchema,
   muteOpSchema,
   compressOpSchema,
+  captionsOpSchema,
 ]);
 
 export const createEditJobSchema = z
@@ -145,6 +159,42 @@ export function unsupportedRotationErrorFromUnknownBody(body: unknown): AppError
   return null;
 }
 
+export function captionsFieldErrorsFromUnknownBody(body: unknown): AppError | null {
+  if (body == null || typeof body !== "object") return null;
+  const ops = (body as { operations?: unknown }).operations;
+  if (!Array.isArray(ops)) return null;
+  for (const raw of ops) {
+    if (raw == null || typeof raw !== "object") continue;
+    const o = raw as Record<string, unknown>;
+    if (o.type !== "captions") continue;
+    if (Object.prototype.hasOwnProperty.call(o, "mode")) {
+      if (o.mode !== "auto") {
+        return new AppError(codes.UNSUPPORTED_CAPTIONS_MODE, UNSUPPORTED_CAPTIONS_MODE_EN, 400);
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(o, "language")) {
+      if (o.language !== "auto") {
+        return new AppError(codes.UNSUPPORTED_CAPTIONS_LANGUAGE, UNSUPPORTED_CAPTIONS_LANGUAGE_EN, 400);
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(o, "style")) {
+      if (o.style !== "default") {
+        return new AppError(codes.UNSUPPORTED_CAPTIONS_STYLE, UNSUPPORTED_CAPTIONS_STYLE_EN, 400);
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(o, "burnIn")) {
+      if (o.burnIn !== true) {
+        return new AppError(
+          codes.BAD_REQUEST,
+          "Captions burnIn must be true in V1.",
+          400
+        );
+      }
+    }
+  }
+  return null;
+}
+
 export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
   let trim: ResolvedEditPlan["trim"];
   let aspectRatio: ResolvedEditPlan["aspectRatio"] = "original";
@@ -153,6 +203,7 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
   let speedFactor: EditSpeedFactor | undefined;
   let mute = false;
   let compressPreset: ResolvedEditPlan["compressPreset"] = "social";
+  let captionsBurnInV1: CaptionsBurnInV1Resolved | undefined;
   for (const op of ops) {
     switch (op.type) {
       case "trim":
@@ -178,6 +229,14 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
       case "compress":
         compressPreset = op.preset;
         break;
+      case "captions":
+        captionsBurnInV1 = {
+          mode: "auto",
+          language: "auto",
+          burnIn: true,
+          style: "default",
+        };
+        break;
       default:
         break;
     }
@@ -194,6 +253,9 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
   };
   if (rotationDegrees !== undefined) {
     out.rotationDegrees = rotationDegrees;
+  }
+  if (captionsBurnInV1 !== undefined) {
+    out.captionsBurnInV1 = captionsBurnInV1;
   }
   return out;
 }

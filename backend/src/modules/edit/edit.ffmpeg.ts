@@ -131,8 +131,10 @@ export function buildEditFfmpegArgs(opts: {
   outputPath: string;
   probe: EditProbeMeta;
   plan: ResolvedEditPlan;
+  /** Intermediate encode: keep timeline audio despite [plan.mute] (Whisper input before final mute). */
+  keepAudioDespiteMute?: boolean;
 }): BuiltEditFfmpeg {
-  const { inputPath, outputPath, probe, plan } = opts;
+  const { inputPath, outputPath, probe, plan, keepAudioDespiteMute } = opts;
   const dur = probe.durationSec > 0 ? probe.durationSec : 0;
   const trimStart = plan.trim?.startSec ?? 0;
   let trimEnd = plan.trim?.endSec ?? dur;
@@ -167,8 +169,9 @@ export function buildEditFfmpegArgs(opts: {
   });
 
   const filters: string[] = [vSpatial];
-  const encodeAudio = !plan.mute && probe.hasAudio;
-  if (encodeAudio) {
+  /** Timeline audio after trim + speed; kept for Whisper when burning captions even if final export is muted. */
+  const encodeTimelineAudio = probe.hasAudio && (!plan.mute || !!keepAudioDespiteMute);
+  if (encodeTimelineAudio) {
     let aChain = `[0:a]atrim=start=${ts}:end=${te},asetpts=PTS-STARTPTS`;
     if (spd != null) {
       aChain += `,atempo=${spd}`;
@@ -199,7 +202,7 @@ export function buildEditFfmpegArgs(opts: {
     "yuv420p",
   ];
 
-  if (encodeAudio) {
+  if (encodeTimelineAudio) {
     args.push("-map", "[aout]", "-c:a", "aac", "-b:a", "128k");
   } else {
     args.push("-an");
@@ -208,6 +211,53 @@ export function buildEditFfmpegArgs(opts: {
   args.push("-movflags", "+faststart", outputPath);
 
   return { args, segmentDurationSec };
+}
+
+/**
+ * Final pass: burn ASS (optional) + export codec + respect mute on **output** mux only.
+ * Input is the sped/trimmed/formatted intermediate MP4 (`buildEditFfmpegArgs` `keepAudioDespiteMute` path).
+ */
+export function buildEditFinalEncodeAfterCaptionsArgs(opts: {
+  intermediatePath: string;
+  outputPath: string;
+  plan: ResolvedEditPlan;
+  /** Full `-vf` clause (e.g. `subtitles=/path/file.ass`). **Null** skips burn-in filter. */
+  videoFilter: string | null;
+  /** From ffprobe on the intermediate file */
+  intermediateHasAudio: boolean;
+  /** Output duration for ffmpeg progress parsing */
+  timelineDurationSec: number;
+}): BuiltEditFfmpeg {
+  const { intermediatePath, outputPath, plan, videoFilter, intermediateHasAudio, timelineDurationSec } = opts;
+  const { crf, presetName } = x264EncodeOpts(plan.compressPreset);
+
+  const args: string[] = [
+    "-hide_banner",
+    "-nostats",
+    "-y",
+    "-i",
+    intermediatePath,
+    ...(videoFilter ? (["-vf", videoFilter] as const) : []),
+    "-map",
+    "0:v",
+    "-c:v",
+    "libx264",
+    "-preset",
+    presetName,
+    "-crf",
+    crf,
+    "-pix_fmt",
+    "yuv420p",
+  ];
+
+  if (!plan.mute && intermediateHasAudio) {
+    args.push("-map", "0:a:0?", "-c:a", "aac", "-b:a", "128k");
+  } else {
+    args.push("-an");
+  }
+
+  args.push("-movflags", "+faststart", outputPath);
+  return { args, segmentDurationSec: timelineDurationSec > 0 ? timelineDurationSec : 1 };
 }
 
 export function ffmpegProgressRatio(stderrChunk: string): number | null {
