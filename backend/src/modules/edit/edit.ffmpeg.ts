@@ -1,4 +1,4 @@
-import type { ResolvedEditPlan } from "./edit.types";
+import type { EditRotationDegrees, ResolvedEditPlan } from "./edit.types";
 
 export type EditProbeMeta = {
   durationSec: number;
@@ -48,21 +48,49 @@ export type BuiltEditFfmpeg = {
 
 const BLUR_SIGMA = 20;
 
+/** Clockwise rotation as pixel transpose/flip chains (metadata-only rotate is intentionally not used). */
+function rotationFilterChain(degrees: EditRotationDegrees): string {
+  switch (degrees) {
+    case 90:
+      return "transpose=1";
+    case 180:
+      return "hflip,vflip";
+    case 270:
+      return "transpose=2";
+  }
+}
+
+/**
+ * Trim → rotate (optional) → format spatial (optional) → setpts speed (optional) → `[vout]`.
+ */
 function buildSpatialVideo(opts: {
   ts: string;
   te: string;
   spd: ResolvedEditPlan["speedFactor"];
   dims: { w: number; h: number } | null;
   formatMode: ResolvedEditPlan["formatMode"];
+  rotationDegrees?: EditRotationDegrees;
 }): string {
-  const { ts, te, spd, dims, formatMode } = opts;
+  const { ts, te, spd, dims, formatMode, rotationDegrees } = opts;
+  const chunks: string[] = [];
+  let cur = "vtrim";
+  chunks.push(`[0:v]trim=start=${ts}:end=${te},setpts=PTS-STARTPTS[${cur}]`);
 
-  /** Original aspect / no dims: unchanged single-chain trim + optional constant speed */
+  if (rotationDegrees != null) {
+    const rotated = "vrot";
+    chunks.push(`[${cur}]${rotationFilterChain(rotationDegrees)}[${rotated}]`);
+    cur = rotated;
+  }
+
+  /** Original aspect / no dims */
   if (dims == null) {
-    let v = `[0:v]trim=start=${ts}:end=${te},setpts=PTS-STARTPTS`;
-    if (spd != null) v += `,setpts=PTS/${spd}`;
-    v += `[vout]`;
-    return v;
+    if (spd != null) {
+      chunks.push(`[${cur}]setpts=PTS/${spd}[vout]`);
+    } else {
+      /** Ensures labelled output for `-map`; minimal change vs prior single-graph trim-only path */
+      chunks.push(`[${cur}]format=yuv420p[vout]`);
+    }
+    return chunks.join(";");
   }
 
   const w = dims.w;
@@ -70,30 +98,33 @@ function buildSpatialVideo(opts: {
   const fm = formatMode ?? "fill";
 
   if (fm !== "fit_blur") {
-    /** Center-crop fill (legacy behavior): scale to cover frame, crop to exact WxH */
-    let v = `[0:v]trim=start=${ts}:end=${te},setpts=PTS-STARTPTS`;
-    v += `,scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`;
-    if (spd != null) v += `,setpts=PTS/${spd}`;
-    v += `[vout]`;
-    return v;
+    /** Center-crop fill: scale to cover frame, crop to exact WxH */
+    const geo = `[${cur}]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`;
+    if (spd != null) {
+      const scaled = "vfill";
+      chunks.push(`${geo}[${scaled}]`);
+      chunks.push(`[${scaled}]setpts=PTS/${spd}[vout]`);
+    } else {
+      chunks.push(`${geo}[vout]`);
+    }
+    return chunks.join(";");
   }
 
-  /** Fit + blurred background layer */
-  let g = `[0:v]trim=start=${ts}:end=${te},setpts=PTS-STARTPTS[v1];`;
-  g += `[v1]split=2[bg][fg];`;
-  g += `[bg]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},gblur=sigma=${BLUR_SIGMA}[bb];`;
-  g += `[fg]scale=${w}:${h}:force_original_aspect_ratio=decrease[ff];`;
+  /** Fit + blurred background */
+  chunks.push(`[${cur}]split=2[bg][fg]`);
+  chunks.push(`[bg]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},gblur=sigma=${BLUR_SIGMA}[bb]`);
+  chunks.push(`[fg]scale=${w}:${h}:force_original_aspect_ratio=decrease[ff]`);
   if (spd != null) {
-    g += `[bb][ff]overlay=(W-w)/2:(H-h)/2,setsar=1[v2];`;
-    g += `[v2]setpts=PTS/${spd}[vout]`;
+    chunks.push(`[bb][ff]overlay=(W-w)/2:(H-h)/2,setsar=1[vovl]`);
+    chunks.push(`[vovl]setpts=PTS/${spd}[vout]`);
   } else {
-    g += `[bb][ff]overlay=(W-w)/2:(H-h)/2,setsar=1[vout]`;
+    chunks.push(`[bb][ff]overlay=(W-w)/2:(H-h)/2,setsar=1[vout]`);
   }
-  return g;
+  return chunks.join(";");
 }
 
 /**
- * Single-pass filter graph: trim → optional format (fill or fit/blur) → constant speed → encode H.264 (+ AAC if audio kept).
+ * Single-pass filter graph: trim → optional rotate → optional format → constant speed → encode H.264 (+ AAC if audio kept).
  */
 export function buildEditFfmpegArgs(opts: {
   inputPath: string;
@@ -132,6 +163,7 @@ export function buildEditFfmpegArgs(opts: {
     spd,
     dims,
     formatMode: formatModeForGraph,
+    rotationDegrees: plan.rotationDegrees,
   });
 
   const filters: string[] = [vSpatial];

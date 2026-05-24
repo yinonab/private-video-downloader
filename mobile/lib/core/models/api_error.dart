@@ -122,6 +122,8 @@ class ApiError implements Exception {
         return "אפשרות המהירות הזו לא נתמכת.";
       case "UNSUPPORTED_FORMAT_MODE":
         return "מצב הפורמט הזה לא נתמך.";
+      case "UNSUPPORTED_ROTATION":
+        return "אפשרות הסיבוב הזו לא נתמכת.";
       case "UPLOAD_INVALID_VIDEO":
         return "לא הצלחנו לקרוא את הסרטון הזה. נסה סרטון אחר.";
       case "UPLOAD_FAILED":

@@ -115,6 +115,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   late double _endSec;
   QuickEditCropAspect _crop = QuickEditCropAspect.original;
   QuickEditFormatMode _formatFitMode = QuickEditFormatMode.fill;
+  QuickEditRotation _rotation = QuickEditRotation.deg0;
   QuickEditSpeedFactor _speed = QuickEditSpeedFactor.x1;
   bool _mute = false;
   QuickEditCompressPreset _compress = QuickEditCompressPreset.original;
@@ -229,6 +230,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       trimEndSec: _endSec,
       cropAspect: _crop,
       formatFitMode: _formatFitMode,
+      rotation: _rotation,
       speedFactor: _speed,
       mute: _mute,
       compressPreset: _compress,
@@ -413,6 +415,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         trimEndSec: _endSec,
         cropAspect: _crop,
         formatFitMode: _formatFitMode,
+        rotation: _rotation,
         speedFactor: _speed,
         mute: _mute,
         compressPreset: _compress,
@@ -888,6 +891,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                       FormatEditor(
                         aspect: _crop,
                         fitMode: _formatFitMode,
+                        rotation: _rotation,
                         onAspectChanged: (c) => setState(() {
                           _crop = c;
                           if (c == QuickEditCropAspect.original) {
@@ -896,6 +900,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                         }),
                         onFitModeChanged: (m) =>
                             setState(() => _formatFitMode = m),
+                        onRotationChanged: (r) =>
+                            setState(() => _rotation = r),
                       ),
                     ),
                     _composerPanelShell(

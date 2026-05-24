@@ -59,6 +59,8 @@ String localizedApiErrorMessage(AppLocalizations l10n, ApiError e) {
       return l10n.errorUnsupportedSpeedFactor;
     case "UNSUPPORTED_FORMAT_MODE":
       return l10n.errorUnsupportedFormatMode;
+    case "UNSUPPORTED_ROTATION":
+      return l10n.errorUnsupportedRotation;
     case "UPLOAD_INVALID_VIDEO":
       return l10n.errorUploadInvalidVideo;
     case "UPLOAD_FAILED":

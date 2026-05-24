@@ -1688,6 +1688,18 @@ abstract class AppLocalizations {
   /// **'Keep all — keeps the full video with a blurred background.'**
   String get editFormatFitFitExplanation;
 
+  /// No description provided for @editFormatRotationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotation'**
+  String get editFormatRotationTitle;
+
+  /// No description provided for @editFormatRotationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate the video before fitting it to the selected shape.'**
+  String get editFormatRotationSubtitle;
+
   /// No description provided for @editMuteLabel.
   ///
   /// In en, this message translates to:
@@ -1987,6 +1999,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This format mode is not supported.'**
   String get errorUnsupportedFormatMode;
+
+  /// No description provided for @errorUnsupportedRotation.
+  ///
+  /// In en, this message translates to:
+  /// **'This rotation option is not supported.'**
+  String get errorUnsupportedRotation;
 
   /// No description provided for @editStageQueued.
   ///

@@ -876,6 +876,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Keep all — keeps the full video with a blurred background.';
 
   @override
+  String get editFormatRotationTitle => 'Rotation';
+
+  @override
+  String get editFormatRotationSubtitle =>
+      'Rotate the video before fitting it to the selected shape.';
+
+  @override
   String get editMuteLabel => 'Mute audio';
 
   @override
@@ -1042,6 +1049,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorUnsupportedFormatMode => 'This format mode is not supported.';
+
+  @override
+  String get errorUnsupportedRotation =>
+      'This rotation option is not supported.';
 
   @override
   String get editStageQueued => 'Waiting to start…';

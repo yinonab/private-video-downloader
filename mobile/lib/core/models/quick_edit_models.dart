@@ -199,6 +199,29 @@ enum QuickEditFormatMode {
       };
 }
 
+/// Clockwise rotation; **0°** omits the `rotate` operation in the edit payload.
+enum QuickEditRotation {
+  deg0,
+  deg90,
+  deg180,
+  deg270;
+
+  /// Labels like **0°** — same EN/HE.
+  String get chipLabel => switch (this) {
+        QuickEditRotation.deg0 => "0°",
+        QuickEditRotation.deg90 => "90°",
+        QuickEditRotation.deg180 => "180°",
+        QuickEditRotation.deg270 => "270°",
+      };
+
+  int? get apiDegrees => switch (this) {
+        QuickEditRotation.deg0 => null,
+        QuickEditRotation.deg90 => 90,
+        QuickEditRotation.deg180 => 180,
+        QuickEditRotation.deg270 => 270,
+      };
+}
+
 enum QuickEditCompressPreset {
   original,
   social,
@@ -257,6 +280,7 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   required double trimEndSec,
   required QuickEditCropAspect cropAspect,
   required QuickEditFormatMode formatFitMode,
+  required QuickEditRotation rotation,
   required QuickEditSpeedFactor speedFactor,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
@@ -272,6 +296,14 @@ List<Map<String, dynamic>> buildQuickEditOperations({
       "type": "trim",
       "startSec": start,
       "endSec": end,
+    });
+  }
+
+  final rotDeg = rotation.apiDegrees;
+  if (rotDeg != null) {
+    ops.add({
+      "type": "rotate",
+      "degrees": rotDeg,
     });
   }
 
@@ -311,6 +343,7 @@ bool quickEditHasChanges({
   required double trimEndSec,
   required QuickEditCropAspect cropAspect,
   required QuickEditFormatMode formatFitMode,
+  required QuickEditRotation rotation,
   required QuickEditSpeedFactor speedFactor,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
@@ -321,6 +354,7 @@ bool quickEditHasChanges({
     trimEndSec: trimEndSec,
     cropAspect: cropAspect,
     formatFitMode: formatFitMode,
+    rotation: rotation,
     speedFactor: speedFactor,
     mute: mute,
     compressPreset: compressPreset,

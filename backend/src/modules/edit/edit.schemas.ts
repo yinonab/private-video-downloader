@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { AppError, codes } from "../../types/errors";
-import type { EditFormatMode, EditSpeedFactor, ResolvedEditPlan } from "./edit.types";
+import type { EditFormatMode, EditRotationDegrees, EditSpeedFactor, ResolvedEditPlan } from "./edit.types";
 
 const UNSUPPORTED_FORMAT_EN = "This format mode is not supported.";
+const UNSUPPORTED_ROTATION_EN = "This rotation option is not supported.";
 const CANON_EDIT_SPEED_FACTORS = [0.5, 1.25, 1.5, 2] as const satisfies readonly EditSpeedFactor[];
 
 function normalizeEditSpeedFactor(n: unknown): EditSpeedFactor | undefined {
@@ -65,10 +66,18 @@ const compressOpSchema = z
   })
   .strict();
 
+const rotateOpSchema = z
+  .object({
+    type: z.literal("rotate"),
+    degrees: z.union([z.literal(90), z.literal(180), z.literal(270)]),
+  })
+  .strict();
+
 export const editOperationSchema = z.union([
   trimOpSchema,
   cropOpSchema,
   formatOpSchema,
+  rotateOpSchema,
   speedOpSchema,
   muteOpSchema,
   compressOpSchema,
@@ -118,10 +127,29 @@ export function unsupportedFormatModeErrorFromUnknownBody(body: unknown): AppErr
   return null;
 }
 
+export function unsupportedRotationErrorFromUnknownBody(body: unknown): AppError | null {
+  if (body == null || typeof body !== "object") return null;
+  const ops = (body as { operations?: unknown }).operations;
+  if (!Array.isArray(ops)) return null;
+  for (const raw of ops) {
+    if (raw == null || typeof raw !== "object") continue;
+    const o = raw as { type?: unknown; degrees?: unknown };
+    if (o.type !== "rotate") continue;
+    const d = o.degrees;
+    if (d === 90 || d === 180 || d === 270) continue;
+    if (typeof d === "number" && Number.isFinite(d)) {
+      return new AppError(codes.UNSUPPORTED_ROTATION, UNSUPPORTED_ROTATION_EN, 400);
+    }
+    return new AppError(codes.UNSUPPORTED_ROTATION, UNSUPPORTED_ROTATION_EN, 400);
+  }
+  return null;
+}
+
 export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
   let trim: ResolvedEditPlan["trim"];
   let aspectRatio: ResolvedEditPlan["aspectRatio"] = "original";
   let formatModeApplied: EditFormatMode | undefined;
+  let rotationDegrees: EditRotationDegrees | undefined;
   let speedFactor: EditSpeedFactor | undefined;
   let mute = false;
   let compressPreset: ResolvedEditPlan["compressPreset"] = "social";
@@ -138,6 +166,9 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
         aspectRatio = op.aspectRatio;
         formatModeApplied = op.mode ?? "fill";
         break;
+      case "rotate":
+        rotationDegrees = op.degrees;
+        break;
       case "speed":
         speedFactor = op.factor;
         break;
@@ -153,7 +184,7 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
   }
   const formatMode =
     aspectRatio === "original" ? undefined : (formatModeApplied ?? "fill");
-  return {
+  const out: ResolvedEditPlan = {
     trim,
     aspectRatio,
     formatMode,
@@ -161,4 +192,8 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
     mute,
     compressPreset,
   };
+  if (rotationDegrees !== undefined) {
+    out.rotationDegrees = rotationDegrees;
+  }
+  return out;
 }

@@ -10,6 +10,7 @@ import {
   createEditJobSchema,
   editOperationSchema,
   unsupportedFormatModeErrorFromUnknownBody,
+  unsupportedRotationErrorFromUnknownBody,
   unsupportedSpeedFactorErrorFromUnknownBody,
   type EditOperation,
 } from "./edit.schemas";
@@ -225,6 +226,8 @@ export async function createEditJob(opts: {
     if (speedOnly != null) throw speedOnly;
     const formatOnly = unsupportedFormatModeErrorFromUnknownBody(opts.body);
     if (formatOnly != null) throw formatOnly;
+    const rotateOnly = unsupportedRotationErrorFromUnknownBody(opts.body);
+    if (rotateOnly != null) throw rotateOnly;
     throw new AppError(codes.BAD_REQUEST, "Invalid body", 400);
   }
 

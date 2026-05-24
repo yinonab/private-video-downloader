@@ -868,6 +868,13 @@ class AppLocalizationsHe extends AppLocalizations {
       'שמור הכול — שומר את כל הסרטון ומוסיף רקע מטושטש.';
 
   @override
+  String get editFormatRotationTitle => 'סיבוב';
+
+  @override
+  String get editFormatRotationSubtitle =>
+      'סובב את הסרטון לפני התאמה לצורה שנבחרה.';
+
+  @override
   String get editMuteLabel => 'השתק קול';
 
   @override
@@ -1029,6 +1036,9 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get errorUnsupportedFormatMode => 'מצב הפורמט הזה לא נתמך.';
+
+  @override
+  String get errorUnsupportedRotation => 'אפשרות הסיבוב הזו לא נתמכת.';
 
   @override
   String get editStageQueued => 'ממתין להתחלה…';
