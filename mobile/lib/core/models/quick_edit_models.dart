@@ -262,6 +262,45 @@ enum QuickEditSpeedFactor {
       };
 }
 
+/// Captions styling **V1.5** (backend `captions` op schema).
+enum QuickEditCaptionsStylePreset { clean, bold, darkBox }
+
+extension QuickEditCaptionsStylePresetApi on QuickEditCaptionsStylePreset {
+  String get apiValue => switch (this) {
+        QuickEditCaptionsStylePreset.clean => "clean",
+        QuickEditCaptionsStylePreset.bold => "bold",
+        QuickEditCaptionsStylePreset.darkBox => "dark_box",
+      };
+}
+
+enum QuickEditCaptionFontSize { small, medium, large }
+
+extension QuickEditCaptionFontSizeApi on QuickEditCaptionFontSize {
+  String get apiValue => switch (this) {
+        QuickEditCaptionFontSize.small => "small",
+        QuickEditCaptionFontSize.medium => "medium",
+        QuickEditCaptionFontSize.large => "large",
+      };
+}
+
+enum QuickEditCaptionPosition { top, bottom }
+
+extension QuickEditCaptionPositionApi on QuickEditCaptionPosition {
+  String get apiValue => switch (this) {
+        QuickEditCaptionPosition.top => "top",
+        QuickEditCaptionPosition.bottom => "bottom",
+      };
+}
+
+enum QuickEditCaptionColor { white, yellow }
+
+extension QuickEditCaptionColorApi on QuickEditCaptionColor {
+  String get apiValue => switch (this) {
+        QuickEditCaptionColor.white => "white",
+        QuickEditCaptionColor.yellow => "yellow",
+      };
+}
+
 /// Whether the list screen row may offer Quick Edit (server-side source exists).
 bool downloadItemEligibleForQuickEdit(DownloadItem item) {
   if (item.status != "done") return false;
@@ -273,13 +312,22 @@ bool downloadItemEligibleForQuickEdit(DownloadItem item) {
   return true;
 }
 
-/// Captions **V1** burn-in payload (must match backend [edit.schemas]).
-Map<String, dynamic> quickEditCaptionsV1Operation() => const {
+/// Maps UI selections → `captions` operation (must match backend [edit.schemas]).
+Map<String, dynamic> quickEditCaptionsV15Operation({
+  required QuickEditCaptionsStylePreset style,
+  required QuickEditCaptionFontSize fontSize,
+  required QuickEditCaptionPosition position,
+  required QuickEditCaptionColor color,
+}) =>
+    {
       "type": "captions",
       "mode": "auto",
       "language": "auto",
       "burnIn": true,
-      "style": "default",
+      "style": style.apiValue,
+      "fontSize": fontSize.apiValue,
+      "position": position.apiValue,
+      "color": color.apiValue,
     };
 
 /// Builds POST `/edits` operations array; empty if nothing changed from defaults.
@@ -292,6 +340,10 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   required QuickEditRotation rotation,
   required QuickEditSpeedFactor speedFactor,
   required bool captionsAutoEnabled,
+  QuickEditCaptionsStylePreset captionsStyle = QuickEditCaptionsStylePreset.clean,
+  QuickEditCaptionFontSize captionsFontSize = QuickEditCaptionFontSize.medium,
+  QuickEditCaptionPosition captionsPosition = QuickEditCaptionPosition.bottom,
+  QuickEditCaptionColor captionsColor = QuickEditCaptionColor.white,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
 }) {
@@ -334,7 +386,12 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   }
 
   if (captionsAutoEnabled) {
-    ops.add(quickEditCaptionsV1Operation());
+    ops.add(quickEditCaptionsV15Operation(
+      style: captionsStyle,
+      fontSize: captionsFontSize,
+      position: captionsPosition,
+      color: captionsColor,
+    ));
   }
 
   if (mute) {
@@ -360,6 +417,10 @@ bool quickEditHasChanges({
   required QuickEditRotation rotation,
   required QuickEditSpeedFactor speedFactor,
   required bool captionsAutoEnabled,
+  QuickEditCaptionsStylePreset captionsStyle = QuickEditCaptionsStylePreset.clean,
+  QuickEditCaptionFontSize captionsFontSize = QuickEditCaptionFontSize.medium,
+  QuickEditCaptionPosition captionsPosition = QuickEditCaptionPosition.bottom,
+  QuickEditCaptionColor captionsColor = QuickEditCaptionColor.white,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
 }) {
@@ -372,6 +433,10 @@ bool quickEditHasChanges({
     rotation: rotation,
     speedFactor: speedFactor,
     captionsAutoEnabled: captionsAutoEnabled,
+    captionsStyle: captionsStyle,
+    captionsFontSize: captionsFontSize,
+    captionsPosition: captionsPosition,
+    captionsColor: captionsColor,
     mute: mute,
     compressPreset: compressPreset,
   );

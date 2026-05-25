@@ -1122,6 +1122,74 @@ class AppLocalizationsEn extends AppLocalizations {
       'Generating captions may take a little longer.';
 
   @override
+  String get editCaptionsTextSizeLabel => 'Text size';
+
+  @override
+  String get editCaptionsSizeSmall => 'Small';
+
+  @override
+  String get editCaptionsSizeMedium => 'Medium';
+
+  @override
+  String get editCaptionsSizeLarge => 'Large';
+
+  @override
+  String get editCaptionsPositionLabel => 'Position';
+
+  @override
+  String get editCaptionsPositionTop => 'Top';
+
+  @override
+  String get editCaptionsPositionBottom => 'Bottom';
+
+  @override
+  String get editCaptionsColorLabel => 'Color';
+
+  @override
+  String get editCaptionsColorWhite => 'White';
+
+  @override
+  String get editCaptionsColorYellow => 'Yellow';
+
+  @override
+  String get editCaptionsStyleLabel => 'Style';
+
+  @override
+  String get editCaptionsStyleClean => 'Clean';
+
+  @override
+  String get editCaptionsStyleBold => 'Bold';
+
+  @override
+  String get editCaptionsStyleDarkBox => 'Dark box';
+
+  @override
+  String get editCaptionsSampleHeading => 'Approximate preview';
+
+  @override
+  String get editCaptionsSampleLabel => 'Sample captions';
+
+  @override
+  String get editCaptionsSpeechDenseHint =>
+      'Use smaller text for videos with a lot of speech.';
+
+  @override
+  String get errorCaptionsStyleNotSupported =>
+      'This captions style is not supported.';
+
+  @override
+  String get errorCaptionsPositionNotSupported =>
+      'This captions position is not supported.';
+
+  @override
+  String get errorCaptionsFontSizeNotSupported =>
+      'This captions size is not supported.';
+
+  @override
+  String get errorCaptionsColorNotSupported =>
+      'This captions color is not supported.';
+
+  @override
   String get errorCaptionsTranscriptionUnavailable =>
       'Captions are temporarily unavailable.';
 

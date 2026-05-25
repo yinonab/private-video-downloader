@@ -1,12 +1,23 @@
 import { z } from "zod";
 import { AppError, codes } from "../../types/errors";
-import type { CaptionsBurnInV1Resolved, EditFormatMode, EditRotationDegrees, EditSpeedFactor, ResolvedEditPlan } from "./edit.types";
+import type {
+  CaptionsBurnInV1Resolved,
+  CaptionsStyleApi,
+  CaptionsStyleResolved,
+  EditFormatMode,
+  EditRotationDegrees,
+  EditSpeedFactor,
+  ResolvedEditPlan,
+} from "./edit.types";
 
 const UNSUPPORTED_FORMAT_EN = "This format mode is not supported.";
 const UNSUPPORTED_ROTATION_EN = "This rotation option is not supported.";
 const UNSUPPORTED_CAPTIONS_MODE_EN = "This captions mode is not supported.";
 const UNSUPPORTED_CAPTIONS_LANGUAGE_EN = "This captions language setting is not supported.";
 const UNSUPPORTED_CAPTIONS_STYLE_EN = "This captions style is not supported.";
+const UNSUPPORTED_CAPTIONS_POSITION_EN = "This captions position is not supported.";
+const UNSUPPORTED_CAPTIONS_FONT_SIZE_EN = "This captions size is not supported.";
+const UNSUPPORTED_CAPTIONS_COLOR_EN = "This captions color is not supported.";
 const CANON_EDIT_SPEED_FACTORS = [0.5, 1.25, 1.5, 2] as const satisfies readonly EditSpeedFactor[];
 
 function normalizeEditSpeedFactor(n: unknown): EditSpeedFactor | undefined {
@@ -82,7 +93,10 @@ const captionsOpSchema = z
     mode: z.literal("auto"),
     language: z.literal("auto"),
     burnIn: z.literal(true),
-    style: z.literal("default"),
+    style: z.enum(["default", "clean", "bold", "dark_box"]),
+    fontSize: z.enum(["small", "medium", "large"]).optional(),
+    position: z.enum(["top", "bottom"]).optional(),
+    color: z.enum(["white", "yellow"]).optional(),
   })
   .strict();
 
@@ -178,8 +192,31 @@ export function captionsFieldErrorsFromUnknownBody(body: unknown): AppError | nu
       }
     }
     if (Object.prototype.hasOwnProperty.call(o, "style")) {
-      if (o.style !== "default") {
+      const st = o.style;
+      const allowedStyle = new Set(["default", "clean", "bold", "dark_box"]);
+      if (typeof st !== "string" || !allowedStyle.has(st)) {
         return new AppError(codes.UNSUPPORTED_CAPTIONS_STYLE, UNSUPPORTED_CAPTIONS_STYLE_EN, 400);
+      }
+    }
+    const allowedFs = new Set(["small", "medium", "large"]);
+    if (Object.prototype.hasOwnProperty.call(o, "fontSize")) {
+      const fs = o.fontSize;
+      if (fs !== undefined && fs !== null && (typeof fs !== "string" || !allowedFs.has(fs))) {
+        return new AppError(codes.UNSUPPORTED_CAPTIONS_FONT_SIZE, UNSUPPORTED_CAPTIONS_FONT_SIZE_EN, 400);
+      }
+    }
+    const allowedPos = new Set(["top", "bottom"]);
+    if (Object.prototype.hasOwnProperty.call(o, "position")) {
+      const p = o.position;
+      if (p !== undefined && p !== null && (typeof p !== "string" || !allowedPos.has(p))) {
+        return new AppError(codes.UNSUPPORTED_CAPTIONS_POSITION, UNSUPPORTED_CAPTIONS_POSITION_EN, 400);
+      }
+    }
+    const allowedCol = new Set(["white", "yellow"]);
+    if (Object.prototype.hasOwnProperty.call(o, "color")) {
+      const c = o.color;
+      if (c !== undefined && c !== null && (typeof c !== "string" || !allowedCol.has(c))) {
+        return new AppError(codes.UNSUPPORTED_CAPTIONS_COLOR, UNSUPPORTED_CAPTIONS_COLOR_EN, 400);
       }
     }
     if (Object.prototype.hasOwnProperty.call(o, "burnIn")) {
@@ -229,14 +266,19 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
       case "compress":
         compressPreset = op.preset;
         break;
-      case "captions":
+      case "captions": {
+        const styleResolved = normalizeCaptionsStyle(op.style);
         captionsBurnInV1 = {
           mode: "auto",
           language: "auto",
           burnIn: true,
-          style: "default",
+          style: styleResolved,
+          fontSize: op.fontSize ?? "medium",
+          position: op.position ?? "bottom",
+          color: op.color ?? "white",
         };
         break;
+      }
       default:
         break;
     }
@@ -258,4 +300,9 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
     out.captionsBurnInV1 = captionsBurnInV1;
   }
   return out;
+}
+
+function normalizeCaptionsStyle(style: CaptionsStyleApi): CaptionsStyleResolved {
+  if (style === "default" || style === "clean") return "clean";
+  return style;
 }

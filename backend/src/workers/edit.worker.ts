@@ -331,7 +331,11 @@ export function createEditWorker(prisma: PrismaClient): Worker {
 
           let subtitlesVfClause: string | null = null;
           if (segments.length > 0) {
-            const assTxt = segmentsToAssContent(segments, { title: `edit-${editJobId}-cap` });
+            const cfg = plan.captionsBurnInV1!;
+            const assTxt = segmentsToAssContent(segments, {
+              title: `edit-${editJobId}-cap`,
+              ...cfg,
+            });
             await fs.writeFile(assAbs, assTxt, "utf8");
             subtitlesVfClause = ffmpegSubtitlesVFArgument(assAbs);
           } else {

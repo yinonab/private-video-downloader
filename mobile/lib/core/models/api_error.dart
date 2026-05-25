@@ -140,8 +140,15 @@ class ApiError implements Exception {
         return "נבחרו יותר מדי מקורות לעריכה. נסה שוב.";
       case "UNSUPPORTED_CAPTIONS_MODE":
       case "UNSUPPORTED_CAPTIONS_LANGUAGE":
-      case "UNSUPPORTED_CAPTIONS_STYLE":
         return "אפשרות הכתוביות הזו לא נתמכת.";
+      case "UNSUPPORTED_CAPTIONS_STYLE":
+        return "סגנון הכתוביות הזה לא נתמך.";
+      case "UNSUPPORTED_CAPTIONS_POSITION":
+        return "מיקום הכתוביות הזה לא נתמך.";
+      case "UNSUPPORTED_CAPTIONS_FONT_SIZE":
+        return "גודל הכתוביות הזה לא נתמך.";
+      case "UNSUPPORTED_CAPTIONS_COLOR":
+        return "צבע הכתוביות הזה לא נתמך.";
       case "CAPTIONS_TRANSCRIPTION_UNAVAILABLE":
         return "כתוביות אינן זמינות כרגע.";
       case "CAPTIONS_GENERATION_FAILED":

@@ -1106,6 +1106,70 @@ class AppLocalizationsHe extends AppLocalizations {
       'יצירת כתוביות עשויה לקחת מעט יותר זמן.';
 
   @override
+  String get editCaptionsTextSizeLabel => 'גודל טקסט';
+
+  @override
+  String get editCaptionsSizeSmall => 'קטן';
+
+  @override
+  String get editCaptionsSizeMedium => 'בינוני';
+
+  @override
+  String get editCaptionsSizeLarge => 'גדול';
+
+  @override
+  String get editCaptionsPositionLabel => 'מיקום';
+
+  @override
+  String get editCaptionsPositionTop => 'למעלה';
+
+  @override
+  String get editCaptionsPositionBottom => 'למטה';
+
+  @override
+  String get editCaptionsColorLabel => 'צבע';
+
+  @override
+  String get editCaptionsColorWhite => 'לבן';
+
+  @override
+  String get editCaptionsColorYellow => 'צהוב';
+
+  @override
+  String get editCaptionsStyleLabel => 'סגנון';
+
+  @override
+  String get editCaptionsStyleClean => 'נקי';
+
+  @override
+  String get editCaptionsStyleBold => 'מודגש';
+
+  @override
+  String get editCaptionsStyleDarkBox => 'רקע כהה';
+
+  @override
+  String get editCaptionsSampleHeading => 'תצוגה משוערת';
+
+  @override
+  String get editCaptionsSampleLabel => 'כתוביות לדוגמה';
+
+  @override
+  String get editCaptionsSpeechDenseHint =>
+      'בסרטונים עם הרבה דיבור מומלץ לבחור טקסט קטן יותר.';
+
+  @override
+  String get errorCaptionsStyleNotSupported => 'סגנון הכתוביות הזה לא נתמך.';
+
+  @override
+  String get errorCaptionsPositionNotSupported => 'מיקום הכתוביות הזה לא נתמך.';
+
+  @override
+  String get errorCaptionsFontSizeNotSupported => 'גודל הכתוביות הזה לא נתמך.';
+
+  @override
+  String get errorCaptionsColorNotSupported => 'צבע הכתוביות הזה לא נתמך.';
+
+  @override
   String get errorCaptionsTranscriptionUnavailable =>
       'כתוביות אינן זמינות כרגע.';
 

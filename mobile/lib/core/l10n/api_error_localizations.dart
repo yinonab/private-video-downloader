@@ -77,8 +77,15 @@ String localizedApiErrorMessage(AppLocalizations l10n, ApiError e) {
       return l10n.errorEditMultipleSources;
     case "UNSUPPORTED_CAPTIONS_MODE":
     case "UNSUPPORTED_CAPTIONS_LANGUAGE":
-    case "UNSUPPORTED_CAPTIONS_STYLE":
       return l10n.errorCaptionsOptionNotSupported;
+    case "UNSUPPORTED_CAPTIONS_STYLE":
+      return l10n.errorCaptionsStyleNotSupported;
+    case "UNSUPPORTED_CAPTIONS_POSITION":
+      return l10n.errorCaptionsPositionNotSupported;
+    case "UNSUPPORTED_CAPTIONS_FONT_SIZE":
+      return l10n.errorCaptionsFontSizeNotSupported;
+    case "UNSUPPORTED_CAPTIONS_COLOR":
+      return l10n.errorCaptionsColorNotSupported;
     case "CAPTIONS_TRANSCRIPTION_UNAVAILABLE":
       return l10n.errorCaptionsTranscriptionUnavailable;
     case "CAPTIONS_GENERATION_FAILED":

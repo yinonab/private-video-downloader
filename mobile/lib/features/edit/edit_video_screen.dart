@@ -121,8 +121,12 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   bool _mute = false;
   QuickEditCompressPreset _compress = QuickEditCompressPreset.original;
 
-  /// Auto captions burn-in (**V1**); off unless user enables.
+  /// Auto captions burn-in (**V1.5**); off unless user enables.
   bool _captionsAuto = false;
+  QuickEditCaptionsStylePreset _captionsStyle = QuickEditCaptionsStylePreset.clean;
+  QuickEditCaptionFontSize _captionsFontSize = QuickEditCaptionFontSize.medium;
+  QuickEditCaptionPosition _captionsPosition = QuickEditCaptionPosition.bottom;
+  QuickEditCaptionColor _captionsColor = QuickEditCaptionColor.white;
 
   _FlowPhase _phase = _FlowPhase.composing;
   Timer? _pollTimer;
@@ -237,6 +241,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       rotation: _rotation,
       speedFactor: _speed,
       captionsAutoEnabled: _captionsAuto,
+      captionsStyle: _captionsStyle,
+      captionsFontSize: _captionsFontSize,
+      captionsPosition: _captionsPosition,
+      captionsColor: _captionsColor,
       mute: _mute,
       compressPreset: _compress,
     );
@@ -423,6 +431,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         rotation: _rotation,
         speedFactor: _speed,
         captionsAutoEnabled: _captionsAuto,
+        captionsStyle: _captionsStyle,
+        captionsFontSize: _captionsFontSize,
+        captionsPosition: _captionsPosition,
+        captionsColor: _captionsColor,
         mute: _mute,
         compressPreset: _compress,
       );
@@ -919,8 +931,20 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                       scheme,
                       CaptionsEditorPanel(
                         autoCaptionsEnabled: _captionsAuto,
+                        stylePreset: _captionsStyle,
+                        fontSize: _captionsFontSize,
+                        position: _captionsPosition,
+                        color: _captionsColor,
                         onAutoCaptionsChanged: (v) =>
                             setState(() => _captionsAuto = v),
+                        onStyleChanged: (v) =>
+                            setState(() => _captionsStyle = v),
+                        onFontSizeChanged: (v) =>
+                            setState(() => _captionsFontSize = v),
+                        onPositionChanged: (v) =>
+                            setState(() => _captionsPosition = v),
+                        onColorChanged: (v) =>
+                            setState(() => _captionsColor = v),
                       ),
                     ),
                     _composerPanelShell(

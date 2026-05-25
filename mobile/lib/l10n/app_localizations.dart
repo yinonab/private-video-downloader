@@ -2132,6 +2132,132 @@ abstract class AppLocalizations {
   /// **'Generating captions may take a little longer.'**
   String get editCaptionsProcessingNoteLine;
 
+  /// No description provided for @editCaptionsTextSizeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Text size'**
+  String get editCaptionsTextSizeLabel;
+
+  /// No description provided for @editCaptionsSizeSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'Small'**
+  String get editCaptionsSizeSmall;
+
+  /// No description provided for @editCaptionsSizeMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get editCaptionsSizeMedium;
+
+  /// No description provided for @editCaptionsSizeLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Large'**
+  String get editCaptionsSizeLarge;
+
+  /// No description provided for @editCaptionsPositionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Position'**
+  String get editCaptionsPositionLabel;
+
+  /// No description provided for @editCaptionsPositionTop.
+  ///
+  /// In en, this message translates to:
+  /// **'Top'**
+  String get editCaptionsPositionTop;
+
+  /// No description provided for @editCaptionsPositionBottom.
+  ///
+  /// In en, this message translates to:
+  /// **'Bottom'**
+  String get editCaptionsPositionBottom;
+
+  /// No description provided for @editCaptionsColorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get editCaptionsColorLabel;
+
+  /// No description provided for @editCaptionsColorWhite.
+  ///
+  /// In en, this message translates to:
+  /// **'White'**
+  String get editCaptionsColorWhite;
+
+  /// No description provided for @editCaptionsColorYellow.
+  ///
+  /// In en, this message translates to:
+  /// **'Yellow'**
+  String get editCaptionsColorYellow;
+
+  /// No description provided for @editCaptionsStyleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Style'**
+  String get editCaptionsStyleLabel;
+
+  /// No description provided for @editCaptionsStyleClean.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean'**
+  String get editCaptionsStyleClean;
+
+  /// No description provided for @editCaptionsStyleBold.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold'**
+  String get editCaptionsStyleBold;
+
+  /// No description provided for @editCaptionsStyleDarkBox.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark box'**
+  String get editCaptionsStyleDarkBox;
+
+  /// No description provided for @editCaptionsSampleHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Approximate preview'**
+  String get editCaptionsSampleHeading;
+
+  /// No description provided for @editCaptionsSampleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample captions'**
+  String get editCaptionsSampleLabel;
+
+  /// No description provided for @editCaptionsSpeechDenseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use smaller text for videos with a lot of speech.'**
+  String get editCaptionsSpeechDenseHint;
+
+  /// No description provided for @errorCaptionsStyleNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This captions style is not supported.'**
+  String get errorCaptionsStyleNotSupported;
+
+  /// No description provided for @errorCaptionsPositionNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This captions position is not supported.'**
+  String get errorCaptionsPositionNotSupported;
+
+  /// No description provided for @errorCaptionsFontSizeNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This captions size is not supported.'**
+  String get errorCaptionsFontSizeNotSupported;
+
+  /// No description provided for @errorCaptionsColorNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This captions color is not supported.'**
+  String get errorCaptionsColorNotSupported;
+
   /// No description provided for @errorCaptionsTranscriptionUnavailable.
   ///
   /// In en, this message translates to:
