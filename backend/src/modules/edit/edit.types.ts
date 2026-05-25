@@ -28,6 +28,10 @@ export type CaptionsBurnInV1Resolved = {
   readonly fontSize: CaptionsFontSize;
   readonly position: CaptionsPosition;
   readonly color: CaptionsColor;
+  /** Horizontal offset in ASS script pixels (~PlayRes width); clamped −240…240 server-side. */
+  readonly offsetX: number;
+  /** Vertical offset in ASS script pixels; clamped −180…180. Positive moves down after anchor math. */
+  readonly offsetY: number;
 };
 
 export type ResolvedEditPlan = {

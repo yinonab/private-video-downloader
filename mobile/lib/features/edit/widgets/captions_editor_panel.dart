@@ -4,7 +4,7 @@ import "../../../core/theme/linkclip_palette.dart";
 import "../../../core/models/quick_edit_models.dart";
 import "../../../l10n/app_localizations.dart";
 
-/// Quick Edit — captions **V1.5**: auto transcription + burned-in subtitles with basic styling (server-side).
+/// Quick Edit — captions auto burn-in + styling + **V2.2** fine offsets (server-side ASS).
 class CaptionsEditorPanel extends StatelessWidget {
   const CaptionsEditorPanel({
     super.key,
@@ -13,11 +13,15 @@ class CaptionsEditorPanel extends StatelessWidget {
     required this.fontSize,
     required this.position,
     required this.color,
+    required this.offsetX,
+    required this.offsetY,
     required this.onAutoCaptionsChanged,
     required this.onStyleChanged,
     required this.onFontSizeChanged,
     required this.onPositionChanged,
     required this.onColorChanged,
+    required this.onOffsetReset,
+    required this.onOffsetNudgeAss,
   });
 
   final bool autoCaptionsEnabled;
@@ -25,12 +29,18 @@ class CaptionsEditorPanel extends StatelessWidget {
   final QuickEditCaptionFontSize fontSize;
   final QuickEditCaptionPosition position;
   final QuickEditCaptionColor color;
+  final int offsetX;
+  final int offsetY;
 
   final ValueChanged<bool> onAutoCaptionsChanged;
   final ValueChanged<QuickEditCaptionsStylePreset> onStyleChanged;
   final ValueChanged<QuickEditCaptionFontSize> onFontSizeChanged;
   final ValueChanged<QuickEditCaptionPosition> onPositionChanged;
   final ValueChanged<QuickEditCaptionColor> onColorChanged;
+  final VoidCallback onOffsetReset;
+
+  /// Nudge offsets in ASS PlayRes pixels (typically ± [kQuickEditCaptionsOffsetFineStep]). Screen-absolute axes (not mirrored in RTL).
+  final void Function(int dxAss, int dyAss) onOffsetNudgeAss;
 
   @override
   Widget build(BuildContext context) {
@@ -211,15 +221,16 @@ class CaptionsEditorPanel extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
-            _CaptionsSampleCard(
+            _CaptionsFineTuneSection(
+              accent: accent,
+              scheme: scheme,
+              theme: theme,
               l10n: l10n,
-              stylePreset: stylePreset,
-              fontSize: fontSize,
-              position: position,
-              color: color,
+              offsetX: offsetX,
+              offsetY: offsetY,
+              onReset: onOffsetReset,
+              onNudge: onOffsetNudgeAss,
             ),
-            const SizedBox(height: 4),
           ],
           const SizedBox(height: 14),
           Text(
@@ -240,6 +251,137 @@ class CaptionsEditorPanel extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Arrow pad uses screen-relative up/down/left/right (consistent in RTL).
+class _CaptionsFineTuneSection extends StatelessWidget {
+  const _CaptionsFineTuneSection({
+    required this.accent,
+    required this.scheme,
+    required this.theme,
+    required this.l10n,
+    required this.offsetX,
+    required this.offsetY,
+    required this.onReset,
+    required this.onNudge,
+  });
+
+  final Color accent;
+  final ColorScheme scheme;
+  final ThemeData theme;
+  final AppLocalizations l10n;
+  final int offsetX;
+  final int offsetY;
+  final VoidCallback onReset;
+  final void Function(int dxAss, int dyAss) onNudge;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = theme.brightness == Brightness.dark;
+    final mutedAccent = accent.withValues(alpha: dark ? 0.55 : 0.85);
+    final step = kQuickEditCaptionsOffsetFineStep;
+
+    Widget padBtn({required Widget icon, required VoidCallback onPressed}) {
+      return Material(
+        color: scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.4 : 0.55),
+        shape: CircleBorder(side: BorderSide(color: mutedAccent.withValues(alpha: 0.22))),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: IconTheme.merge(
+              data: IconThemeData(size: 20, color: scheme.onSurface.withValues(alpha: 0.72)),
+              child: icon,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(
+            alpha: dark ? 0.28 : 0.42,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: scheme.outline.withValues(alpha: 0.2)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.editCaptionsFineTuneTitle,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurface.withValues(alpha: 0.9),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                l10n.editCaptionsOffsetCompact(offsetX, offsetY),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.92),
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.1,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    padBtn(
+                      icon: const Icon(Icons.keyboard_arrow_up_rounded),
+                      onPressed: () => onNudge(0, -step),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        padBtn(
+                          icon: const Icon(Icons.keyboard_arrow_left_rounded),
+                          onPressed: () => onNudge(-step, 0),
+                        ),
+                        const SizedBox(width: 10),
+                        padBtn(
+                          icon: const Icon(Icons.keyboard_arrow_right_rounded),
+                          onPressed: () => onNudge(step, 0),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    padBtn(
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                      onPressed: () => onNudge(0, step),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: TextButton(
+                  onPressed: onReset,
+                  style: TextButton.styleFrom(
+                    foregroundColor: scheme.onSurfaceVariant.withValues(alpha: 0.92),
+                    textStyle: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(l10n.editCaptionsResetPosition),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -331,156 +473,6 @@ class _CaptionChip extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _CaptionsSampleCard extends StatelessWidget {
-  const _CaptionsSampleCard({
-    required this.l10n,
-    required this.stylePreset,
-    required this.fontSize,
-    required this.position,
-    required this.color,
-  });
-
-  final AppLocalizations l10n;
-  final QuickEditCaptionsStylePreset stylePreset;
-  final QuickEditCaptionFontSize fontSize;
-  final QuickEditCaptionPosition position;
-  final QuickEditCaptionColor color;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final textColor =
-        color == QuickEditCaptionColor.yellow ? const Color(0xFFFFD966) : Colors.white;
-    final fz = switch (fontSize) {
-      QuickEditCaptionFontSize.extraSmall => 10.4,
-      QuickEditCaptionFontSize.small => 11.6,
-      QuickEditCaptionFontSize.medium => 13.6,
-      QuickEditCaptionFontSize.large => 15.9,
-    };
-    final fw = switch (stylePreset) {
-      QuickEditCaptionsStylePreset.bold => FontWeight.w700,
-      _ => FontWeight.w500,
-    };
-
-    late final Widget sampleBody;
-    switch (stylePreset) {
-      case QuickEditCaptionsStylePreset.darkBox:
-        sampleBody = Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.74),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            l10n.editCaptionsSampleLabel,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            style: TextStyle(
-              color: textColor,
-              fontSize: fz,
-              fontWeight: fw,
-              height: 1.22,
-            ),
-          ),
-        );
-        break;
-      case QuickEditCaptionsStylePreset.bold:
-        sampleBody = Text(
-          l10n.editCaptionsSampleLabel,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          style: TextStyle(
-            color: textColor,
-            fontSize: fz,
-            fontWeight: fw,
-            height: 1.22,
-            shadows: [
-              Shadow(blurRadius: 14, color: Colors.black.withValues(alpha: 0.92)),
-              const Shadow(blurRadius: 0, offset: Offset(0, 1.5), color: Colors.black87),
-            ],
-          ),
-        );
-        break;
-      case QuickEditCaptionsStylePreset.clean:
-        sampleBody = Text(
-          l10n.editCaptionsSampleLabel,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          style: TextStyle(
-            color: textColor,
-            fontSize: fz,
-            fontWeight: fw,
-            height: 1.22,
-            shadows: [
-              Shadow(blurRadius: 10, color: Colors.black.withValues(alpha: 0.88)),
-            ],
-          ),
-        );
-    }
-
-    final preview = SizedBox(
-      height: 86,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: scheme.outline.withValues(alpha: 0.2)),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.blueGrey.shade700.withValues(alpha: 0.55),
-                      Colors.black.withValues(alpha: 0.65),
-                    ],
-                  ),
-                ),
-              ),
-              Align(
-                alignment: position == QuickEditCaptionPosition.top
-                    ? AlignmentDirectional.topCenter
-                    : AlignmentDirectional.bottomCenter,
-                child: Padding(
-                  padding: EdgeInsetsDirectional.only(
-                    start: 11,
-                    end: 11,
-                    top:
-                        position == QuickEditCaptionPosition.top ? 10 : 26,
-                    bottom:
-                        position == QuickEditCaptionPosition.bottom
-                            ? 10
-                            : 26,
-                  ),
-                  child: sampleBody,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          l10n.editCaptionsSampleHeading,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: scheme.onSurfaceVariant.withValues(alpha: 0.82),
-              ),
-        ),
-        const SizedBox(height: 6),
-        preview,
-      ],
     );
   }
 }

@@ -2252,6 +2252,24 @@ abstract class AppLocalizations {
   /// **'Use smaller text for videos with a lot of speech.'**
   String get editCaptionsSpeechDenseHint;
 
+  /// No description provided for @editCaptionsFineTuneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fine tune position'**
+  String get editCaptionsFineTuneTitle;
+
+  /// No description provided for @editCaptionsResetPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset position'**
+  String get editCaptionsResetPosition;
+
+  /// No description provided for @editCaptionsOffsetCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'X {x} · Y {y}'**
+  String editCaptionsOffsetCompact(int x, int y);
+
   /// No description provided for @errorCaptionsStyleNotSupported.
   ///
   /// In en, this message translates to:

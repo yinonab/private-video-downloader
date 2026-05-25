@@ -432,6 +432,19 @@
   "editCaptionsSampleHeading": "תצוגה משוערת",
   "editCaptionsSampleLabel": "כתוביות לדוגמה",
   "editCaptionsSpeechDenseHint": "בסרטונים עם הרבה דיבור מומלץ לבחור טקסט קטן יותר.",
+  "editCaptionsFineTuneTitle": "כוונון מיקום",
+  "editCaptionsResetPosition": "איפוס מיקום",
+  "editCaptionsOffsetCompact": "X {x} · Y {y}",
+  "@editCaptionsOffsetCompact": {
+    "placeholders": {
+      "x": {
+        "type": "int"
+      },
+      "y": {
+        "type": "int"
+      }
+    }
+  },
   "errorCaptionsStyleNotSupported": "סגנון הכתוביות הזה לא נתמך.",
   "errorCaptionsPositionNotSupported": "מיקום הכתוביות הזה לא נתמך.",
   "errorCaptionsFontSizeNotSupported": "גודל הכתוביות הזה לא נתמך.",

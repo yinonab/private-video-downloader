@@ -432,6 +432,19 @@
   "editCaptionsSampleHeading": "Approximate preview",
   "editCaptionsSampleLabel": "Sample captions",
   "editCaptionsSpeechDenseHint": "Use smaller text for videos with a lot of speech.",
+  "editCaptionsFineTuneTitle": "Fine tune position",
+  "editCaptionsResetPosition": "Reset position",
+  "editCaptionsOffsetCompact": "X {x} · Y {y}",
+  "@editCaptionsOffsetCompact": {
+    "placeholders": {
+      "x": {
+        "type": "int"
+      },
+      "y": {
+        "type": "int"
+      }
+    }
+  },
   "errorCaptionsStyleNotSupported": "This captions style is not supported.",
   "errorCaptionsPositionNotSupported": "This captions position is not supported.",
   "errorCaptionsFontSizeNotSupported": "This captions size is not supported.",

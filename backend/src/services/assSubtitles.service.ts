@@ -70,11 +70,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
   const lines: string[] = [header.trimEnd()];
-  for (const s of segments) {
+    for (const s of segments) {
     const events = segmentToDialogueEvents(s, maxLen);
+    const { x: px, y: py, an: pan } = computeDialoguePos(opts);
+    const posPre = dialoguePosOverridePrefix(pan, px, py);
     for (const ev of events) {
       if (ev.text.length === 0) continue;
-      lines.push(`Dialogue: 0,${toAssTs(ev.startSec)},${toAssTs(ev.endSec)},Default,,0,0,0,,${ev.text}`);
+      lines.push(
+        `Dialogue: 0,${toAssTs(ev.startSec)},${toAssTs(ev.endSec)},Default,,0,0,0,,${posPre}${ev.text}`,
+      );
     }
   }
   return `${lines.join("\n")}\n`;
@@ -131,6 +135,38 @@ function buildDefaultStyleRow(p: {
 
 function secondaryOrPlaceholder(): string {
   return "&H000000FF";
+}
+
+/**
+ * ASS `\pos(x,y)` center anchor coordinates; `\an2` bottom-center, `\an8` top-center.
+ * Commas inside override tags must be `\,` so Dialogue comma-splitting ignores them.
+ */
+function dialoguePosOverridePrefix(an: number, x: number, y: number): string {
+  return `{\\an${an}\\pos(${Math.round(x)}\\,${Math.round(y)})}`;
+}
+
+/** Map API offsets (+Y = down on screen) onto PlayRes, clamp so lines stay usable on-screen. */
+function computeDialoguePos(opts: CaptionsBurnInV1Resolved): { x: number; y: number; an: number } {
+  const padX = 48;
+  const ox = opts.offsetX;
+  const oy = opts.offsetY;
+  const halfW = PLAY_RES_X / 2;
+  let x = Math.round(halfW + ox);
+  x = Math.min(PLAY_RES_X - padX, Math.max(padX, x));
+
+  if (opts.position === "top") {
+    let yRaw = Math.round(MARGIN_V + oy);
+    const yLo = 38;
+    const yHi = Math.floor(PLAY_RES_Y * 0.46);
+    yRaw = Math.min(yHi, Math.max(yLo, yRaw));
+    return { x, y: yRaw, an: 8 };
+  }
+
+  let yRaw = Math.round(PLAY_RES_Y - MARGIN_V + oy);
+  const yHi = PLAY_RES_Y - 38;
+  const yLo = Math.ceil(PLAY_RES_Y * 0.54);
+  yRaw = Math.min(yHi, Math.max(yLo, yRaw));
+  return { x, y: yRaw, an: 2 };
 }
 
 type DialogueEvent = { startSec: number; endSec: number; text: string };

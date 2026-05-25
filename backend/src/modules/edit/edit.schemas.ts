@@ -16,6 +16,7 @@ const UNSUPPORTED_CAPTIONS_MODE_EN = "This captions mode is not supported.";
 const UNSUPPORTED_CAPTIONS_LANGUAGE_EN = "This captions language setting is not supported.";
 const UNSUPPORTED_CAPTIONS_STYLE_EN = "This captions style is not supported.";
 const UNSUPPORTED_CAPTIONS_POSITION_EN = "This captions position is not supported.";
+const UNSUPPORTED_CAPTIONS_OFFSET_EN = "This captions position is not supported.";
 const UNSUPPORTED_CAPTIONS_FONT_SIZE_EN = "This captions size is not supported.";
 const UNSUPPORTED_CAPTIONS_COLOR_EN = "This captions color is not supported.";
 const CANON_EDIT_SPEED_FACTORS = [0.5, 1.25, 1.5, 2] as const satisfies readonly EditSpeedFactor[];
@@ -97,6 +98,8 @@ const captionsOpSchema = z
     fontSize: z.enum(["extra_small", "small", "medium", "large"]).optional(),
     position: z.enum(["top", "bottom"]).optional(),
     color: z.enum(["white", "yellow"]).optional(),
+    offsetX: z.number().int().min(-240).max(240).optional(),
+    offsetY: z.number().int().min(-180).max(180).optional(),
   })
   .strict();
 
@@ -228,8 +231,47 @@ export function captionsFieldErrorsFromUnknownBody(body: unknown): AppError | nu
         );
       }
     }
+
+    // Defense in depth alongside Zod (invalid integers / floats from non-typed clients).
+    if (Object.prototype.hasOwnProperty.call(o, "offsetX")) {
+      const x = o.offsetX;
+      if (x !== undefined && x !== null) {
+        if (typeof x !== "number" || !Number.isFinite(x) || !Number.isInteger(x) || x < -240 || x > 240) {
+          return new AppError(codes.UNSUPPORTED_CAPTIONS_POSITION_OFFSET, UNSUPPORTED_CAPTIONS_OFFSET_EN, 400);
+        }
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(o, "offsetY")) {
+      const y = o.offsetY;
+      if (y !== undefined && y !== null) {
+        if (typeof y !== "number" || !Number.isFinite(y) || !Number.isInteger(y) || y < -180 || y > 180) {
+          return new AppError(codes.UNSUPPORTED_CAPTIONS_POSITION_OFFSET, UNSUPPORTED_CAPTIONS_OFFSET_EN, 400);
+        }
+      }
+    }
   }
   return null;
+}
+
+function normalizeCaptionsStyle(style: CaptionsStyleApi): CaptionsStyleResolved {
+  if (style === "default" || style === "clean") return "clean";
+  return style;
+}
+
+const CAPTIONS_OFFSET_X_CLAMP = [-240, 240] as const;
+const CAPTIONS_OFFSET_Y_CLAMP = [-180, 180] as const;
+
+/** Defensive clamps after validation (parity with Flutter UI). */
+export function clampCaptionsBurnInOffsets(
+  ox: unknown,
+  oy: unknown
+): { offsetX: number; offsetY: number } {
+  const xi = typeof ox === "number" && Number.isFinite(ox) ? Math.round(ox) : 0;
+  const yi = typeof oy === "number" && Number.isFinite(oy) ? Math.round(oy) : 0;
+  return {
+    offsetX: Math.min(CAPTIONS_OFFSET_X_CLAMP[1], Math.max(CAPTIONS_OFFSET_X_CLAMP[0], xi)),
+    offsetY: Math.min(CAPTIONS_OFFSET_Y_CLAMP[1], Math.max(CAPTIONS_OFFSET_Y_CLAMP[0], yi)),
+  };
 }
 
 export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
@@ -268,6 +310,7 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
         break;
       case "captions": {
         const styleResolved = normalizeCaptionsStyle(op.style);
+        const { offsetX, offsetY } = clampCaptionsBurnInOffsets(op.offsetX, op.offsetY);
         captionsBurnInV1 = {
           mode: "auto",
           language: "auto",
@@ -276,6 +319,8 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
           fontSize: op.fontSize ?? "medium",
           position: op.position ?? "bottom",
           color: op.color ?? "white",
+          offsetX,
+          offsetY,
         };
         break;
       }
@@ -300,9 +345,4 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
     out.captionsBurnInV1 = captionsBurnInV1;
   }
   return out;
-}
-
-function normalizeCaptionsStyle(style: CaptionsStyleApi): CaptionsStyleResolved {
-  if (style === "default" || style === "clean") return "clean";
-  return style;
 }

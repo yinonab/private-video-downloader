@@ -1167,6 +1167,17 @@ class AppLocalizationsHe extends AppLocalizations {
       'בסרטונים עם הרבה דיבור מומלץ לבחור טקסט קטן יותר.';
 
   @override
+  String get editCaptionsFineTuneTitle => 'כוונון מיקום';
+
+  @override
+  String get editCaptionsResetPosition => 'איפוס מיקום';
+
+  @override
+  String editCaptionsOffsetCompact(int x, int y) {
+    return 'X $x · Y $y';
+  }
+
+  @override
   String get errorCaptionsStyleNotSupported => 'סגנון הכתוביות הזה לא נתמך.';
 
   @override

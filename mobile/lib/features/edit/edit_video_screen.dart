@@ -31,6 +31,7 @@ import "edit_video_source_ref.dart";
 import "widgets/edit_processing_animation.dart";
 import "widgets/edit_video_preview.dart";
 import "widgets/edit_video_preview_source.dart";
+import "widgets/edit_captions_preview_overlay.dart";
 import "quick_edit_source_expired_sheet.dart";
 import "widgets/captions_editor_panel.dart";
 import "widgets/speed_editor.dart";
@@ -128,6 +129,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   QuickEditCaptionFontSize _captionsFontSize = QuickEditCaptionFontSize.medium;
   QuickEditCaptionPosition _captionsPosition = QuickEditCaptionPosition.bottom;
   QuickEditCaptionColor _captionsColor = QuickEditCaptionColor.white;
+  int _captionsOffsetX = 0;
+  int _captionsOffsetY = 0;
 
   _FlowPhase _phase = _FlowPhase.composing;
   Timer? _pollTimer;
@@ -212,6 +215,20 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     }
   }
 
+  void _resetCaptionOffsets() {
+    setState(() {
+      _captionsOffsetX = 0;
+      _captionsOffsetY = 0;
+    });
+  }
+
+  void _nudgeCaptionOffsetAss(int dx, int dy) {
+    setState(() {
+      _captionsOffsetX = clampQuickEditCaptionOffsetX(_captionsOffsetX + dx);
+      _captionsOffsetY = clampQuickEditCaptionOffsetY(_captionsOffsetY + dy);
+    });
+  }
+
   bool get _showDurationApproxHint {
     if (_detailLoading || _detailError != null) return false;
     if (widget.source.kind == EditVideoSourceKind.download) {
@@ -246,6 +263,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       captionsFontSize: _captionsFontSize,
       captionsPosition: _captionsPosition,
       captionsColor: _captionsColor,
+      captionsOffsetX: _captionsOffsetX,
+      captionsOffsetY: _captionsOffsetY,
       mute: _mute,
       compressPreset: _compress,
     );
@@ -436,6 +455,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         captionsFontSize: _captionsFontSize,
         captionsPosition: _captionsPosition,
         captionsColor: _captionsColor,
+        captionsOffsetX: _captionsOffsetX,
+        captionsOffsetY: _captionsOffsetY,
         mute: _mute,
         compressPreset: _compress,
       );
@@ -756,6 +777,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
             _crop != QuickEditCropAspect.original &&
             _formatFitMode == QuickEditFormatMode.fill;
 
+    /// Captions tab is index **3** (Trim, Speed, Format, Captions, …).
+    final showCaptionsOnVideoPreview =
+        _tabController.index == 3 && _captionsAuto;
+
     Widget previewStack;
     if (_detailLoading) {
       previewStack = AspectRatio(
@@ -807,6 +832,17 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                 if (!mounted) return;
                 setState(() => _playbackSec = pos);
               },
+              captionsPreviewOverlay: showCaptionsOnVideoPreview
+                  ? EditCaptionsPreviewOverlay(
+                      l10n: l10n,
+                      stylePreset: _captionsStyle,
+                      fontSize: _captionsFontSize,
+                      position: _captionsPosition,
+                      color: _captionsColor,
+                      offsetXAss: _captionsOffsetX,
+                      offsetYAss: _captionsOffsetY,
+                    )
+                  : null,
             ),
             if (showCropOverlay)
               Positioned.fill(
@@ -917,8 +953,15 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                         fontSize: _captionsFontSize,
                         position: _captionsPosition,
                         color: _captionsColor,
-                        onAutoCaptionsChanged: (v) =>
-                            setState(() => _captionsAuto = v),
+                        offsetX: _captionsOffsetX,
+                        offsetY: _captionsOffsetY,
+                        onAutoCaptionsChanged: (v) => setState(() {
+                          _captionsAuto = v;
+                          if (!v) {
+                            _captionsOffsetX = 0;
+                            _captionsOffsetY = 0;
+                          }
+                        }),
                         onStyleChanged: (v) =>
                             setState(() => _captionsStyle = v),
                         onFontSizeChanged: (v) =>
@@ -927,6 +970,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                             setState(() => _captionsPosition = v),
                         onColorChanged: (v) =>
                             setState(() => _captionsColor = v),
+                        onOffsetReset: _resetCaptionOffsets,
+                        onOffsetNudgeAss: _nudgeCaptionOffsetAss,
                       ),
                     ),
                     _composerPanelShell(

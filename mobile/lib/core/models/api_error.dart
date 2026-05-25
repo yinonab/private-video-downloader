@@ -144,6 +144,7 @@ class ApiError implements Exception {
       case "UNSUPPORTED_CAPTIONS_STYLE":
         return "סגנון הכתוביות הזה לא נתמך.";
       case "UNSUPPORTED_CAPTIONS_POSITION":
+      case "UNSUPPORTED_CAPTIONS_POSITION_OFFSET":
         return "מיקום הכתוביות הזה לא נתמך.";
       case "UNSUPPORTED_CAPTIONS_FONT_SIZE":
         return "גודל הכתוביות הזה לא נתמך.";

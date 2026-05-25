@@ -28,6 +28,7 @@ class EditVideoPreview extends StatefulWidget {
     required this.onDurationResolved,
     required this.onPlaybackSeconds,
     this.thumbnailUrl,
+    this.captionsPreviewOverlay,
   });
 
   final EditVideoPreviewSource previewSource;
@@ -42,6 +43,9 @@ class EditVideoPreview extends StatefulWidget {
   final ValueChanged<double> onDurationResolved;
   final ValueChanged<double> onPlaybackSeconds;
   final String? thumbnailUrl;
+
+  /// Upright captions mock (e.g. [EditCaptionsPreviewOverlay]); must be [IgnorePointer]-safe — inserted above video, below play controls.
+  final Widget? captionsPreviewOverlay;
 
   @override
   State<EditVideoPreview> createState() => _EditVideoPreviewState();
@@ -65,6 +69,19 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
       c.dispose();
       _controller = null;
     }
+  }
+
+  List<Widget> _overlayAboveVideoUnderPlay() {
+    final o = widget.captionsPreviewOverlay;
+    if (o == null) return const [];
+    return [
+      Positioned.fill(
+        child: IgnorePointer(
+          ignoring: true,
+          child: o,
+        ),
+      ),
+    ];
   }
 
   @override
@@ -291,6 +308,7 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
                 child: VideoPlayer(c),
               ),
             ),
+            ..._overlayAboveVideoUnderPlay(),
             _playOverlayInk(c),
           ],
         ),
@@ -320,6 +338,7 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
                 ),
               ),
             ),
+            ..._overlayAboveVideoUnderPlay(),
             _playOverlayInk(c),
           ],
         ),
@@ -367,6 +386,7 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
                 ),
               ),
             ),
+            ..._overlayAboveVideoUnderPlay(),
             _playOverlayInk(c),
           ],
         ),

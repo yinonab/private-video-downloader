@@ -1183,6 +1183,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Use smaller text for videos with a lot of speech.';
 
   @override
+  String get editCaptionsFineTuneTitle => 'Fine tune position';
+
+  @override
+  String get editCaptionsResetPosition => 'Reset position';
+
+  @override
+  String editCaptionsOffsetCompact(int x, int y) {
+    return 'X $x · Y $y';
+  }
+
+  @override
   String get errorCaptionsStyleNotSupported =>
       'This captions style is not supported.';
 

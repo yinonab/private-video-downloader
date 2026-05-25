@@ -313,12 +313,30 @@ bool downloadItemEligibleForQuickEdit(DownloadItem item) {
   return true;
 }
 
+/// Captions fine-position step and API clamp (ASS PlayRes units — see backend `assSubtitles.service.ts`).
+const int kQuickEditCaptionsOffsetFineStep = 20;
+const int kQuickEditCaptionsOffsetXMin = -240;
+const int kQuickEditCaptionsOffsetXMax = 240;
+const int kQuickEditCaptionsOffsetYMin = -180;
+const int kQuickEditCaptionsOffsetYMax = 180;
+
+/// Same PlayRes dimensions as ASS burn-in normalization (Flutter preview scales from these).
+const double kCaptionAssPlayResX = 960;
+const double kCaptionAssPlayResY = 540;
+
+int clampQuickEditCaptionOffsetX(int v) =>
+    v.clamp(kQuickEditCaptionsOffsetXMin, kQuickEditCaptionsOffsetXMax).toInt();
+int clampQuickEditCaptionOffsetY(int v) =>
+    v.clamp(kQuickEditCaptionsOffsetYMin, kQuickEditCaptionsOffsetYMax).toInt();
+
 /// Maps UI selections → `captions` operation (must match backend [edit.schemas]).
-Map<String, dynamic> quickEditCaptionsV15Operation({
+Map<String, dynamic> quickEditCaptionsV22Operation({
   required QuickEditCaptionsStylePreset style,
   required QuickEditCaptionFontSize fontSize,
   required QuickEditCaptionPosition position,
   required QuickEditCaptionColor color,
+  required int captionsOffsetX,
+  required int captionsOffsetY,
 }) =>
     {
       "type": "captions",
@@ -329,6 +347,8 @@ Map<String, dynamic> quickEditCaptionsV15Operation({
       "fontSize": fontSize.apiValue,
       "position": position.apiValue,
       "color": color.apiValue,
+      "offsetX": clampQuickEditCaptionOffsetX(captionsOffsetX),
+      "offsetY": clampQuickEditCaptionOffsetY(captionsOffsetY),
     };
 
 /// Builds POST `/edits` operations array; empty if nothing changed from defaults.
@@ -345,6 +365,8 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   QuickEditCaptionFontSize captionsFontSize = QuickEditCaptionFontSize.medium,
   QuickEditCaptionPosition captionsPosition = QuickEditCaptionPosition.bottom,
   QuickEditCaptionColor captionsColor = QuickEditCaptionColor.white,
+  int captionsOffsetX = 0,
+  int captionsOffsetY = 0,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
 }) {
@@ -387,11 +409,13 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   }
 
   if (captionsAutoEnabled) {
-    ops.add(quickEditCaptionsV15Operation(
+    ops.add(quickEditCaptionsV22Operation(
       style: captionsStyle,
       fontSize: captionsFontSize,
       position: captionsPosition,
       color: captionsColor,
+      captionsOffsetX: captionsOffsetX,
+      captionsOffsetY: captionsOffsetY,
     ));
   }
 
@@ -422,6 +446,8 @@ bool quickEditHasChanges({
   QuickEditCaptionFontSize captionsFontSize = QuickEditCaptionFontSize.medium,
   QuickEditCaptionPosition captionsPosition = QuickEditCaptionPosition.bottom,
   QuickEditCaptionColor captionsColor = QuickEditCaptionColor.white,
+  int captionsOffsetX = 0,
+  int captionsOffsetY = 0,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
 }) {
@@ -438,6 +464,8 @@ bool quickEditHasChanges({
     captionsFontSize: captionsFontSize,
     captionsPosition: captionsPosition,
     captionsColor: captionsColor,
+    captionsOffsetX: captionsOffsetX,
+    captionsOffsetY: captionsOffsetY,
     mute: mute,
     compressPreset: compressPreset,
   );
