@@ -1087,6 +1087,12 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editTabCaptions => 'כתוביות';
 
   @override
+  String get editToolbarMoreTools => 'כלים נוספים';
+
+  @override
+  String get editToolbarPreviousTools => 'כלים קודמים';
+
+  @override
   String get editCaptionsSectionTitle => 'כתוביות';
 
   @override
@@ -1107,6 +1113,9 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get editCaptionsTextSizeLabel => 'גודל טקסט';
+
+  @override
+  String get editCaptionsSizeExtraSmall => 'קטן מאוד';
 
   @override
   String get editCaptionsSizeSmall => 'קטן';

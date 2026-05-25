@@ -273,10 +273,11 @@ extension QuickEditCaptionsStylePresetApi on QuickEditCaptionsStylePreset {
       };
 }
 
-enum QuickEditCaptionFontSize { small, medium, large }
+enum QuickEditCaptionFontSize { extraSmall, small, medium, large }
 
 extension QuickEditCaptionFontSizeApi on QuickEditCaptionFontSize {
   String get apiValue => switch (this) {
+        QuickEditCaptionFontSize.extraSmall => "extra_small",
         QuickEditCaptionFontSize.small => "small",
         QuickEditCaptionFontSize.medium => "medium",
         QuickEditCaptionFontSize.large => "large",

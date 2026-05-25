@@ -108,6 +108,15 @@ class CaptionsEditorPanel extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   _CaptionChip(
+                    label: l10n.editCaptionsSizeExtraSmall,
+                    selected:
+                        fontSize == QuickEditCaptionFontSize.extraSmall,
+                    accent: accent,
+                    onTap: () => onFontSizeChanged(
+                      QuickEditCaptionFontSize.extraSmall,
+                    ),
+                  ),
+                  _CaptionChip(
                     label: l10n.editCaptionsSizeSmall,
                     selected: fontSize == QuickEditCaptionFontSize.small,
                     accent: accent,
@@ -347,9 +356,10 @@ class _CaptionsSampleCard extends StatelessWidget {
     final textColor =
         color == QuickEditCaptionColor.yellow ? const Color(0xFFFFD966) : Colors.white;
     final fz = switch (fontSize) {
-      QuickEditCaptionFontSize.small => 12.0,
-      QuickEditCaptionFontSize.medium => 13.5,
-      QuickEditCaptionFontSize.large => 15.5,
+      QuickEditCaptionFontSize.extraSmall => 10.4,
+      QuickEditCaptionFontSize.small => 11.6,
+      QuickEditCaptionFontSize.medium => 13.6,
+      QuickEditCaptionFontSize.large => 15.9,
     };
     final fw = switch (stylePreset) {
       QuickEditCaptionsStylePreset.bold => FontWeight.w700,
@@ -437,14 +447,18 @@ class _CaptionsSampleCard extends StatelessWidget {
               ),
               Align(
                 alignment: position == QuickEditCaptionPosition.top
-                    ? Alignment.topCenter
-                    : Alignment.bottomCenter,
+                    ? AlignmentDirectional.topCenter
+                    : AlignmentDirectional.bottomCenter,
                 child: Padding(
-                  padding: EdgeInsets.only(
-                    top: position == QuickEditCaptionPosition.top ? 10 : 26,
-                    bottom: position == QuickEditCaptionPosition.bottom ? 10 : 26,
-                    left: 12,
-                    right: 12,
+                  padding: EdgeInsetsDirectional.only(
+                    start: 11,
+                    end: 11,
+                    top:
+                        position == QuickEditCaptionPosition.top ? 10 : 26,
+                    bottom:
+                        position == QuickEditCaptionPosition.bottom
+                            ? 10
+                            : 26,
                   ),
                   child: sampleBody,
                 ),

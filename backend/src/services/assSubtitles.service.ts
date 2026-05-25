@@ -1,28 +1,36 @@
 import type { CaptionsBurnInV1Resolved } from "../modules/edit/edit.types";
 import type { TranscriptSegment } from "./transcription.service";
 
-/** ASS line break (two chars backslash+N in file). */
-const LB = "\\N";
+/**
+ * ASS dialogue hard line break token (literal backslash + N in subtitle file).
+ * Must be inserted only after escaping each text line separately — never run full-body `\\` replace on strings containing this.
+ */
+const ASS_HARD_BREAK = "\\N";
 
 /** Logical script grid — ffmpeg/libass scales to output video. */
 const PLAY_RES_X = 960;
 const PLAY_RES_Y = 540;
 
 const FONT_SIZES: Record<CaptionsBurnInV1Resolved["fontSize"], number> = {
-  small: 28,
-  medium: 34,
-  large: 42,
+  extra_small: 16,
+  small: 20,
+  medium: 24,
+  large: 30,
 };
 
+/** Per-line grapheme-ish limits — keeps ≤2 rendered lines via manual wrap (`WrapStyle: 2`). */
 const MAX_CHARS_PER_LINE: Record<CaptionsBurnInV1Resolved["fontSize"], number> = {
-  small: 36,
-  medium: 30,
-  large: 24,
+  extra_small: 32,
+  small: 28,
+  medium: 24,
+  large: 20,
 };
 
-const MARGIN_H = 48;
-/** Safe vertical margin from top/bottom (script pixels). */
-const MARGIN_V = 82;
+const MARGIN_H = 52;
+/** Safe vertical margin from top/bottom (script pixels) — avoids edge-glued captions. */
+const MARGIN_V = 96;
+
+const MIN_CHUNK_DURATION_SEC = 0.16;
 
 export type SegmentsToAssOpts = CaptionsBurnInV1Resolved & {
   readonly title?: string;
@@ -30,7 +38,7 @@ export type SegmentsToAssOpts = CaptionsBurnInV1Resolved & {
 
 /**
  * Produce a playable ASS subtitle file for ffmpeg burn-in.
- * Applies V1.5 styling, wrapping (~2 lines / event), and duration-weighted chunking.
+ * Rendering fix 1.5.1: smaller font map, `\N` only between escaped lines (no visible backslashes).
  */
 export function segmentsToAssContent(segments: TranscriptSegment[], opts: SegmentsToAssOpts): string {
   const title = opts.title ?? "linkclip-caption";
@@ -50,7 +58,7 @@ Title: ${title.replace(/[^\w\- ]+/g, "").slice(0, 80)}
 ScriptType: v4.00+
 PlayResX: ${PLAY_RES_X}
 PlayResY: ${PLAY_RES_Y}
-WrapStyle: 0
+WrapStyle: 2
 ScaledBorderAndShadow: yes
 
 [V4+ Styles]
@@ -83,35 +91,34 @@ function buildDefaultStyleRow(p: {
   style: CaptionsBurnInV1Resolved["style"];
   alignment: number;
 }): string {
-  /** ASS: OutlineColour BB GGRR, BackColour for BorderStyle 3 box */
   const outlineBlack = "&H00101010";
-  let outline = 2.75;
-  let shadow = 1.85;
+  let outline = 2.65;
+  let shadow = 1.65;
   let bold = 0;
   let borderStyle = 1;
-  let back = "&HC0000000";
+  let back = "&H00000000";
 
   switch (p.style) {
     case "clean":
-      outline = 2.65;
-      shadow = 1.65;
+      outline = 2.45;
+      shadow = 1.45;
       bold = 0;
       borderStyle = 1;
       back = "&H00000000";
       break;
     case "bold":
-      outline = 4.25;
-      shadow = 2.95;
+      outline = 3.85;
+      shadow = 2.65;
       bold = 1;
       borderStyle = 1;
       back = "&H00000000";
       break;
     case "dark_box":
-      outline = 1.85;
-      shadow = 0.95;
+      outline = 1.65;
+      shadow = 0.85;
       bold = 0;
       borderStyle = 3;
-      back = "&H98303030"; /** semi-transparent dark panel */
+      back = "&H98303030";
       break;
     default:
       break;
@@ -119,18 +126,16 @@ function buildDefaultStyleRow(p: {
 
   const scaleX = p.style === "bold" ? 101 : 100;
   const scaleY = p.style === "bold" ? 101 : 100;
-  /** Name, Fontname, Fontsize, Primary, Secondary, OutlineColour, BackColour, Bold, ... */
   return `Style: Default,Arial,${p.fontSize},${p.primaryColour},${secondaryOrPlaceholder()},${outlineBlack},${back},${bold},0,0,0,${scaleX},${scaleY},0,0,${borderStyle},${outline.toFixed(2)},${shadow.toFixed(2)},${p.alignment},${MARGIN_H},${MARGIN_H},${MARGIN_V},1`;
 }
 
-/** Secondary unused for burn-in; keep opaque magenta placeholder per spec habit */
 function secondaryOrPlaceholder(): string {
   return "&H000000FF";
 }
 
 type DialogueEvent = { startSec: number; endSec: number; text: string };
 
-/** Split one transcript segment into wrapped, time-weighted subtitle events (max 2 lines each). */
+/** Max 2 lines per event; overflow → chunked events across segment time. */
 function segmentToDialogueEvents(seg: TranscriptSegment, maxCharsPerLine: number): DialogueEvent[] {
   const plain = preprocessCaptionPlain(seg.text);
   if (!plain.length) return [];
@@ -138,35 +143,57 @@ function segmentToDialogueEvents(seg: TranscriptSegment, maxCharsPerLine: number
   const words = plain.split(/\s+/).filter((w) => w.length > 0);
   if (words.length === 0) return [];
 
-  const lines = greedyWordWrap(words, maxCharsPerLine);
-  /** Up to 2 lines per ASS event */
+  const wrappedLines = greedyWordWrap(words, maxCharsPerLine);
   const chunks: string[] = [];
-  for (let i = 0; i < lines.length; i += 2) {
-    const a = lines[i] ?? "";
-    const b = lines[i + 1] ?? "";
-    const body = b.length ? `${a}${LB}${b}` : a;
-    chunks.push(sanitizeWrappedBody(body));
+
+  for (let i = 0; i < wrappedLines.length; i += 2) {
+    const line1 = wrappedLines[i] ?? "";
+    const line2 = wrappedLines[i + 1];
+    const dlg = assembleTwoLineAssDialogue(line1, line2);
+    if (dlg.length === 0) continue;
+    chunks.push(dlg);
   }
   if (chunks.length === 0) return [];
 
-  const dur = Math.max(0.12, seg.endSec - seg.startSec);
+  /** Partition [start,end) into k contiguous slices — no overlaps */
+  const rawStart = seg.startSec;
+  const rawEnd = seg.endSec;
+  let start = Number.isFinite(rawStart) && rawStart >= 0 ? rawStart : 0;
+  let end = Number.isFinite(rawEnd) ? rawEnd : start + MIN_CHUNK_DURATION_SEC * 8;
+  if (!(end > start)) end = start + Math.max(MIN_CHUNK_DURATION_SEC, 0.2);
+
+  const dur = end - start;
   const k = chunks.length;
-  const slice = dur / k;
   const events: DialogueEvent[] = [];
   for (let i = 0; i < k; i++) {
-    const t0 = seg.startSec + i * slice;
-    const rawEnd = i === k - 1 ? seg.endSec : seg.startSec + (i + 1) * slice;
-    const endSec = Math.min(seg.endSec, Math.max(t0 + 0.06, rawEnd));
-    events.push({ startSec: t0, endSec, text: chunks[i]! });
-  }
-  if (events.length) events[events.length - 1]!.endSec = seg.endSec;
-  /** Non-overlap */
-  for (let i = 1; i < events.length; i++) {
-    const prev = events[i - 1]!;
-    const curr = events[i]!;
-    if (prev.endSec > curr.startSec) prev.endSec = curr.startSec;
+    const t0 = start + (dur * i) / k;
+    const t1 = i === k - 1 ? end : start + (dur * (i + 1)) / k;
+    events.push({ startSec: t0, endSec: t1, text: chunks[i]! });
   }
   return events;
+}
+
+/** Escape one logical line for ASS Dialogue (no `\N`). */
+function escapeAssDialogueFragment(raw: string): string {
+  let t = raw.normalize("NFC").trim();
+  t = t.replace(/\{[^}]*\}/g, "");
+  t = t.replace(/\r/g, "");
+  /** Literal backslashes in subtitle text → doubled for ASS field */
+  t = t.replace(/\\/g, "\\\\");
+  t = t.replace(/,/g, "\\,");
+  t = t.replace(/\{/g, "\\{").replace(/\}/g, "\\}");
+  return t;
+}
+
+/**
+ * Build Dialogue text: up to **2** ASS lines separated by verbatim `\N` (not escaped further).
+ */
+function assembleTwoLineAssDialogue(line1Raw: string, line2Raw: string | undefined): string {
+  const a = escapeAssDialogueFragment(line1Raw);
+  if (!a) return "";
+  if (line2Raw == null || line2Raw.trim() === "") return a;
+  const b = escapeAssDialogueFragment(line2Raw);
+  return b ? `${a}${ASS_HARD_BREAK}${b}` : a;
 }
 
 /** Greedy word wrap → lines (respect word boundaries when possible). */
@@ -185,18 +212,17 @@ function greedyWordWrap(words: readonly string[], maxChars: number): string[] {
     else cur = `${cur} ${w}`;
   };
 
+  const unitsOf = (s: string): string[] => [...s];
+
   const hardSplitUnits = (s: string, maxUnits: number): string[] => {
-    if ([...s].length <= maxUnits) return [s];
+    const u = unitsOf(s);
+    if (u.length <= maxUnits) return [s];
     const chunks: string[] = [];
-    for (let i = 0; i < s.length; ) {
-      const slice = [...s.slice(i)].slice(0, maxUnits).join("");
-      chunks.push(slice);
-      i += slice.length || 1;
-    }
+    for (let i = 0; i < u.length; i += maxUnits) chunks.push(u.slice(i, i + maxUnits).join(""));
     return chunks;
   };
 
-  const lineCharLen = (s: string): number => [...s].length;
+  const lineCharLen = (s: string): number => unitsOf(s).length;
 
   for (const w of words) {
     if (lineCharLen(w) > maxChars) {
@@ -210,7 +236,6 @@ function greedyWordWrap(words: readonly string[], maxChars: number): string[] {
           flushLine();
           pushWord(piece);
         }
-        /** Long token may still exceed → force own line flush */
         if (lineCharLen(cur) >= maxChars) flushLine();
       }
       continue;
@@ -229,17 +254,6 @@ function greedyWordWrap(words: readonly string[], maxChars: number): string[] {
 function preprocessCaptionPlain(raw: string): string {
   let t = raw.normalize("NFC").replace(/\s+/g, " ").trim();
   t = t.replace(/\{[^}]*\}/g, "");
-  return t;
-}
-
-/** Escape for ASS Dialogue text after line breaks are fixed. */
-function sanitizeWrappedBody(body: string): string {
-  let t = body;
-  t = t.replace(/\\/g, "\\\\");
-  t = t.replace(/\n/g, LB);
-  t = t.replace(/\r/g, "");
-  t = t.replace(/,/g, "\\,");
-  t = t.replace(/\{/g, "\\{").replace(/\}/g, "\\}");
   return t;
 }
 

@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:io";
+import "dart:math" as math;
 
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
@@ -728,39 +729,20 @@ class _EditVideoScreenState extends State<EditVideoScreen>
 
   Widget _buildEditToolStrip(
       ThemeData theme, ColorScheme scheme, AppLocalizations l10n) {
-    final idx = _tabController.index;
     final accent = context.lcPalette.tiktokAccent;
-    final tabs = <(int, IconData, String)>[
-      (0, Icons.content_cut_rounded, l10n.editTabTrim),
-      (1, Icons.speed_rounded, l10n.editTabSpeed),
-      (2, Icons.aspect_ratio_rounded, l10n.editTabAspectRatio),
-      (3, Icons.closed_caption_rounded, l10n.editTabCaptions),
-      (4, Icons.volume_up_rounded, l10n.editTabAudio),
-      (5, Icons.high_quality_rounded, l10n.editTabCompression),
-    ];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 2, 10, 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            for (final t in tabs) ...[
-              _EditToolChip(
-                icon: t.$2,
-                label: t.$3,
-                selected: idx == t.$1,
-                accentColor: accent,
-                onTap: () {
-                  if (_tabController.index != t.$1) {
-                    _tabController.animateTo(t.$1);
-                  }
-                },
-              ),
-              const SizedBox(width: 8),
-            ],
-          ],
-        ),
+      child: _EditorToolbarScrollLane(
+        scheme: scheme,
+        accent: accent,
+        l10n: l10n,
+        selectedTabIndex: _tabController.index,
+        onSelectTab: (i) {
+          if (_tabController.index != i) {
+            _tabController.animateTo(i);
+          }
+        },
       ),
     );
   }
@@ -1314,6 +1296,277 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       child: Center(
         child: Icon(Icons.play_circle_outline_rounded,
             size: 64, color: scheme.outline),
+      ),
+    );
+  }
+}
+
+class _EditorToolbarScrollLane extends StatefulWidget {
+  const _EditorToolbarScrollLane({
+    required this.selectedTabIndex,
+    required this.scheme,
+    required this.l10n,
+    required this.accent,
+    required this.onSelectTab,
+  });
+
+  final int selectedTabIndex;
+  final ColorScheme scheme;
+  final AppLocalizations l10n;
+  final Color accent;
+  final ValueChanged<int> onSelectTab;
+
+  @override
+  State<_EditorToolbarScrollLane> createState() =>
+      _EditorToolbarScrollLaneState();
+}
+
+class _EditorToolbarScrollLaneState extends State<_EditorToolbarScrollLane> {
+  final ScrollController _scroll = ScrollController();
+
+  static const double _laneH = 44;
+  static const double _inlinePad = 40;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_sync);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
+  }
+
+  void _sync() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _scroll.removeListener(_sync);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _nudgeTowardMaxExtent(bool forward) {
+    if (!_scroll.hasClients) return;
+    final vw = math.max(MediaQuery.sizeOf(context).width, 260);
+    final step = math.min(148.0, math.max(88.0, vw * 0.32));
+    final p = _scroll.position;
+    final targetRaw = forward ? p.pixels + step : p.pixels - step;
+    final target =
+        math.min(math.max(targetRaw, p.minScrollExtent), p.maxScrollExtent);
+    _scroll.animateTo(
+      target,
+      duration: const Duration(milliseconds: 218),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  bool get _pastStart =>
+      _scroll.hasClients &&
+      (_scroll.offset - _scroll.position.minScrollExtent > 2);
+  bool get _beforeEnd =>
+      _scroll.hasClients &&
+      (_scroll.position.maxScrollExtent - _scroll.offset > 2);
+
+  @override
+  Widget build(BuildContext context) {
+    final rtl =
+        Directionality.of(context) == TextDirection.rtl;
+    /** Min scroll = “physical start” chips; semantics stay “previous / more”. */
+    final iconPrev =
+        rtl ? Icons.chevron_right_rounded : Icons.chevron_left_rounded;
+    final iconNext =
+        rtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    Color fadeWall = Theme.of(context).colorScheme.surface;
+    fadeWall = fadeWall.withValues(alpha: dark ? 0.99 : 0.995);
+
+    final tabs = <(int, IconData, String)>[
+      (
+        0,
+        Icons.content_cut_rounded,
+        widget.l10n.editTabTrim,
+      ),
+      (1, Icons.speed_rounded, widget.l10n.editTabSpeed),
+      (2, Icons.aspect_ratio_rounded, widget.l10n.editTabAspectRatio),
+      (
+        3,
+        Icons.closed_caption_rounded,
+        widget.l10n.editTabCaptions,
+      ),
+      (
+        4,
+        Icons.volume_up_rounded,
+        widget.l10n.editTabAudio,
+      ),
+      (
+        5,
+        Icons.high_quality_rounded,
+        widget.l10n.editTabCompression,
+      ),
+    ];
+
+    final double arrowTop = (_laneH - _ToolbarLaneArrowChip.kSize) / 2;
+
+    return SizedBox(
+      height: _laneH,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(
+                start: _inlinePad,
+                end: _inlinePad,
+              ),
+              child: AnimatedBuilder(
+                animation: _scroll,
+                builder: (_, __) {
+                  return NotificationListener<ScrollMetricsNotification>(
+                    onNotification: (_) {
+                      WidgetsBinding.instance
+                          .addPostFrameCallback((_) => _sync());
+                      return false;
+                    },
+                    child: SingleChildScrollView(
+                      controller: _scroll,
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      clipBehavior: Clip.hardEdge,
+                      child: Row(
+                        children: [
+                          for (final t in tabs) ...[
+                            _EditToolChip(
+                              icon: t.$2,
+                              label: t.$3,
+                              selected: widget.selectedTabIndex == t.$1,
+                              accentColor: widget.accent,
+                              onTap: () => widget.onSelectTab(t.$1),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          /** Gutter fades (ignore pointer — chips remain tappable underneath). */
+          if (_pastStart)
+            PositionedDirectional(
+              start: 0,
+              width: _inlinePad,
+              top: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: AlignmentDirectional.centerStart,
+                      end: AlignmentDirectional.centerEnd,
+                      colors: [fadeWall, fadeWall.withValues(alpha: 0)],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          if (_beforeEnd)
+            PositionedDirectional(
+              end: 0,
+              width: _inlinePad,
+              top: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: AlignmentDirectional.centerEnd,
+                      end: AlignmentDirectional.centerStart,
+                      colors: [fadeWall, fadeWall.withValues(alpha: 0)],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          if (_pastStart)
+            PositionedDirectional(
+              start: 8,
+              top: arrowTop,
+              child: Semantics(
+                label: widget.l10n.editToolbarPreviousTools,
+                button: true,
+                child: _ToolbarLaneArrowChip(
+                  icon: iconPrev,
+                  accent: widget.accent,
+                  scheme: widget.scheme,
+                  onTap: () => _nudgeTowardMaxExtent(false),
+                ),
+              ),
+            ),
+          if (_beforeEnd)
+            PositionedDirectional(
+              end: 8,
+              top: arrowTop,
+              child: Semantics(
+                label: widget.l10n.editToolbarMoreTools,
+                button: true,
+                child: _ToolbarLaneArrowChip(
+                  icon: iconNext,
+                  accent: widget.accent,
+                  scheme: widget.scheme,
+                  onTap: () => _nudgeTowardMaxExtent(true),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToolbarLaneArrowChip extends StatelessWidget {
+  const _ToolbarLaneArrowChip({
+    required this.icon,
+    required this.accent,
+    required this.scheme,
+    required this.onTap,
+  });
+
+  static const double kSize = 29;
+
+  final IconData icon;
+  final Color accent;
+  final ColorScheme scheme;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+
+    final fill = scheme.surface.withValues(alpha: dark ? 0.86 : 0.9);
+    final borderSide = accent.withValues(alpha: dark ? 0.21 : 0.17);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        splashColor: accent.withValues(alpha: 0.1),
+        child: Ink(
+          width: kSize,
+          height: kSize,
+          decoration: BoxDecoration(
+            color: fill,
+            shape: BoxShape.circle,
+            border: Border.all(color: borderSide, width: 1),
+          ),
+          child: Icon(
+            icon,
+            size: 17,
+            color: scheme.onSurface.withValues(alpha: 0.52),
+          ),
+        ),
       ),
     );
   }

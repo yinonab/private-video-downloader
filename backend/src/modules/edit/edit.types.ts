@@ -13,7 +13,7 @@ export type CaptionsStyleApi = "default" | "clean" | "bold" | "dark_box";
 /** Normalized caption preset for ASS generation. */
 export type CaptionsStyleResolved = "clean" | "bold" | "dark_box";
 
-export type CaptionsFontSize = "small" | "medium" | "large";
+export type CaptionsFontSize = "extra_small" | "small" | "medium" | "large";
 
 export type CaptionsPosition = "top" | "bottom";
 

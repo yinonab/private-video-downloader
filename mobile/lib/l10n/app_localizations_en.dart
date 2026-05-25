@@ -1101,6 +1101,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editTabCaptions => 'Captions';
 
   @override
+  String get editToolbarMoreTools => 'More tools';
+
+  @override
+  String get editToolbarPreviousTools => 'Previous tools';
+
+  @override
   String get editCaptionsSectionTitle => 'Captions';
 
   @override
@@ -1123,6 +1129,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editCaptionsTextSizeLabel => 'Text size';
+
+  @override
+  String get editCaptionsSizeExtraSmall => 'Extra small';
 
   @override
   String get editCaptionsSizeSmall => 'Small';

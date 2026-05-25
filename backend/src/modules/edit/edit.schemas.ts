@@ -94,7 +94,7 @@ const captionsOpSchema = z
     language: z.literal("auto"),
     burnIn: z.literal(true),
     style: z.enum(["default", "clean", "bold", "dark_box"]),
-    fontSize: z.enum(["small", "medium", "large"]).optional(),
+    fontSize: z.enum(["extra_small", "small", "medium", "large"]).optional(),
     position: z.enum(["top", "bottom"]).optional(),
     color: z.enum(["white", "yellow"]).optional(),
   })
@@ -198,7 +198,7 @@ export function captionsFieldErrorsFromUnknownBody(body: unknown): AppError | nu
         return new AppError(codes.UNSUPPORTED_CAPTIONS_STYLE, UNSUPPORTED_CAPTIONS_STYLE_EN, 400);
       }
     }
-    const allowedFs = new Set(["small", "medium", "large"]);
+    const allowedFs = new Set(["extra_small", "small", "medium", "large"]);
     if (Object.prototype.hasOwnProperty.call(o, "fontSize")) {
       const fs = o.fontSize;
       if (fs !== undefined && fs !== null && (typeof fs !== "string" || !allowedFs.has(fs))) {

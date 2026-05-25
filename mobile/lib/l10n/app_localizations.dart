@@ -2096,6 +2096,18 @@ abstract class AppLocalizations {
   /// **'Captions'**
   String get editTabCaptions;
 
+  /// No description provided for @editToolbarMoreTools.
+  ///
+  /// In en, this message translates to:
+  /// **'More tools'**
+  String get editToolbarMoreTools;
+
+  /// No description provided for @editToolbarPreviousTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous tools'**
+  String get editToolbarPreviousTools;
+
   /// No description provided for @editCaptionsSectionTitle.
   ///
   /// In en, this message translates to:
@@ -2137,6 +2149,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Text size'**
   String get editCaptionsTextSizeLabel;
+
+  /// No description provided for @editCaptionsSizeExtraSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra small'**
+  String get editCaptionsSizeExtraSmall;
 
   /// No description provided for @editCaptionsSizeSmall.
   ///
