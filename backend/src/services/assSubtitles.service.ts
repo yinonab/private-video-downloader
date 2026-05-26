@@ -30,6 +30,10 @@ const MARGIN_H = 52;
 /** Safe vertical margin from top/bottom (script pixels) — avoids edge-glued captions. */
 const MARGIN_V = 96;
 
+/** Sub-event floor when splitting one Whisper segment across multiple Dialogue lines (smooth read, avoid flicker). */
+const MIN_VISIBLE_CHUNK_DURATION_SEC = 0.85;
+
+/** Fallback when adaptive wrap still yields tiny slices (parity with legacy floor). */
 const MIN_CHUNK_DURATION_SEC = 0.16;
 
 export type SegmentsToAssOpts = CaptionsBurnInV1Resolved & {
@@ -70,7 +74,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
   const lines: string[] = [header.trimEnd()];
-    for (const s of segments) {
+  for (const s of segments) {
     const events = segmentToDialogueEvents(s, maxLen);
     const { x: px, y: py, an: pan } = computeDialoguePos(opts);
     const posPre = dialoguePosOverridePrefix(pan, px, py);
@@ -81,7 +85,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       );
     }
   }
-  return `${lines.join("\n")}\n`;
+  const body = `${lines.join("\n")}\n`;
+  debugAssIntegrityLog(body);
+  return body;
 }
 
 function captionPrimaryAssColour(color: CaptionsBurnInV1Resolved["color"]): string {
@@ -171,34 +177,127 @@ function computeDialoguePos(opts: CaptionsBurnInV1Resolved): { x: number; y: num
 
 type DialogueEvent = { startSec: number; endSec: number; text: string };
 
-/** Max 2 lines per event; overflow → chunked events across segment time. */
+/**
+ * Strip Whisper/transcription artefacts that otherwise render as slashes or bogus line breaks.
+ * Order: NFC → strip override braces → newline tokens → bogus `\\…N` / `/N` → stray backslashes.
+ * Does **not** remove normal "/" (e.g. `25/5`, `ו/או`).
+ */
+export function normalizeCaptionText(raw: string): string {
+  let t = raw.normalize("NFC");
+  /* Physical newlines → space before word split */
+  t = t.replace(/\r\n|\r|\n/g, " ");
+  t = t.replace(/\s+/g, " ").trim();
+  t = t.replace(/\{[^}]*\}/g, "");
+
+  /** Literal backslash sequences + N (`\N`, `\\N`, …) */
+  t = t.replace(/\\+N/gi, " ");
+
+  /** Mistyped `/n`/`/N` as line marker (Whitespace-delimited keeps `25/5`, `ו/או`). */
+  t = t.replace(/\s+\/n(?=\s|$)/gi, " ");
+  t = t.replace(/^\s*\/n(?=\s|$)/gi, " ");
+
+  /** Isolated backslash glitch (standalone token) → removed */
+  t = t.replace(/(?:^|\s)\\+(?=($|\s))/g, " ");
+
+  /** Remaining backslashes (transcription artefacts) */
+  t = t.replace(/\\/g, "");
+
+  return t.replace(/\s+/g, " ").trim();
+}
+
+/** Escape a single subtitle line’s **content** for ASS Dialogue (never pass full multi-line blobs). */
+export function escapeAssTextLine(raw: string): string {
+  let t = normalizeCaptionText(raw).replace(/\{[^}]*\}/g, "");
+  if (!t.trim()) return "";
+  t = t.replace(/\r/g, "");
+  t = t.replace(/\\/g, "\\\\");
+  t = t.replace(/,/g, "\\,");
+  t = t.replace(/\{/g, "\\{").replace(/\}/g, "\\}");
+  return t;
+}
+
+/** Concatenate escaped lines using one ASS hard break `\N` in the emitted file — do not escape result. */
+export function joinAssLines(lines: readonly string[]): string {
+  const parts = lines.map((ln) => escapeAssTextLine(ln)).filter((s) => s.length > 0);
+  return parts.join(ASS_HARD_BREAK);
+}
+
+/** Count Dialogue rows in ASS body — for diagnostics only */
+function countAssDialogueLines(assBody: string): number {
+  let n = 0;
+  for (const line of assBody.split("\n")) {
+    if (/^Dialogue:/i.test(line.trimStart())) n += 1;
+  }
+  return n;
+}
+
+/** No transcript / filenames — validates structural markers only (`LINKCLIP_ASS_DEBUG=true`). */
+function debugAssIntegrityLog(assBody: string): void {
+  if ((process.env.LINKCLIP_ASS_DEBUG ?? "").trim() !== "true") return;
+  const dialogueCount = countAssDialogueLines(assBody);
+  /* In ASS file: `\\\N` = two backslashes + N (often visible as glitch) */
+  const hasDoubleEscapedLb = assBody.includes("\\\\N") || /\x5c\x5cn/i.test(assBody);
+  const hasSuspMarkers = /\s\\n\s|\\{3,}\s*n/i.test(assBody);
+  console.info(
+    `caption ASS validation: events=${dialogueCount}, hasDoubleEscapedLineBreak=${hasDoubleEscapedLb}, suspiciousSlashMarkers=${hasSuspMarkers}`,
+  );
+}
+
+/**
+ * Whisper segment span is preserved; Dialogue slices are subdivisions of [start,end) only — no timestamp shift.
+ */
 function segmentToDialogueEvents(seg: TranscriptSegment, maxCharsPerLine: number): DialogueEvent[] {
-  const plain = preprocessCaptionPlain(seg.text);
+  const plain = normalizeCaptionText(seg.text);
   if (!plain.length) return [];
 
-  const words = plain.split(/\s+/).filter((w) => w.length > 0);
-  if (words.length === 0) return [];
-
-  const wrappedLines = greedyWordWrap(words, maxCharsPerLine);
-  const chunks: string[] = [];
-
-  for (let i = 0; i < wrappedLines.length; i += 2) {
-    const line1 = wrappedLines[i] ?? "";
-    const line2 = wrappedLines[i + 1];
-    const dlg = assembleTwoLineAssDialogue(line1, line2);
-    if (dlg.length === 0) continue;
-    chunks.push(dlg);
-  }
-  if (chunks.length === 0) return [];
-
-  /** Partition [start,end) into k contiguous slices — no overlaps */
   const rawStart = seg.startSec;
   const rawEnd = seg.endSec;
   let start = Number.isFinite(rawStart) && rawStart >= 0 ? rawStart : 0;
   let end = Number.isFinite(rawEnd) ? rawEnd : start + MIN_CHUNK_DURATION_SEC * 8;
   if (!(end > start)) end = start + Math.max(MIN_CHUNK_DURATION_SEC, 0.2);
-
   const dur = end - start;
+
+  /** Prefer ≤2 wrapping lines → one event; widen budget only enough to honour min chunk duration. */
+  let maxChars = Math.max(8, Math.floor(maxCharsPerLine));
+
+  interface BuildResult {
+    readonly wrappedLines: string[];
+    readonly chunks: string[];
+  }
+
+  const buildChunks = (): BuildResult => {
+    const words = plain.split(/\s+/).filter((w) => w.length > 0);
+    const wrappedLines = greedyWordWrap(words, maxChars);
+    const chunks: string[] = [];
+    for (let i = 0; i < wrappedLines.length; i += 2) {
+      const line1 = wrappedLines[i] ?? "";
+      const line2 = wrappedLines[i + 1];
+      const dlg = joinAssLines(line2?.trim().length ? [line1, line2] : [line1]);
+      if (dlg.length > 0) chunks.push(dlg);
+    }
+    return { wrappedLines, chunks };
+  };
+
+  let { wrappedLines, chunks } = buildChunks();
+  while (chunks.length > 1) {
+    const per = dur / chunks.length;
+    if (per >= MIN_VISIBLE_CHUNK_DURATION_SEC || maxChars >= 48 + maxCharsPerLine) break;
+    maxChars += 2;
+    const next = buildChunks();
+    wrappedLines = next.wrappedLines;
+    chunks = next.chunks;
+  }
+
+  /** If still forced to split densely, widen until each slice ≥ floor or chunks cap at 4× budget */
+  while (chunks.length > 1 && dur / chunks.length < MIN_VISIBLE_CHUNK_DURATION_SEC && maxChars < 96) {
+    maxChars += 2;
+    const next = buildChunks();
+    wrappedLines = next.wrappedLines;
+    chunks = next.chunks;
+  }
+
+  if (chunks.length === 0) return [];
+
   const k = chunks.length;
   const events: DialogueEvent[] = [];
   for (let i = 0; i < k; i++) {
@@ -206,30 +305,17 @@ function segmentToDialogueEvents(seg: TranscriptSegment, maxCharsPerLine: number
     const t1 = i === k - 1 ? end : start + (dur * (i + 1)) / k;
     events.push({ startSec: t0, endSec: t1, text: chunks[i]! });
   }
+
+  void wrappedLines;
   return events;
 }
 
-/** Escape one logical line for ASS Dialogue (no `\N`). */
-function escapeAssDialogueFragment(raw: string): string {
-  let t = raw.normalize("NFC").trim();
-  t = t.replace(/\{[^}]*\}/g, "");
-  t = t.replace(/\r/g, "");
-  /** Literal backslashes in subtitle text → doubled for ASS field */
-  t = t.replace(/\\/g, "\\\\");
-  t = t.replace(/,/g, "\\,");
-  t = t.replace(/\{/g, "\\{").replace(/\}/g, "\\}");
-  return t;
-}
-
-/**
- * Build Dialogue text: up to **2** ASS lines separated by verbatim `\N` (not escaped further).
- */
-function assembleTwoLineAssDialogue(line1Raw: string, line2Raw: string | undefined): string {
-  const a = escapeAssDialogueFragment(line1Raw);
-  if (!a) return "";
-  if (line2Raw == null || line2Raw.trim() === "") return a;
-  const b = escapeAssDialogueFragment(line2Raw);
-  return b ? `${a}${ASS_HARD_BREAK}${b}` : a;
+/** For script-based regression checks only — not a public API guarantee. */
+export function segmentToDialogueEventsForTests(
+  seg: TranscriptSegment,
+  maxCharsPerLine: number,
+): DialogueEvent[] {
+  return segmentToDialogueEvents(seg, maxCharsPerLine);
 }
 
 /** Greedy word wrap → lines (respect word boundaries when possible). */
@@ -285,12 +371,6 @@ function greedyWordWrap(words: readonly string[], maxChars: number): string[] {
   }
   flushLine();
   return linesOut;
-}
-
-function preprocessCaptionPlain(raw: string): string {
-  let t = raw.normalize("NFC").replace(/\s+/g, " ").trim();
-  t = t.replace(/\{[^}]*\}/g, "");
-  return t;
 }
 
 /** Convert fractional seconds → `H:MM:SS.cc` ASS event time base. */
