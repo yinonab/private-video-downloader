@@ -1194,6 +1194,27 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get editCaptionsPresetLabel => 'Preset';
+
+  @override
+  String get editCaptionsPresetMinimal => 'Minimal';
+
+  @override
+  String get editCaptionsPresetSocial => 'Social';
+
+  @override
+  String get editCaptionsPresetBoldYellow => 'Bold Yellow';
+
+  @override
+  String get editCaptionsPresetDarkBox => 'Dark Box';
+
+  @override
+  String get editCaptionsPresetTopClean => 'Top Clean';
+
+  @override
+  String get editCaptionsPresetCustom => 'Custom';
+
+  @override
   String get errorCaptionsStyleNotSupported =>
       'This captions style is not supported.';
 

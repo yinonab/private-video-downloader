@@ -4,7 +4,7 @@ import "../../../core/theme/linkclip_palette.dart";
 import "../../../core/models/quick_edit_models.dart";
 import "../../../l10n/app_localizations.dart";
 
-/// Quick Edit — captions auto burn-in + styling + **V2.2** fine offsets (server-side ASS).
+/// Quick Edit — captions auto burn-in + styling + **V2.2** offsets + **V2.3** presets (UX only).
 class CaptionsEditorPanel extends StatelessWidget {
   const CaptionsEditorPanel({
     super.key,
@@ -22,6 +22,8 @@ class CaptionsEditorPanel extends StatelessWidget {
     required this.onColorChanged,
     required this.onOffsetReset,
     required this.onOffsetNudgeAss,
+    required this.effectiveCaptionPreset,
+    required this.onCaptionBuiltInPresetSelected,
   });
 
   final bool autoCaptionsEnabled;
@@ -31,6 +33,12 @@ class CaptionsEditorPanel extends StatelessWidget {
   final QuickEditCaptionColor color;
   final int offsetX;
   final int offsetY;
+
+  /// Inferred from current size/position/color/style/offsets ([QuickEditCaptionPreset.custom] if no match).
+  final QuickEditCaptionPreset effectiveCaptionPreset;
+
+  /// User picked a named preset (**not** [QuickEditCaptionPreset.custom]).
+  final ValueChanged<QuickEditCaptionPreset> onCaptionBuiltInPresetSelected;
 
   final ValueChanged<bool> onAutoCaptionsChanged;
   final ValueChanged<QuickEditCaptionsStylePreset> onStyleChanged;
@@ -110,6 +118,14 @@ class CaptionsEditorPanel extends StatelessWidget {
           ),
           if (autoCaptionsEnabled) ...[
             const SizedBox(height: 18),
+            _CaptionsPresetSection(
+              accent: accent,
+              theme: theme,
+              l10n: l10n,
+              effectivePreset: effectiveCaptionPreset,
+              onBuiltInSelected: onCaptionBuiltInPresetSelected,
+            ),
+            const SizedBox(height: 14),
             _CaptionsChipSection(
               accent: accent,
               title: l10n.editCaptionsTextSizeLabel,
@@ -248,6 +264,85 @@ class CaptionsEditorPanel extends StatelessWidget {
             style: theme.textTheme.labelSmall?.copyWith(
               color: scheme.onSurfaceVariant.withValues(alpha: 0.72),
               height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _editCaptionsPresetLabel(AppLocalizations l10n, QuickEditCaptionPreset p) {
+  return switch (p) {
+    QuickEditCaptionPreset.custom => l10n.editCaptionsPresetCustom,
+    QuickEditCaptionPreset.minimal => l10n.editCaptionsPresetMinimal,
+    QuickEditCaptionPreset.social => l10n.editCaptionsPresetSocial,
+    QuickEditCaptionPreset.boldYellow => l10n.editCaptionsPresetBoldYellow,
+    QuickEditCaptionPreset.darkBox => l10n.editCaptionsPresetDarkBox,
+    QuickEditCaptionPreset.topClean => l10n.editCaptionsPresetTopClean,
+  };
+}
+
+/// Horizontally scrolling preset chips + non-tappable Custom indicator when inferred.
+class _CaptionsPresetSection extends StatelessWidget {
+  const _CaptionsPresetSection({
+    required this.accent,
+    required this.theme,
+    required this.l10n,
+    required this.effectivePreset,
+    required this.onBuiltInSelected,
+  });
+
+  final Color accent;
+  final ThemeData theme;
+  final AppLocalizations l10n;
+  final QuickEditCaptionPreset effectivePreset;
+  final ValueChanged<QuickEditCaptionPreset> onBuiltInSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.editCaptionsPresetLabel,
+            style: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 2, end: 4),
+            child: SizedBox(
+              height: 46,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount:
+                    kQuickEditCaptionBuiltInPresetsOrdered.length + 1,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  if (i < kQuickEditCaptionBuiltInPresetsOrdered.length) {
+                    final p = kQuickEditCaptionBuiltInPresetsOrdered[i];
+                    return _CaptionChip(
+                      label: _editCaptionsPresetLabel(l10n, p),
+                      selected: effectivePreset == p,
+                      accent: accent,
+                      onTap: () => onBuiltInSelected(p),
+                    );
+                  }
+                  return _CaptionChip(
+                    label: l10n.editCaptionsPresetCustom,
+                    selected:
+                        effectivePreset == QuickEditCaptionPreset.custom,
+                    accent: accent,
+                    onTap: null,
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -435,7 +530,7 @@ class _CaptionChip extends StatelessWidget {
   final String label;
   final bool selected;
   final Color accent;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -449,6 +544,21 @@ class _CaptionChip extends StatelessWidget {
         ? accent.withValues(alpha: dark ? 0.14 : 0.1)
         : scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.38 : 0.48);
 
+    final child = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+      child: Text(
+        label,
+        maxLines: 2,
+        textAlign: TextAlign.center,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          height: 1.12,
+          color: selected ? accent.withValues(alpha: dark ? 0.95 : 0.94) : scheme.onSurface.withValues(alpha: 0.88),
+        ),
+      ),
+    );
+
     return Material(
       color: bg,
       shape: RoundedRectangleBorder(
@@ -456,23 +566,12 @@ class _CaptionChip extends StatelessWidget {
         side: BorderSide(color: borderColor, width: selected ? 1.25 : 1),
       ),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-          child: Text(
-            label,
-            maxLines: 2,
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              height: 1.12,
-              color: selected ? accent.withValues(alpha: dark ? 0.95 : 0.94) : scheme.onSurface.withValues(alpha: 0.88),
+      child: onTap == null
+          ? child
+          : InkWell(
+              onTap: onTap,
+              child: child,
             ),
-          ),
-        ),
-      ),
     );
   }
 }

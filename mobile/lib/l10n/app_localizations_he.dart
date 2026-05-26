@@ -1178,6 +1178,27 @@ class AppLocalizationsHe extends AppLocalizations {
   }
 
   @override
+  String get editCaptionsPresetLabel => 'תבנית';
+
+  @override
+  String get editCaptionsPresetMinimal => 'מינימלי';
+
+  @override
+  String get editCaptionsPresetSocial => 'רשתות';
+
+  @override
+  String get editCaptionsPresetBoldYellow => 'צהוב מודגש';
+
+  @override
+  String get editCaptionsPresetDarkBox => 'רקע כהה';
+
+  @override
+  String get editCaptionsPresetTopClean => 'נקי למעלה';
+
+  @override
+  String get editCaptionsPresetCustom => 'מותאם אישית';
+
+  @override
   String get errorCaptionsStyleNotSupported => 'סגנון הכתוביות הזה לא נתמך.';
 
   @override

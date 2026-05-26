@@ -126,7 +126,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   /// Auto captions burn-in (**V1.5**); off unless user enables.
   bool _captionsAuto = false;
   QuickEditCaptionsStylePreset _captionsStyle = QuickEditCaptionsStylePreset.clean;
-  QuickEditCaptionFontSize _captionsFontSize = QuickEditCaptionFontSize.medium;
+  QuickEditCaptionFontSize _captionsFontSize = QuickEditCaptionFontSize.extraSmall;
   QuickEditCaptionPosition _captionsPosition = QuickEditCaptionPosition.bottom;
   QuickEditCaptionColor _captionsColor = QuickEditCaptionColor.white;
   int _captionsOffsetX = 0;
@@ -226,6 +226,19 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     setState(() {
       _captionsOffsetX = clampQuickEditCaptionOffsetX(_captionsOffsetX + dx);
       _captionsOffsetY = clampQuickEditCaptionOffsetY(_captionsOffsetY + dy);
+    });
+  }
+
+  void _applyCaptionBuiltInPreset(QuickEditCaptionPreset preset) {
+    if (preset == QuickEditCaptionPreset.custom) return;
+    final r = captionPresetRecipe(preset)!;
+    setState(() {
+      _captionsFontSize = r.fontSize;
+      _captionsPosition = r.position;
+      _captionsColor = r.color;
+      _captionsStyle = r.style;
+      _captionsOffsetX = clampQuickEditCaptionOffsetX(r.offsetX);
+      _captionsOffsetY = clampQuickEditCaptionOffsetY(r.offsetY);
     });
   }
 
@@ -955,6 +968,16 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                         color: _captionsColor,
                         offsetX: _captionsOffsetX,
                         offsetY: _captionsOffsetY,
+                        effectiveCaptionPreset: inferQuickEditCaptionPreset(
+                          fontSize: _captionsFontSize,
+                          position: _captionsPosition,
+                          color: _captionsColor,
+                          style: _captionsStyle,
+                          offsetX: _captionsOffsetX,
+                          offsetY: _captionsOffsetY,
+                        ),
+                        onCaptionBuiltInPresetSelected:
+                            _applyCaptionBuiltInPreset,
                         onAutoCaptionsChanged: (v) => setState(() {
                           _captionsAuto = v;
                           if (!v) {

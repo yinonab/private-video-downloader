@@ -302,6 +302,137 @@ extension QuickEditCaptionColorApi on QuickEditCaptionColor {
       };
 }
 
+/// Ready-made captions look (**V2.3**) — UX only; API still sends concrete style/size/position/color/offsets.
+///
+/// **`custom`** means the current combo does not match any built-in preset.
+enum QuickEditCaptionPreset {
+  custom,
+  minimal,
+  social,
+  boldYellow,
+  darkBox,
+  topClean,
+}
+
+/// Field snapshot applied when user picks a built-in preset.
+final class CaptionPresetFields {
+  const CaptionPresetFields({
+    required this.fontSize,
+    required this.position,
+    required this.color,
+    required this.style,
+    required this.offsetX,
+    required this.offsetY,
+  });
+
+  final QuickEditCaptionFontSize fontSize;
+  final QuickEditCaptionPosition position;
+  final QuickEditCaptionColor color;
+  final QuickEditCaptionsStylePreset style;
+  final int offsetX;
+  final int offsetY;
+
+  bool matches({
+    required QuickEditCaptionFontSize fontSize,
+    required QuickEditCaptionPosition position,
+    required QuickEditCaptionColor color,
+    required QuickEditCaptionsStylePreset style,
+    required int offsetX,
+    required int offsetY,
+  }) =>
+      this.fontSize == fontSize &&
+      this.position == position &&
+      this.color == color &&
+      this.style == style &&
+      this.offsetX == offsetX &&
+      this.offsetY == offsetY;
+}
+
+CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
+  switch (preset) {
+    case QuickEditCaptionPreset.custom:
+      return null;
+    case QuickEditCaptionPreset.minimal:
+      return const CaptionPresetFields(
+        fontSize: QuickEditCaptionFontSize.extraSmall,
+        position: QuickEditCaptionPosition.bottom,
+        color: QuickEditCaptionColor.white,
+        style: QuickEditCaptionsStylePreset.clean,
+        offsetX: 0,
+        offsetY: 0,
+      );
+    case QuickEditCaptionPreset.social:
+      return const CaptionPresetFields(
+        fontSize: QuickEditCaptionFontSize.small,
+        position: QuickEditCaptionPosition.bottom,
+        color: QuickEditCaptionColor.white,
+        style: QuickEditCaptionsStylePreset.bold,
+        offsetX: 0,
+        offsetY: -20,
+      );
+    case QuickEditCaptionPreset.boldYellow:
+      return const CaptionPresetFields(
+        fontSize: QuickEditCaptionFontSize.small,
+        position: QuickEditCaptionPosition.bottom,
+        color: QuickEditCaptionColor.yellow,
+        style: QuickEditCaptionsStylePreset.bold,
+        offsetX: 0,
+        offsetY: -20,
+      );
+    case QuickEditCaptionPreset.darkBox:
+      return const CaptionPresetFields(
+        fontSize: QuickEditCaptionFontSize.small,
+        position: QuickEditCaptionPosition.bottom,
+        color: QuickEditCaptionColor.white,
+        style: QuickEditCaptionsStylePreset.darkBox,
+        offsetX: 0,
+        offsetY: -20,
+      );
+    case QuickEditCaptionPreset.topClean:
+      return const CaptionPresetFields(
+        fontSize: QuickEditCaptionFontSize.extraSmall,
+        position: QuickEditCaptionPosition.top,
+        color: QuickEditCaptionColor.white,
+        style: QuickEditCaptionsStylePreset.clean,
+        offsetX: 0,
+        offsetY: 0,
+      );
+  }
+}
+
+const List<QuickEditCaptionPreset> kQuickEditCaptionBuiltInPresetsOrdered = [
+  QuickEditCaptionPreset.minimal,
+  QuickEditCaptionPreset.social,
+  QuickEditCaptionPreset.boldYellow,
+  QuickEditCaptionPreset.darkBox,
+  QuickEditCaptionPreset.topClean,
+];
+
+/// Which named preset matches the current controls, or [QuickEditCaptionPreset.custom].
+QuickEditCaptionPreset inferQuickEditCaptionPreset({
+  required QuickEditCaptionFontSize fontSize,
+  required QuickEditCaptionPosition position,
+  required QuickEditCaptionColor color,
+  required QuickEditCaptionsStylePreset style,
+  required int offsetX,
+  required int offsetY,
+}) {
+  for (final p in kQuickEditCaptionBuiltInPresetsOrdered) {
+    final r = captionPresetRecipe(p)!;
+    if (r.matches(
+      fontSize: fontSize,
+      position: position,
+      color: color,
+      style: style,
+      offsetX: offsetX,
+      offsetY: offsetY,
+    )) {
+      return p;
+    }
+  }
+  return QuickEditCaptionPreset.custom;
+}
+
 /// Whether the list screen row may offer Quick Edit (server-side source exists).
 bool downloadItemEligibleForQuickEdit(DownloadItem item) {
   if (item.status != "done") return false;

@@ -2270,6 +2270,48 @@ abstract class AppLocalizations {
   /// **'X {x} · Y {y}'**
   String editCaptionsOffsetCompact(int x, int y);
 
+  /// No description provided for @editCaptionsPresetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preset'**
+  String get editCaptionsPresetLabel;
+
+  /// No description provided for @editCaptionsPresetMinimal.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimal'**
+  String get editCaptionsPresetMinimal;
+
+  /// No description provided for @editCaptionsPresetSocial.
+  ///
+  /// In en, this message translates to:
+  /// **'Social'**
+  String get editCaptionsPresetSocial;
+
+  /// No description provided for @editCaptionsPresetBoldYellow.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold Yellow'**
+  String get editCaptionsPresetBoldYellow;
+
+  /// No description provided for @editCaptionsPresetDarkBox.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark Box'**
+  String get editCaptionsPresetDarkBox;
+
+  /// No description provided for @editCaptionsPresetTopClean.
+  ///
+  /// In en, this message translates to:
+  /// **'Top Clean'**
+  String get editCaptionsPresetTopClean;
+
+  /// No description provided for @editCaptionsPresetCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get editCaptionsPresetCustom;
+
   /// No description provided for @errorCaptionsStyleNotSupported.
   ///
   /// In en, this message translates to:

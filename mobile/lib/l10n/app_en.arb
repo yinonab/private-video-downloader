@@ -445,6 +445,13 @@
       }
     }
   },
+  "editCaptionsPresetLabel": "Preset",
+  "editCaptionsPresetMinimal": "Minimal",
+  "editCaptionsPresetSocial": "Social",
+  "editCaptionsPresetBoldYellow": "Bold Yellow",
+  "editCaptionsPresetDarkBox": "Dark Box",
+  "editCaptionsPresetTopClean": "Top Clean",
+  "editCaptionsPresetCustom": "Custom",
   "errorCaptionsStyleNotSupported": "This captions style is not supported.",
   "errorCaptionsPositionNotSupported": "This captions position is not supported.",
   "errorCaptionsFontSizeNotSupported": "This captions size is not supported.",

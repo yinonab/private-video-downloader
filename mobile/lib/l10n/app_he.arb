@@ -445,6 +445,13 @@
       }
     }
   },
+  "editCaptionsPresetLabel": "תבנית",
+  "editCaptionsPresetMinimal": "מינימלי",
+  "editCaptionsPresetSocial": "רשתות",
+  "editCaptionsPresetBoldYellow": "צהוב מודגש",
+  "editCaptionsPresetDarkBox": "רקע כהה",
+  "editCaptionsPresetTopClean": "נקי למעלה",
+  "editCaptionsPresetCustom": "מותאם אישית",
   "errorCaptionsStyleNotSupported": "סגנון הכתוביות הזה לא נתמך.",
   "errorCaptionsPositionNotSupported": "מיקום הכתוביות הזה לא נתמך.",
   "errorCaptionsFontSizeNotSupported": "גודל הכתוביות הזה לא נתמך.",
