@@ -205,15 +205,21 @@ export function normalizeCaptionText(raw: string): string {
   return t.replace(/\s+/g, " ").trim();
 }
 
-/** Escape a single subtitle line’s **content** for ASS Dialogue (never pass full multi-line blobs). */
+/**
+ * Prepare one logical caption line for ASS Dialogue Text.
+ * Leaves normal punctuation as-is (, . ? ! : ; " ' ( ) …); does **not** use `\,` or other ASS “punctuation escapes”.
+ *
+ * Neutralizes ASS override syntax only: `{...}` blocks removed in `normalizeCaptionText`, then orphan `{` /
+ * `}` stripped. Transcript backslashes stripped in normalization — no line-level `\\` doubling.
+ *
+ * Intended `\N` is inserted only via `joinAssLines` — never escaped again after join.
+ */
 export function escapeAssTextLine(raw: string): string {
   let t = normalizeCaptionText(raw).replace(/\{[^}]*\}/g, "");
-  if (!t.trim()) return "";
+  t = t.replace(/\{|\}/g, "");
   t = t.replace(/\r/g, "");
-  t = t.replace(/\\/g, "\\\\");
-  t = t.replace(/,/g, "\\,");
-  t = t.replace(/\{/g, "\\{").replace(/\}/g, "\\}");
-  return t;
+  const out = t.trim();
+  return out.length === 0 ? "" : out;
 }
 
 /** Concatenate escaped lines using one ASS hard break `\N` in the emitted file — do not escape result. */

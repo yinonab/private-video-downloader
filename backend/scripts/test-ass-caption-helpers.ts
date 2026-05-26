@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 
 import type { SegmentsToAssOpts } from "../src/services/assSubtitles.service";
 import {
+  escapeAssTextLine,
   joinAssLines,
   normalizeCaptionText,
   segmentsToAssContent,
@@ -25,16 +26,23 @@ const baseOpts: SegmentsToAssOpts = {
   offsetY: 0,
 };
 
-/** Text field (10th field) of a v4+ Dialogue line — minimal scanner, no `\N` in transcript in these tests. */
-function extractAssDialogueTextField(line: string): string {
-  if (!/^Dialogue:/i.test(line.trimStart())) return "";
-  let i = line.indexOf(":") + 1;
-  for (let comma = 0; comma < 9; comma++) {
-    const j = line.indexOf(",", i);
-    if (j < 0) return "";
-    i = j + 1;
-  }
-  return line.slice(i);
+/**
+ * Payload after our fixed `Dialogue: 0,start,end,Default,,0,0,0,,` prefix (override + caption text).
+ * Robust when caption text contains commas (no `\,` escaping).
+ */
+function extractOurDialogueCaptionPayload(line: string): string {
+  const m = line.match(
+    /^Dialogue:\s*\d+,[^,]+,[^,]+,Default\s*,,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*,(.*)$/i,
+  );
+  return m?.[1] ?? "";
+}
+
+/** Caption body after `{...}` pos/align override (that block legitimately contains `\,`). */
+function stripLeadingAssOverride(payload: string): string {
+  if (!payload.startsWith("{")) return payload;
+  const end = payload.indexOf("}");
+  if (end < 0) return payload;
+  return payload.slice(end + 1);
 }
 
 function dialogueLines(ass: string): string[] {
@@ -63,6 +71,27 @@ assert.ok(twoLine.includes("\\N"), "single ASS hard break");
 assert.ok(!twoLine.includes("\\\\N"), "must not contain doubled break token");
 assert.ok(twoLine.split("\\N").length === 2, "exactly two lines");
 
+// --- Punctuation: no ASS backslash-prefix on normal marks (comma, stops, quotes, parens, Hebrew)
+const punctLatin =
+  'Hi, world. Really? Yes! Note: one; two ("ok") \'fine\' (25/5) ו/או tail.';
+const escLat = escapeAssTextLine(punctLatin);
+assert.equal(escLat, punctLatin);
+assert.ok(!escLat.includes("\\,"), "comma must not be \\,");
+assert.ok(!escLat.includes("\\\\"), "no backslash doubling on content");
+
+const punctHe =
+  "שלום, מה שלומך? מצוין! הוא אמר: כן; בסוף. גרשיים ״ציטוט׳ גרש ׳א׳";
+const escHe = escapeAssTextLine(punctHe);
+assert.equal(escHe, punctHe);
+assert.ok(!escHe.includes("\\"));
+
+const punctTwo = joinAssLines(["שאלה: מה נשמע, חבר?", 'תשובה: הכל טוב; "מעולה".']);
+assert.ok(punctTwo.includes("\\N"), "line break only");
+assert.ok(!punctTwo.includes("\\,"));
+assert.ok(punctTwo.includes(","), "comma visible in joined payload");
+assert.ok(punctTwo.includes("?"), "question mark preserved");
+assert.ok(punctTwo.includes("!") || punctTwo.includes("."), "terminal punctuation preserved");
+
 const events = segmentToDialogueEventsForTests(
   { startSec: 0, endSec: 15, text: "שורה ארוכה ".repeat(20).trim() },
   24,
@@ -84,9 +113,35 @@ const ass = segmentsToAssContent(
 );
 
 for (const dl of dialogueLines(ass)) {
-  const field = extractAssDialogueTextField(dl);
-  assert.ok(!field.includes("\\\\N"), `ASS field: ${field}`);
-  assert.ok(!/\/n(?![a-z])/iu.test(field.replace(/\\,/g, "")), "raw /N leak");
+  const payload = extractOurDialogueCaptionPayload(dl);
+  assert.ok(payload.length > 0, "dialogue payload");
+  const body = stripLeadingAssOverride(payload);
+  assert.ok(!body.includes("\\\\N"), `ASS body: ${body}`);
+  assert.ok(!/\s\/n(?=\s|$)/iu.test(body), "raw /N leak");
 }
 
+const assPunct = segmentsToAssContent(
+  [
+    {
+      startSec: 0,
+      endSec: 3,
+      text: 'בדיקה: א, ב. ג? ד! ה: ו; ז"ח (י) 25/5 ו/או ״ט׳',
+    } satisfies TranscriptSegment,
+  ],
+  { ...baseOpts, title: "punct" },
+);
+const punctDl = dialogueLines(assPunct)[0];
+assert.ok(punctDl, "one dialogue line");
+const punctPayload = extractOurDialogueCaptionPayload(punctDl!);
+const punctBody = stripLeadingAssOverride(punctPayload);
+assert.ok(punctBody.includes(","), "comma in burned caption");
+assert.ok(punctBody.includes("."), "period");
+assert.ok(punctBody.includes("?"), "question");
+assert.ok(punctBody.includes("!"), "exclamation");
+assert.ok(punctBody.includes(":"), "colon");
+assert.ok(punctBody.includes(";"), "semicolon");
+assert.ok(punctBody.includes('"'), "ASCII quote");
+assert.ok(punctBody.includes("(") && punctBody.includes(")"), "parens");
+assert.ok(punctBody.includes("25/5") && punctBody.includes("ו/או"), "slashes in words");
+assert.ok(!punctBody.includes("\\,"), "no comma escape in caption text");
 console.log("diag:ass-captions — ok");
