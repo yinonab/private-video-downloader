@@ -2306,11 +2306,11 @@ abstract class AppLocalizations {
   /// **'Top Clean'**
   String get editCaptionsPresetTopClean;
 
-  /// No description provided for @editCaptionsPresetCustom.
+  /// No description provided for @editCaptionsPresetManualBadge.
   ///
   /// In en, this message translates to:
-  /// **'Custom'**
-  String get editCaptionsPresetCustom;
+  /// **'Manual'**
+  String get editCaptionsPresetManualBadge;
 
   /// No description provided for @errorCaptionsStyleNotSupported.
   ///

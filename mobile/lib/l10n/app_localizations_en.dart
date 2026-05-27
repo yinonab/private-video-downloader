@@ -1212,7 +1212,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCaptionsPresetTopClean => 'Top Clean';
 
   @override
-  String get editCaptionsPresetCustom => 'Custom';
+  String get editCaptionsPresetManualBadge => 'Manual';
 
   @override
   String get errorCaptionsStyleNotSupported =>

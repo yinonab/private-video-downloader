@@ -272,18 +272,18 @@ class CaptionsEditorPanel extends StatelessWidget {
   }
 }
 
-String _editCaptionsPresetLabel(AppLocalizations l10n, QuickEditCaptionPreset p) {
-  return switch (p) {
-    QuickEditCaptionPreset.custom => l10n.editCaptionsPresetCustom,
+String _captionsPresetChipLabel(AppLocalizations l10n, QuickEditCaptionPreset preset) {
+  return switch (preset) {
     QuickEditCaptionPreset.minimal => l10n.editCaptionsPresetMinimal,
     QuickEditCaptionPreset.social => l10n.editCaptionsPresetSocial,
     QuickEditCaptionPreset.boldYellow => l10n.editCaptionsPresetBoldYellow,
     QuickEditCaptionPreset.darkBox => l10n.editCaptionsPresetDarkBox,
     QuickEditCaptionPreset.topClean => l10n.editCaptionsPresetTopClean,
+    QuickEditCaptionPreset.custom => "",
   };
 }
 
-/// Horizontally scrolling preset chips + non-tappable Custom indicator when inferred.
+/// Preset chips (built‑in only); [QuickEditCaptionPreset.custom] surfaced as Manual badge beside title.
 class _CaptionsPresetSection extends StatelessWidget {
   const _CaptionsPresetSection({
     required this.accent,
@@ -299,19 +299,66 @@ class _CaptionsPresetSection extends StatelessWidget {
   final QuickEditCaptionPreset effectivePreset;
   final ValueChanged<QuickEditCaptionPreset> onBuiltInSelected;
 
+  bool get _isManual =>
+      effectivePreset == QuickEditCaptionPreset.custom;
+
   @override
   Widget build(BuildContext context) {
+    final scheme = theme.colorScheme;
+
+    Widget? badge;
+    if (_isManual) {
+      badge = Semantics(
+        label: l10n.editCaptionsPresetManualBadge,
+        container: true,
+        excludeSemantics: true,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: scheme.outline.withValues(alpha: 0.42)),
+            color: scheme.surfaceContainerHighest.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.38 : 0.52),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            child: Text(
+              l10n.editCaptionsPresetManualBadge,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.06,
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.9),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l10n.editCaptionsPresetLabel,
-            style: theme.textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.editCaptionsPresetLabel,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface.withValues(alpha: 0.9),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (badge != null)
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 10),
+                  child: badge,
+                ),
+            ],
           ),
           const SizedBox(height: 8),
           Padding(
@@ -321,25 +368,15 @@ class _CaptionsPresetSection extends StatelessWidget {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
-                itemCount:
-                    kQuickEditCaptionBuiltInPresetsOrdered.length + 1,
+                itemCount: kQuickEditCaptionBuiltInPresetsOrdered.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (context, i) {
-                  if (i < kQuickEditCaptionBuiltInPresetsOrdered.length) {
-                    final p = kQuickEditCaptionBuiltInPresetsOrdered[i];
-                    return _CaptionChip(
-                      label: _editCaptionsPresetLabel(l10n, p),
-                      selected: effectivePreset == p,
-                      accent: accent,
-                      onTap: () => onBuiltInSelected(p),
-                    );
-                  }
+                  final p = kQuickEditCaptionBuiltInPresetsOrdered[i];
                   return _CaptionChip(
-                    label: l10n.editCaptionsPresetCustom,
-                    selected:
-                        effectivePreset == QuickEditCaptionPreset.custom,
+                    label: _captionsPresetChipLabel(l10n, p),
+                    selected: effectivePreset == p,
                     accent: accent,
-                    onTap: null,
+                    onTap: () => onBuiltInSelected(p),
                   );
                 },
               ),

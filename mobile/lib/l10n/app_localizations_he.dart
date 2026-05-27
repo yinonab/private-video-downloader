@@ -1196,7 +1196,7 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editCaptionsPresetTopClean => 'נקי למעלה';
 
   @override
-  String get editCaptionsPresetCustom => 'מותאם אישית';
+  String get editCaptionsPresetManualBadge => 'ידני';
 
   @override
   String get errorCaptionsStyleNotSupported => 'סגנון הכתוביות הזה לא נתמך.';

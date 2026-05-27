@@ -451,7 +451,7 @@
   "editCaptionsPresetBoldYellow": "Bold Yellow",
   "editCaptionsPresetDarkBox": "Dark Box",
   "editCaptionsPresetTopClean": "Top Clean",
-  "editCaptionsPresetCustom": "Custom",
+  "editCaptionsPresetManualBadge": "Manual",
   "errorCaptionsStyleNotSupported": "This captions style is not supported.",
   "errorCaptionsPositionNotSupported": "This captions position is not supported.",
   "errorCaptionsFontSizeNotSupported": "This captions size is not supported.",
