@@ -1236,6 +1236,12 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editCaptionsDraftClearSegment => 'נקה טקסט כתובית';
 
   @override
+  String get editCaptionsDraftEditTitle => 'עריכת כתובית';
+
+  @override
+  String get editCaptionsDraftEditClearText => 'נקה טקסט';
+
+  @override
   String get errorCaptionsDraftUnavailable => 'לא ניתן ליצור טיוטת כתוביות.';
 
   @override

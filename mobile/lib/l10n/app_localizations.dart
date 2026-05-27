@@ -2378,6 +2378,18 @@ abstract class AppLocalizations {
   /// **'Clear caption text'**
   String get editCaptionsDraftClearSegment;
 
+  /// No description provided for @editCaptionsDraftEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit caption'**
+  String get editCaptionsDraftEditTitle;
+
+  /// No description provided for @editCaptionsDraftEditClearText.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear text'**
+  String get editCaptionsDraftEditClearText;
+
   /// No description provided for @errorCaptionsDraftUnavailable.
   ///
   /// In en, this message translates to:

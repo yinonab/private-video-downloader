@@ -463,6 +463,8 @@
   "editCaptionsDraftRegenerateBody": "This will replace your current caption edits.",
   "editCaptionsDraftRegenerateConfirm": "Regenerate",
   "editCaptionsDraftClearSegment": "Clear caption text",
+  "editCaptionsDraftEditTitle": "Edit caption",
+  "editCaptionsDraftEditClearText": "Clear text",
   "errorCaptionsDraftUnavailable": "Could not generate captions draft.",
   "errorCaptionsStyleNotSupported": "This captions style is not supported.",
   "errorCaptionsPositionNotSupported": "This captions position is not supported.",

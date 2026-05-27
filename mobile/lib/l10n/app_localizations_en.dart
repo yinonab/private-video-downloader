@@ -1252,6 +1252,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCaptionsDraftClearSegment => 'Clear caption text';
 
   @override
+  String get editCaptionsDraftEditTitle => 'Edit caption';
+
+  @override
+  String get editCaptionsDraftEditClearText => 'Clear text';
+
+  @override
   String get errorCaptionsDraftUnavailable =>
       'Could not generate captions draft.';
 

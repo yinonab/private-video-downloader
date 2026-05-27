@@ -234,12 +234,14 @@ class CaptionsEditorPanel extends StatelessWidget {
                   final seg = captionDraftSegments![i];
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
-                    child: _CaptionDraftEditableRow(
+                    child: _CaptionDraftSegmentRow(
                       segment: seg,
                       timeRangeLabel: _captionRangeClockLabel(seg.startSec, seg.endSec),
-                      onChanged: onCaptionDraftSegmentTextChanged,
-                      onClear: () => onClearCaptionDraftSegmentText(seg.id),
+                      editSemanticsLabel: l10n.editCaptionsDraftEditTitle,
                       clearSemanticsLabel: l10n.editCaptionsDraftClearSegment,
+                      onSave: (text) =>
+                          onCaptionDraftSegmentTextChanged(seg.id, text),
+                      onClear: () => onClearCaptionDraftSegmentText(seg.id),
                     ),
                   );
                 },
@@ -413,49 +415,175 @@ String _captionRangeClockLabel(double startSec, double endSec) {
   return '${fmt(startSec)}–${fmt(endSec)}';
 }
 
-class _CaptionDraftEditableRow extends StatefulWidget {
-  const _CaptionDraftEditableRow({
+Future<void> _showCaptionDraftSegmentEditSheet(
+  BuildContext context, {
+  required CaptionDraftSegment segment,
+  required String timeRangeLabel,
+  required void Function(String text) onSave,
+}) async {
+  final l10n = AppLocalizations.of(context);
+  final theme = Theme.of(context);
+  final scheme = theme.colorScheme;
+  final controller = TextEditingController(text: segment.text);
+  final focusNode = FocusNode();
+
+  try {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        final inset = MediaQuery.viewInsetsOf(sheetCtx).bottom;
+
+        return AnimatedPadding(
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(bottom: inset),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(22),
+              ),
+              border: Border.all(
+                color: scheme.outline.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                18,
+                20,
+                18 + MediaQuery.paddingOf(sheetCtx).bottom,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      l10n.editCaptionsDraftEditTitle,
+                      style: theme.textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 8),
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Text(
+                        timeRangeLabel,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.88),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      autofocus: true,
+                      minLines: 3,
+                      maxLines: 8,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      style: theme.textTheme.bodyLarge?.copyWith(height: 1.42),
+                      onTapOutside: (_) => FocusScope.of(sheetCtx).unfocus(),
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        filled: true,
+                        fillColor: scheme.surface.withValues(alpha: 0.92),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: TextButton(
+                        onPressed: () => controller.clear(),
+                        child: Text(l10n.editCaptionsDraftEditClearText),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              FocusManager.instance.primaryFocus?.unfocus();
+                              Navigator.pop(sheetCtx);
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Text(l10n.homeCancel),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () {
+                              onSave(controller.text);
+                              FocusManager.instance.primaryFocus?.unfocus();
+                              Navigator.pop(sheetCtx);
+                            },
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Text(l10n.editSave),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  } finally {
+    focusNode.dispose();
+    controller.dispose();
+  }
+}
+
+class _CaptionDraftSegmentRow extends StatelessWidget {
+  const _CaptionDraftSegmentRow({
     required this.segment,
     required this.timeRangeLabel,
-    required this.onChanged,
-    required this.onClear,
+    required this.editSemanticsLabel,
     required this.clearSemanticsLabel,
+    required this.onSave,
+    required this.onClear,
   });
 
   final CaptionDraftSegment segment;
   final String timeRangeLabel;
-  final void Function(String id, String text) onChanged;
-  final VoidCallback onClear;
+  final String editSemanticsLabel;
   final String clearSemanticsLabel;
+  final void Function(String text) onSave;
+  final VoidCallback onClear;
 
-  @override
-  State<_CaptionDraftEditableRow> createState() => _CaptionDraftEditableRowState();
-}
-
-class _CaptionDraftEditableRowState extends State<_CaptionDraftEditableRow> {
-  late final TextEditingController _c;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = TextEditingController(text: widget.segment.text);
-  }
-
-  @override
-  void didUpdateWidget(covariant _CaptionDraftEditableRow oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.segment.text != oldWidget.segment.text && widget.segment.text != _c.text) {
-      _c.value = TextEditingValue(
-        text: widget.segment.text,
-        selection: TextSelection.collapsed(offset: widget.segment.text.length),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
+  Future<void> _openEditSheet(BuildContext context) {
+    return _showCaptionDraftSegmentEditSheet(
+      context,
+      segment: segment,
+      timeRangeLabel: timeRangeLabel,
+      onSave: onSave,
+    );
   }
 
   @override
@@ -463,61 +591,78 @@ class _CaptionDraftEditableRowState extends State<_CaptionDraftEditableRow> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final dark = theme.brightness == Brightness.dark;
+    final preview = segment.text.trim();
+    final hasText = preview.isNotEmpty;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.32 : 0.45),
+    return Material(
+      color: scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.32 : 0.45),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
+        side: BorderSide(color: scheme.outline.withValues(alpha: 0.18)),
       ),
-      child: Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 6, 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Directionality(
-              textDirection: TextDirection.ltr,
-              child: Padding(
-                padding: const EdgeInsetsDirectional.only(top: 8, end: 8),
-                child: Text(
-                  widget.timeRangeLabel,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant.withValues(alpha: 0.88),
-                    fontWeight: FontWeight.w700,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _openEditSheet(context),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 4, 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(top: 2, end: 8),
+                  child: Text(
+                    timeRangeLabel,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.88),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
-            ),
-            Expanded(
-              child: TextField(
-                controller: _c,
-                minLines: 1,
-                maxLines: 3,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  height: 1.38,
-                  color: scheme.onSurface.withValues(alpha: 0.92),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(top: 2),
+                  child: Text(
+                    hasText ? segment.text : '—',
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      height: 1.38,
+                      color: hasText
+                          ? scheme.onSurface.withValues(alpha: 0.92)
+                          : scheme.onSurfaceVariant.withValues(alpha: 0.55),
+                    ),
+                  ),
                 ),
-                decoration: const InputDecoration(
-                  isDense: true,
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 6, horizontal: 0),
-                ),
-                onChanged: (v) => widget.onChanged(widget.segment.id, v),
               ),
-            ),
-            Tooltip(
-              message: widget.clearSemanticsLabel,
-              child: IconButton(
-                visualDensity: VisualDensity.compact,
-                icon: Icon(
-                  Icons.close_rounded,
-                  size: 20,
-                  color: scheme.onSurfaceVariant.withValues(alpha: 0.65),
+              Tooltip(
+                message: editSemanticsLabel,
+                child: IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    Icons.edit_outlined,
+                    size: 20,
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
+                  ),
+                  onPressed: () => _openEditSheet(context),
                 ),
-                onPressed: widget.onClear,
               ),
-            ),
-          ],
+              Tooltip(
+                message: clearSemanticsLabel,
+                child: IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: 20,
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.65),
+                  ),
+                  onPressed: onClear,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -463,6 +463,8 @@
   "editCaptionsDraftRegenerateBody": "הפעולה תחליף את עריכות הכתוביות הנוכחיות.",
   "editCaptionsDraftRegenerateConfirm": "צור מחדש",
   "editCaptionsDraftClearSegment": "נקה טקסט כתובית",
+  "editCaptionsDraftEditTitle": "עריכת כתובית",
+  "editCaptionsDraftEditClearText": "נקה טקסט",
   "errorCaptionsDraftUnavailable": "לא ניתן ליצור טיוטת כתוביות.",
   "errorCaptionsStyleNotSupported": "סגנון הכתוביות הזה לא נתמך.",
   "errorCaptionsPositionNotSupported": "מיקום הכתוביות הזה לא נתמך.",
