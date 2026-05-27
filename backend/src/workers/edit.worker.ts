@@ -257,7 +257,10 @@ export function createEditWorker(prisma: PrismaClient): Worker {
           let muxHasTimelineAudio = probe.audio != null;
           let timelineDurationSecGuess = builtIntermediate.segmentDurationSec;
 
-          if (!config.openaiApiKey) {
+          const captionCfg = plan.captionsBurnInV1!;
+          const segmentsFromClient = captionCfg.mode === "segments";
+
+          if (!segmentsFromClient && !config.openaiApiKey) {
             await unlinkCaptionArtifacts();
             await cleanupTmp();
             await markEditFailed(
@@ -284,11 +287,35 @@ export function createEditWorker(prisma: PrismaClient): Worker {
 
           await prisma.editJob.update({
             where: { id: editJobId },
-            data: { stage: "captions_transcription", progressPercent: Math.max(lastPct, 49) },
+            data: {
+              stage: segmentsFromClient ? "captions_prep" : "captions_transcription",
+              progressPercent: Math.max(lastPct, 49),
+            },
           });
 
           let segments: TranscriptSegment[] = [];
-          if (!muxHasTimelineAudio) {
+
+          function clampCueTimesToTimeline(
+            segs: readonly { readonly startSec: number; readonly endSec: number; readonly text: string }[],
+            timelineSec: number
+          ): TranscriptSegment[] {
+            const upper = timelineSec > 0 && Number.isFinite(timelineSec) ? timelineSec : Number.POSITIVE_INFINITY;
+            const outCue: TranscriptSegment[] = [];
+            for (const s of segs) {
+              const st = Math.max(0, Math.min(upper, s.startSec));
+              const en = Math.max(st, Math.min(upper, s.endSec));
+              const t = typeof s.text === "string" ? s.text.trim() : "";
+              if (t.length === 0) continue;
+              if (en <= st + 1e-4) continue;
+              outCue.push({ startSec: st, endSec: en, text: t });
+            }
+            return outCue;
+          }
+
+          if (segmentsFromClient) {
+            segments = clampCueTimesToTimeline(captionCfg.segments ?? [], timelineDurationSecGuess);
+            logger.info({ editJobId, segmentCount: segments.length }, "captions: client segment mode — skipping transcription");
+          } else if (!muxHasTimelineAudio) {
             logger.warn({ editJobId }, "captions burn-in skipped: timeline has no audio track");
           } else {
             const wx = await ffmpegExtractMonoWav16k(captionMidAbs, wavAbs);
@@ -331,7 +358,7 @@ export function createEditWorker(prisma: PrismaClient): Worker {
 
           let subtitlesVfClause: string | null = null;
           if (segments.length > 0) {
-            const cfg = plan.captionsBurnInV1!;
+            const cfg = captionCfg;
             const assTxt = segmentsToAssContent(segments, {
               title: `edit-${editJobId}-cap`,
               ...cfg,

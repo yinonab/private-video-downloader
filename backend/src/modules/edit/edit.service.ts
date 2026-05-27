@@ -269,7 +269,8 @@ export async function createEditJob(opts: {
   }
 
   const resolvedPlan = resolveEditOperations(d.operations);
-  if (resolvedPlan.captionsBurnInV1 != null && config.openaiApiKey.length === 0) {
+  const cap = resolvedPlan.captionsBurnInV1;
+  if (cap != null && cap.mode === "auto" && config.openaiApiKey.length === 0) {
     throw new AppError(
       codes.CAPTIONS_TRANSCRIPTION_UNAVAILABLE,
       "Automatic captions are not configured on this server.",

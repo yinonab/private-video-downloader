@@ -1215,6 +1215,47 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCaptionsPresetManualBadge => 'Manual';
 
   @override
+  String get editCaptionsDraftTextSectionTitle => 'Caption text';
+
+  @override
+  String get editCaptionsDraftGenerateButton => 'Generate draft';
+
+  @override
+  String get editCaptionsDraftReviewHelper =>
+      'Review and edit captions before creating the video.';
+
+  @override
+  String get editCaptionsDraftLongVideoHelper =>
+      'Longer videos may take more time to process.';
+
+  @override
+  String get editCaptionsDraftGenerating => 'Generating captions draft...';
+
+  @override
+  String get editCaptionsDraftStaleHelper =>
+      'Draft captions need to be regenerated after timing changes.';
+
+  @override
+  String get editCaptionsDraftRegenerateButton => 'Regenerate draft';
+
+  @override
+  String get editCaptionsDraftRegenerateTitle => 'Regenerate draft?';
+
+  @override
+  String get editCaptionsDraftRegenerateBody =>
+      'This will replace your current caption edits.';
+
+  @override
+  String get editCaptionsDraftRegenerateConfirm => 'Regenerate';
+
+  @override
+  String get editCaptionsDraftClearSegment => 'Clear caption text';
+
+  @override
+  String get errorCaptionsDraftUnavailable =>
+      'Could not generate captions draft.';
+
+  @override
   String get errorCaptionsStyleNotSupported =>
       'This captions style is not supported.';
 
@@ -1241,6 +1282,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errorCaptionsOptionNotSupported =>
       'This captions option is not supported.';
+
+  @override
+  String get errorCaptionSegmentsInvalid => 'The edited captions are invalid.';
 
   @override
   String get editSpeedSectionTitle => 'Speed';

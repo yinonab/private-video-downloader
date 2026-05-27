@@ -82,6 +82,12 @@ final class EditVideoSourceRef {
   /// Hint duration (seconds) from caller or metadata.
   final double? videoDurationSec;
 
+  /// Stable key for captions draft invalidation — upload identity is upload id only.
+  String get captionsTimelineIdentityKey => switch (kind) {
+        EditVideoSourceKind.download => "dl:${sourceDownloadJobId!}",
+        EditVideoSourceKind.upload => "up:${sourceUploadId!}",
+      };
+
   /// Value for [Widget.key] on preview subtree when the backing media identity changes.
   String get previewIdentityKey => switch (kind) {
         EditVideoSourceKind.download => "dl:${sourceDownloadJobId!}",

@@ -1199,6 +1199,46 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editCaptionsPresetManualBadge => 'ידני';
 
   @override
+  String get editCaptionsDraftTextSectionTitle => 'טקסט הכתוביות';
+
+  @override
+  String get editCaptionsDraftGenerateButton => 'צור טיוטה';
+
+  @override
+  String get editCaptionsDraftReviewHelper =>
+      'בדוק וערוך את הכתוביות לפני יצירת הסרטון.';
+
+  @override
+  String get editCaptionsDraftLongVideoHelper =>
+      'סרטונים ארוכים עשויים לקחת יותר זמן לעיבוד.';
+
+  @override
+  String get editCaptionsDraftGenerating => 'יוצר טיוטת כתוביות...';
+
+  @override
+  String get editCaptionsDraftStaleHelper =>
+      'יש ליצור מחדש את טיוטת הכתוביות לאחר שינויי תזמון.';
+
+  @override
+  String get editCaptionsDraftRegenerateButton => 'צור מחדש';
+
+  @override
+  String get editCaptionsDraftRegenerateTitle => 'ליצור טיוטה מחדש?';
+
+  @override
+  String get editCaptionsDraftRegenerateBody =>
+      'הפעולה תחליף את עריכות הכתוביות הנוכחיות.';
+
+  @override
+  String get editCaptionsDraftRegenerateConfirm => 'צור מחדש';
+
+  @override
+  String get editCaptionsDraftClearSegment => 'נקה טקסט כתובית';
+
+  @override
+  String get errorCaptionsDraftUnavailable => 'לא ניתן ליצור טיוטת כתוביות.';
+
+  @override
   String get errorCaptionsStyleNotSupported => 'סגנון הכתוביות הזה לא נתמך.';
 
   @override
@@ -1220,6 +1260,9 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get errorCaptionsOptionNotSupported => 'אפשרות הכתוביות הזו לא נתמכת.';
+
+  @override
+  String get errorCaptionSegmentsInvalid => 'הכתוביות הערוכות אינן תקינות.';
 
   @override
   String get editSpeedSectionTitle => 'מהירות';

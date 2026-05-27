@@ -132,6 +132,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   int _captionsOffsetX = 0;
   int _captionsOffsetY = 0;
 
+  List<CaptionDraftSegment>? _captionsDraftSegments;
+  bool _captionsDraftGenerating = false;
+  bool _captionsDraftRegenHint = false;
+
   _FlowPhase _phase = _FlowPhase.composing;
   Timer? _pollTimer;
   bool _pollBusy = false;
@@ -164,6 +168,126 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     _pollTimer?.cancel();
     _tabController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant EditVideoScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.source.captionsTimelineIdentityKey != widget.source.captionsTimelineIdentityKey) {
+      final had = _captionsDraftSegments != null;
+      setState(() {
+        _captionsDraftSegments = null;
+        _captionsDraftGenerating = false;
+        if (had) _captionsDraftRegenHint = true;
+      });
+    }
+  }
+
+  void _clearCaptionsDraftAfterTimingEdit(VoidCallback apply) {
+    final hadDraft = _captionsDraftSegments != null;
+    setState(() {
+      apply();
+      if (hadDraft) {
+        _captionsDraftSegments = null;
+        _captionsDraftRegenHint = true;
+      }
+    });
+  }
+
+  void _onCaptionDraftTextChanged(String id, String t) {
+    final list = _captionsDraftSegments;
+    if (list == null) return;
+    setState(() {
+      _captionsDraftSegments = [
+        for (final s in list) s.id == id ? s.copyWith(text: t) : s,
+      ];
+    });
+  }
+
+  void _onClearCaptionDraftSegment(String id) {
+    final list = _captionsDraftSegments;
+    if (list == null) return;
+    setState(() {
+      _captionsDraftSegments = [
+        for (final s in list) s.id == id ? s.copyWith(text: '') : s,
+      ];
+    });
+  }
+
+  Future<void> _generateCaptionsDraft() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    final api = AppScope.read(context).api;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _captionsDraftGenerating = true;
+      _captionsDraftRegenHint = false;
+    });
+    try {
+      final timingOps = buildCaptionsDraftRequestOperations(
+        videoDurationSec: _durationSec,
+        trimStartSec: _startSec,
+        trimEndSec: _endSec,
+        speedFactor: _speed,
+      );
+      final GenerateCaptionsDraftRequest req =
+          widget.source.kind == EditVideoSourceKind.download
+              ? GenerateCaptionsDraftRequest.download(
+                  sourceDownloadJobId: widget.source.sourceDownloadJobId!,
+                  operations: timingOps,
+                )
+              : GenerateCaptionsDraftRequest.upload(
+                  sourceUploadId: widget.source.sourceUploadId!,
+                  operations: timingOps,
+                );
+      final res = await api.generateCaptionsDraft(req);
+      if (!mounted) return;
+      if (res.segments.isEmpty) {
+        setState(() {
+          _captionsDraftGenerating = false;
+          _captionsDraftSegments = null;
+        });
+        messenger.showSnackBar(SnackBar(content: Text(l10n.errorCaptionsDraftUnavailable)));
+        return;
+      }
+      setState(() {
+        _captionsDraftGenerating = false;
+        _captionsDraftSegments = List<CaptionDraftSegment>.from(res.segments);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _captionsDraftGenerating = false);
+      final msg = e is ApiError ? localizedApiErrorMessage(l10n, e) : l10n.errorUnexpected;
+      messenger.showSnackBar(SnackBar(content: Text(msg)));
+    }
+  }
+
+  Future<void> _confirmAndRegenerateCaptionsDraft() async {
+    final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.editCaptionsDraftRegenerateTitle),
+        content: Text(l10n.editCaptionsDraftRegenerateBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.homeCancel),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: scheme.onSurface.withValues(alpha: 0.92),
+              side: BorderSide(color: scheme.outline.withValues(alpha: 0.42)),
+            ),
+            child: Text(l10n.editCaptionsDraftRegenerateConfirm),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await _generateCaptionsDraft();
   }
 
   Future<void> _loadDetail() async {
@@ -470,6 +594,9 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         captionsColor: _captionsColor,
         captionsOffsetX: _captionsOffsetX,
         captionsOffsetY: _captionsOffsetY,
+        captionsDraftForBurn: (_captionsDraftSegments != null && _captionsDraftSegments!.isNotEmpty)
+            ? _captionsDraftSegments
+            : null,
         mute: _mute,
         compressPreset: _compress,
       );
@@ -923,7 +1050,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                         startSec: _startSec,
                         endSec: _endSec,
                         playbackSec: _playbackSec,
-                        onChanged: (a, b) => setState(() {
+                        onChanged: (a, b) => _clearCaptionsDraftAfterTimingEdit(() {
                           _startSec = a;
                           _endSec = b;
                         }),
@@ -935,7 +1062,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                       scheme,
                       SpeedEditor(
                         selected: _speed,
-                        onSelected: (s) => setState(() => _speed = s),
+                        onSelected: (s) =>
+                            _clearCaptionsDraftAfterTimingEdit(() => _speed = s),
                       ),
                     ),
                     _composerPanelShell(
@@ -978,11 +1106,22 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                         ),
                         onCaptionBuiltInPresetSelected:
                             _applyCaptionBuiltInPreset,
+                        onGenerateCaptionsDraft: _generateCaptionsDraft,
+                        onRegenerateCaptionsDraftRequested:
+                            _confirmAndRegenerateCaptionsDraft,
+                        captionDraftSegments: _captionsDraftSegments,
+                        onCaptionDraftSegmentTextChanged: _onCaptionDraftTextChanged,
+                        onClearCaptionDraftSegmentText: _onClearCaptionDraftSegment,
+                        isCaptionDraftGenerating: _captionsDraftGenerating,
+                        showCaptionDraftTimingStaleHint: _captionsDraftRegenHint,
                         onAutoCaptionsChanged: (v) => setState(() {
                           _captionsAuto = v;
                           if (!v) {
                             _captionsOffsetX = 0;
                             _captionsOffsetY = 0;
+                            _captionsDraftSegments = null;
+                            _captionsDraftRegenHint = false;
+                            _captionsDraftGenerating = false;
                           }
                         }),
                         onStyleChanged: (v) =>

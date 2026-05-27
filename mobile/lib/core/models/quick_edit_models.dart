@@ -73,6 +73,128 @@ final class CreateEditJobResponse {
   final String status;
 }
 
+/// Single editable captions draft cue from `POST /edits/captions/draft` (V2.4A).
+final class CaptionDraftSegment {
+  CaptionDraftSegment({
+    required this.id,
+    required this.startSec,
+    required this.endSec,
+    required this.text,
+  });
+
+  final String id;
+  final double startSec;
+  final double endSec;
+  final String text;
+
+  CaptionDraftSegment copyWith({String? id, double? startSec, double? endSec, String? text}) =>
+      CaptionDraftSegment(
+        id: id ?? this.id,
+        startSec: startSec ?? this.startSec,
+        endSec: endSec ?? this.endSec,
+        text: text ?? this.text,
+      );
+
+  factory CaptionDraftSegment.fromJson(Map<String, dynamic>? j) {
+    final m = Map<String, dynamic>.from(j ?? {});
+    var sid = "${m["id"] ?? ""}".trim();
+    if (sid.isEmpty) sid = "seg";
+    double n(dynamic v) {
+      final x = v is num ? v.toDouble() : double.tryParse("$v") ?? 0;
+      return x;
+    }
+
+    return CaptionDraftSegment(
+      id: sid,
+      startSec: n(m["startSec"]),
+      endSec: n(m["endSec"]),
+      text: "${m["text"] ?? ""}",
+    );
+  }
+
+  Map<String, dynamic> toCaptionsBurnJson() => {
+        "startSec": startSec,
+        "endSec": endSec,
+        "text": text.trim(),
+      };
+}
+
+final class CaptionDraftResponse {
+  CaptionDraftResponse({
+    required this.segments,
+    required this.durationSec,
+    required this.language,
+  });
+
+  factory CaptionDraftResponse.fromJson(Map<String, dynamic>? j) {
+    final m = Map<String, dynamic>.from(j ?? {});
+    final raw = m["segments"];
+    final items = <CaptionDraftSegment>[];
+    if (raw is List) {
+      for (final e in raw) {
+        if (e is Map) {
+          items.add(CaptionDraftSegment.fromJson(Map<String, dynamic>.from(e)));
+        }
+      }
+    }
+    final ds = (m["durationSec"] is num)
+        ? (m["durationSec"] as num).toDouble()
+        : double.tryParse("${m["durationSec"]}") ?? 0;
+
+    return CaptionDraftResponse(
+      segments: items,
+      durationSec: ds,
+      language: "${m["language"] ?? "auto"}",
+    );
+  }
+
+  final List<CaptionDraftSegment> segments;
+  final double durationSec;
+  final String language;
+}
+
+final class GenerateCaptionsDraftRequest {
+  GenerateCaptionsDraftRequest._({
+    required this.operations,
+    this.sourceDownloadJobId,
+    this.sourceUploadId,
+  }) : assert(
+          (sourceDownloadJobId != null) ^ (sourceUploadId != null),
+          "Exactly one of sourceDownloadJobId or sourceUploadId must be set",
+        );
+
+  factory GenerateCaptionsDraftRequest.download({
+    required String sourceDownloadJobId,
+    required List<Map<String, dynamic>> operations,
+  }) =>
+      GenerateCaptionsDraftRequest._(
+        operations: operations,
+        sourceDownloadJobId: sourceDownloadJobId.trim(),
+      );
+
+  factory GenerateCaptionsDraftRequest.upload({
+    required String sourceUploadId,
+    required List<Map<String, dynamic>> operations,
+  }) =>
+      GenerateCaptionsDraftRequest._(
+        operations: operations,
+        sourceUploadId: sourceUploadId.trim(),
+      );
+
+  final String? sourceDownloadJobId;
+  final String? sourceUploadId;
+  final List<Map<String, dynamic>> operations;
+
+  Map<String, dynamic> toJson() {
+    final map = <String, dynamic>{"operations": operations};
+    final dl = sourceDownloadJobId?.trim();
+    final up = sourceUploadId?.trim();
+    if (dl != null && dl.isNotEmpty) map["sourceDownloadJobId"] = dl;
+    if (up != null && up.isNotEmpty) map["sourceUploadId"] = up;
+    return map;
+  }
+}
+
 final class RetryEditJobResponse {
   RetryEditJobResponse({required this.editJobId, required this.status});
 
@@ -455,6 +577,38 @@ const int kQuickEditCaptionsOffsetYMax = 180;
 const double kCaptionAssPlayResX = 960;
 const double kCaptionAssPlayResY = 540;
 
+/// Trim + speed only — mirrors final caption timeline basis for draft transcription.
+List<Map<String, dynamic>> buildCaptionsDraftRequestOperations({
+  required double videoDurationSec,
+  required double trimStartSec,
+  required double trimEndSec,
+  required QuickEditSpeedFactor speedFactor,
+}) {
+  final dur = videoDurationSec <= 0 ? 1.0 : videoDurationSec;
+  const eps = 0.05;
+  final ops = <Map<String, dynamic>>[];
+
+  if (trimStartSec > eps || trimEndSec < dur - eps) {
+    final start = trimStartSec.clamp(0.0, dur - eps);
+    var end = trimEndSec.clamp(start + eps, dur);
+    ops.add({
+      "type": "trim",
+      "startSec": start,
+      "endSec": end,
+    });
+  }
+
+  final sp = speedFactor.apiFactor;
+  if (sp != null) {
+    ops.add({
+      "type": "speed",
+      "factor": sp,
+    });
+  }
+
+  return ops;
+}
+
 int clampQuickEditCaptionOffsetX(int v) =>
     v.clamp(kQuickEditCaptionsOffsetXMin, kQuickEditCaptionsOffsetXMax).toInt();
 int clampQuickEditCaptionOffsetY(int v) =>
@@ -482,6 +636,30 @@ Map<String, dynamic> quickEditCaptionsV22Operation({
       "offsetY": clampQuickEditCaptionOffsetY(captionsOffsetY),
     };
 
+/// `captions.mode=segments` — server skips OpenAI transcription (V2.4A).
+Map<String, dynamic> quickEditCaptionsSegmentsV24Operation({
+  required List<CaptionDraftSegment> segments,
+  required QuickEditCaptionsStylePreset style,
+  required QuickEditCaptionFontSize fontSize,
+  required QuickEditCaptionPosition position,
+  required QuickEditCaptionColor color,
+  required int captionsOffsetX,
+  required int captionsOffsetY,
+}) =>
+    {
+      "type": "captions",
+      "mode": "segments",
+      "language": "auto",
+      "burnIn": true,
+      "style": style.apiValue,
+      "fontSize": fontSize.apiValue,
+      "position": position.apiValue,
+      "color": color.apiValue,
+      "offsetX": clampQuickEditCaptionOffsetX(captionsOffsetX),
+      "offsetY": clampQuickEditCaptionOffsetY(captionsOffsetY),
+      "segments": segments.map((s) => s.toCaptionsBurnJson()).toList(),
+    };
+
 /// Builds POST `/edits` operations array; empty if nothing changed from defaults.
 List<Map<String, dynamic>> buildQuickEditOperations({
   required double videoDurationSec,
@@ -498,6 +676,7 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   QuickEditCaptionColor captionsColor = QuickEditCaptionColor.white,
   int captionsOffsetX = 0,
   int captionsOffsetY = 0,
+  List<CaptionDraftSegment>? captionsDraftForBurn,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
 }) {
@@ -540,14 +719,26 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   }
 
   if (captionsAutoEnabled) {
-    ops.add(quickEditCaptionsV22Operation(
-      style: captionsStyle,
-      fontSize: captionsFontSize,
-      position: captionsPosition,
-      color: captionsColor,
-      captionsOffsetX: captionsOffsetX,
-      captionsOffsetY: captionsOffsetY,
-    ));
+    if (captionsDraftForBurn != null && captionsDraftForBurn.isNotEmpty) {
+      ops.add(quickEditCaptionsSegmentsV24Operation(
+        segments: captionsDraftForBurn,
+        style: captionsStyle,
+        fontSize: captionsFontSize,
+        position: captionsPosition,
+        color: captionsColor,
+        captionsOffsetX: captionsOffsetX,
+        captionsOffsetY: captionsOffsetY,
+      ));
+    } else {
+      ops.add(quickEditCaptionsV22Operation(
+        style: captionsStyle,
+        fontSize: captionsFontSize,
+        position: captionsPosition,
+        color: captionsColor,
+        captionsOffsetX: captionsOffsetX,
+        captionsOffsetY: captionsOffsetY,
+      ));
+    }
   }
 
   if (mute) {
@@ -597,6 +788,7 @@ bool quickEditHasChanges({
     captionsColor: captionsColor,
     captionsOffsetX: captionsOffsetX,
     captionsOffsetY: captionsOffsetY,
+    captionsDraftForBurn: null,
     mute: mute,
     compressPreset: compressPreset,
   );

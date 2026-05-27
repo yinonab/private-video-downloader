@@ -89,6 +89,10 @@ String localizedApiErrorMessage(AppLocalizations l10n, ApiError e) {
       return l10n.errorCaptionsColorNotSupported;
     case "CAPTIONS_TRANSCRIPTION_UNAVAILABLE":
       return l10n.errorCaptionsTranscriptionUnavailable;
+    case "CAPTIONS_DRAFT_UNAVAILABLE":
+      return l10n.errorCaptionsDraftUnavailable;
+    case "INVALID_CAPTION_SEGMENTS":
+      return l10n.errorCaptionSegmentsInvalid;
     case "CAPTIONS_GENERATION_FAILED":
       return l10n.errorCaptionsGenerationFailed;
     case "DOWNLOAD_FAILED":

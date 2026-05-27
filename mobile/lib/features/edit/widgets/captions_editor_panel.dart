@@ -24,6 +24,13 @@ class CaptionsEditorPanel extends StatelessWidget {
     required this.onOffsetNudgeAss,
     required this.effectiveCaptionPreset,
     required this.onCaptionBuiltInPresetSelected,
+    required this.onGenerateCaptionsDraft,
+    required this.onRegenerateCaptionsDraftRequested,
+    this.captionDraftSegments,
+    required this.onCaptionDraftSegmentTextChanged,
+    required this.onClearCaptionDraftSegmentText,
+    required this.isCaptionDraftGenerating,
+    required this.showCaptionDraftTimingStaleHint,
   });
 
   final bool autoCaptionsEnabled;
@@ -39,6 +46,17 @@ class CaptionsEditorPanel extends StatelessWidget {
 
   /// User picked a named preset (**not** [QuickEditCaptionPreset.custom]).
   final ValueChanged<QuickEditCaptionPreset> onCaptionBuiltInPresetSelected;
+
+  /// V2.4A captions draft (`POST /edits/captions/draft`).
+  final VoidCallback onGenerateCaptionsDraft;
+  /// When a draft is already loaded; parent shows confirm then re-requests draft API.
+  final VoidCallback onRegenerateCaptionsDraftRequested;
+  final List<CaptionDraftSegment>? captionDraftSegments;
+  final void Function(String segmentId, String newText) onCaptionDraftSegmentTextChanged;
+  final void Function(String segmentId) onClearCaptionDraftSegmentText;
+  final bool isCaptionDraftGenerating;
+  /// After trim/speed/source identity changed post-draft.
+  final bool showCaptionDraftTimingStaleHint;
 
   final ValueChanged<bool> onAutoCaptionsChanged;
   final ValueChanged<QuickEditCaptionsStylePreset> onStyleChanged;
@@ -117,6 +135,116 @@ class CaptionsEditorPanel extends StatelessWidget {
             ),
           ),
           if (autoCaptionsEnabled) ...[
+            const SizedBox(height: 16),
+            Text(
+              l10n.editCaptionsDraftTextSectionTitle,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.15,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l10n.editCaptionsDraftReviewHelper,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l10n.editCaptionsDraftLongVideoHelper,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.65),
+                height: 1.35,
+              ),
+            ),
+            if (showCaptionDraftTimingStaleHint) ...[
+              const SizedBox(height: 10),
+              Text(
+                l10n.editCaptionsDraftStaleHelper,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.88),
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            if (captionDraftSegments == null && !isCaptionDraftGenerating)
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: OutlinedButton(
+                  onPressed: onGenerateCaptionsDraft,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: scheme.onSurface.withValues(alpha: 0.9),
+                    side: BorderSide(color: scheme.outline.withValues(alpha: 0.42)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(l10n.editCaptionsDraftGenerateButton),
+                ),
+              ),
+            if (captionDraftSegments != null &&
+                captionDraftSegments!.isNotEmpty &&
+                !isCaptionDraftGenerating)
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: OutlinedButton(
+                  onPressed: onRegenerateCaptionsDraftRequested,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: scheme.onSurface.withValues(alpha: 0.9),
+                    side: BorderSide(color: scheme.outline.withValues(alpha: 0.42)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(l10n.editCaptionsDraftRegenerateButton),
+                ),
+              ),
+            if (isCaptionDraftGenerating)
+              Row(
+                children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      l10n.editCaptionsDraftGenerating,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            if (captionDraftSegments != null && captionDraftSegments!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: captionDraftSegments!.length,
+                itemBuilder: (context, i) {
+                  final seg = captionDraftSegments![i];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _CaptionDraftEditableRow(
+                      segment: seg,
+                      timeRangeLabel: _captionRangeClockLabel(seg.startSec, seg.endSec),
+                      onChanged: onCaptionDraftSegmentTextChanged,
+                      onClear: () => onClearCaptionDraftSegmentText(seg.id),
+                      clearSemanticsLabel: l10n.editCaptionsDraftClearSegment,
+                    ),
+                  );
+                },
+              ),
+            ],
             const SizedBox(height: 18),
             _CaptionsPresetSection(
               accent: accent,
@@ -267,6 +395,130 @@ class CaptionsEditorPanel extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+String _captionRangeClockLabel(double startSec, double endSec) {
+  String fmt(double s) {
+    var x = s;
+    if (!x.isFinite || x < 0) x = 0;
+    final d = Duration(milliseconds: (x * 1000).round());
+    final mm = d.inMinutes.toString().padLeft(2, '0');
+    final ss = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return '$mm:$ss';
+  }
+
+  return '${fmt(startSec)}–${fmt(endSec)}';
+}
+
+class _CaptionDraftEditableRow extends StatefulWidget {
+  const _CaptionDraftEditableRow({
+    required this.segment,
+    required this.timeRangeLabel,
+    required this.onChanged,
+    required this.onClear,
+    required this.clearSemanticsLabel,
+  });
+
+  final CaptionDraftSegment segment;
+  final String timeRangeLabel;
+  final void Function(String id, String text) onChanged;
+  final VoidCallback onClear;
+  final String clearSemanticsLabel;
+
+  @override
+  State<_CaptionDraftEditableRow> createState() => _CaptionDraftEditableRowState();
+}
+
+class _CaptionDraftEditableRowState extends State<_CaptionDraftEditableRow> {
+  late final TextEditingController _c;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = TextEditingController(text: widget.segment.text);
+  }
+
+  @override
+  void didUpdateWidget(covariant _CaptionDraftEditableRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.segment.text != oldWidget.segment.text && widget.segment.text != _c.text) {
+      _c.value = TextEditingValue(
+        text: widget.segment.text,
+        selection: TextSelection.collapsed(offset: widget.segment.text.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.32 : 0.45),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
+      ),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 6, 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: Padding(
+                padding: const EdgeInsetsDirectional.only(top: 8, end: 8),
+                child: Text(
+                  widget.timeRangeLabel,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.88),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: TextField(
+                controller: _c,
+                minLines: 1,
+                maxLines: 3,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  height: 1.38,
+                  color: scheme.onSurface.withValues(alpha: 0.92),
+                ),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                ),
+                onChanged: (v) => widget.onChanged(widget.segment.id, v),
+              ),
+            ),
+            Tooltip(
+              message: widget.clearSemanticsLabel,
+              child: IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  Icons.close_rounded,
+                  size: 20,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.65),
+                ),
+                onPressed: widget.onClear,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

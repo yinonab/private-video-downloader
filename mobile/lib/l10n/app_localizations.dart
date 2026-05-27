@@ -2312,6 +2312,78 @@ abstract class AppLocalizations {
   /// **'Manual'**
   String get editCaptionsPresetManualBadge;
 
+  /// No description provided for @editCaptionsDraftTextSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Caption text'**
+  String get editCaptionsDraftTextSectionTitle;
+
+  /// No description provided for @editCaptionsDraftGenerateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate draft'**
+  String get editCaptionsDraftGenerateButton;
+
+  /// No description provided for @editCaptionsDraftReviewHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Review and edit captions before creating the video.'**
+  String get editCaptionsDraftReviewHelper;
+
+  /// No description provided for @editCaptionsDraftLongVideoHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Longer videos may take more time to process.'**
+  String get editCaptionsDraftLongVideoHelper;
+
+  /// No description provided for @editCaptionsDraftGenerating.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating captions draft...'**
+  String get editCaptionsDraftGenerating;
+
+  /// No description provided for @editCaptionsDraftStaleHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft captions need to be regenerated after timing changes.'**
+  String get editCaptionsDraftStaleHelper;
+
+  /// No description provided for @editCaptionsDraftRegenerateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Regenerate draft'**
+  String get editCaptionsDraftRegenerateButton;
+
+  /// No description provided for @editCaptionsDraftRegenerateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Regenerate draft?'**
+  String get editCaptionsDraftRegenerateTitle;
+
+  /// No description provided for @editCaptionsDraftRegenerateBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This will replace your current caption edits.'**
+  String get editCaptionsDraftRegenerateBody;
+
+  /// No description provided for @editCaptionsDraftRegenerateConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Regenerate'**
+  String get editCaptionsDraftRegenerateConfirm;
+
+  /// No description provided for @editCaptionsDraftClearSegment.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear caption text'**
+  String get editCaptionsDraftClearSegment;
+
+  /// No description provided for @errorCaptionsDraftUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not generate captions draft.'**
+  String get errorCaptionsDraftUnavailable;
+
   /// No description provided for @errorCaptionsStyleNotSupported.
   ///
   /// In en, this message translates to:
@@ -2353,6 +2425,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This captions option is not supported.'**
   String get errorCaptionsOptionNotSupported;
+
+  /// No description provided for @errorCaptionSegmentsInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The edited captions are invalid.'**
+  String get errorCaptionSegmentsInvalid;
 
   /// No description provided for @editSpeedSectionTitle.
   ///

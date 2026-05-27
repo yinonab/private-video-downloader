@@ -6,6 +6,7 @@ import { z } from "zod";
 import { authDevice } from "../../middleware/authDevice";
 import { resolveAbsoluteFromStorageKey } from "../../services/storage";
 import { AppError, codes } from "../../types/errors";
+import { generateCaptionsDraftForDevice } from "./captionDraft.service";
 import {
   createEditJob,
   getEditJobForDevice,
@@ -64,6 +65,16 @@ async function streamEditOutputFile(
 }
 
 const editRoutes: FastifyPluginAsync = async (app) => {
+  app.post("/edits/captions/draft", { preHandler: authDevice }, async (request, reply) => {
+    const ctx = request.deviceCtx!;
+    const body = await generateCaptionsDraftForDevice({
+      prisma: app.prisma,
+      deviceId: ctx.id,
+      body: request.body,
+    });
+    reply.send(body);
+  });
+
   app.post("/edits", { preHandler: authDevice }, async (request, reply) => {
     const ctx = request.deviceCtx!;
     const result = await createEditJob({

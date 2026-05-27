@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AppError, codes } from "../../types/errors";
+import { normalizeCaptionSegmentsForBurn } from "./captionSegments.util";
 import type {
   CaptionsBurnInV1Resolved,
   CaptionsStyleApi,
@@ -9,6 +10,8 @@ import type {
   EditSpeedFactor,
   ResolvedEditPlan,
 } from "./edit.types";
+
+const INVALID_CAPTION_SEGMENTS_EN = "The edited captions are invalid.";
 
 const UNSUPPORTED_FORMAT_EN = "This format mode is not supported.";
 const UNSUPPORTED_ROTATION_EN = "This rotation option is not supported.";
@@ -88,7 +91,18 @@ const rotateOpSchema = z
   })
   .strict();
 
-const captionsOpSchema = z
+const captionSegmentWireSchema = z
+  .object({
+    startSec: z.number().finite().min(0),
+    endSec: z.number().finite(),
+    text: z.string(),
+  })
+  .strict()
+  .refine((d) => d.endSec > d.startSec, {
+    message: "segments[].endSec must be greater than startSec",
+  });
+
+const captionsAutoOpSchema = z
   .object({
     type: z.literal("captions"),
     mode: z.literal("auto"),
@@ -102,6 +116,36 @@ const captionsOpSchema = z
     offsetY: z.number().int().min(-180).max(180).optional(),
   })
   .strict();
+
+const captionsSegmentsOpSchema = z
+  .object({
+    type: z.literal("captions"),
+    mode: z.literal("segments"),
+    language: z.literal("auto"),
+    burnIn: z.literal(true),
+    style: z.enum(["default", "clean", "bold", "dark_box"]),
+    fontSize: z.enum(["extra_small", "small", "medium", "large"]).optional(),
+    position: z.enum(["top", "bottom"]).optional(),
+    color: z.enum(["white", "yellow"]).optional(),
+    offsetX: z.number().int().min(-240).max(240).optional(),
+    offsetY: z.number().int().min(-180).max(180).optional(),
+    segments: z.array(captionSegmentWireSchema).min(1),
+  })
+  .strict();
+
+export const captionsOpSchema = z.discriminatedUnion("mode", [captionsAutoOpSchema, captionsSegmentsOpSchema]);
+
+export const captionsDraftTrimSpeedOpSchema = z.union([trimOpSchema, speedOpSchema]);
+
+export const captionsDraftRequestSchema = z
+  .object({
+    sourceDownloadJobId: z.string().uuid().optional(),
+    sourceUploadId: z.string().uuid().optional(),
+    operations: z.array(captionsDraftTrimSpeedOpSchema).default([]),
+  })
+  .strict();
+
+export type CaptionsDraftRequestBody = z.infer<typeof captionsDraftRequestSchema>;
 
 export const editOperationSchema = z.union([
   trimOpSchema,
@@ -185,8 +229,33 @@ export function captionsFieldErrorsFromUnknownBody(body: unknown): AppError | nu
     const o = raw as Record<string, unknown>;
     if (o.type !== "captions") continue;
     if (Object.prototype.hasOwnProperty.call(o, "mode")) {
-      if (o.mode !== "auto") {
+      const md = o.mode;
+      if (md !== "auto" && md !== "segments") {
         return new AppError(codes.UNSUPPORTED_CAPTIONS_MODE, UNSUPPORTED_CAPTIONS_MODE_EN, 400);
+      }
+      if (md === "segments") {
+        const segs = o.segments;
+        if (!Array.isArray(segs) || segs.length < 1) {
+          return new AppError(codes.INVALID_CAPTION_SEGMENTS, INVALID_CAPTION_SEGMENTS_EN, 400);
+        }
+        for (const rawSeg of segs) {
+          if (rawSeg == null || typeof rawSeg !== "object") {
+            return new AppError(codes.INVALID_CAPTION_SEGMENTS, INVALID_CAPTION_SEGMENTS_EN, 400);
+          }
+          const s = rawSeg as Record<string, unknown>;
+          const a = s.startSec;
+          const b = s.endSec;
+          const txt = s.text;
+          if (typeof txt !== "string") {
+            return new AppError(codes.INVALID_CAPTION_SEGMENTS, INVALID_CAPTION_SEGMENTS_EN, 400);
+          }
+          if (typeof a !== "number" || !Number.isFinite(a) || a < 0) {
+            return new AppError(codes.INVALID_CAPTION_SEGMENTS, INVALID_CAPTION_SEGMENTS_EN, 400);
+          }
+          if (typeof b !== "number" || !Number.isFinite(b) || b <= a) {
+            return new AppError(codes.INVALID_CAPTION_SEGMENTS, INVALID_CAPTION_SEGMENTS_EN, 400);
+          }
+        }
       }
     }
     if (Object.prototype.hasOwnProperty.call(o, "language")) {
@@ -311,17 +380,33 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
       case "captions": {
         const styleResolved = normalizeCaptionsStyle(op.style);
         const { offsetX, offsetY } = clampCaptionsBurnInOffsets(op.offsetX, op.offsetY);
-        captionsBurnInV1 = {
-          mode: "auto",
-          language: "auto",
-          burnIn: true,
-          style: styleResolved,
-          fontSize: op.fontSize ?? "medium",
-          position: op.position ?? "bottom",
-          color: op.color ?? "white",
-          offsetX,
-          offsetY,
-        };
+        if (op.mode === "auto") {
+          captionsBurnInV1 = {
+            mode: "auto",
+            language: "auto",
+            burnIn: true,
+            style: styleResolved,
+            fontSize: op.fontSize ?? "medium",
+            position: op.position ?? "bottom",
+            color: op.color ?? "white",
+            offsetX,
+            offsetY,
+          };
+        } else {
+          const normalized = normalizeCaptionSegmentsForBurn(op.segments);
+          captionsBurnInV1 = {
+            mode: "segments",
+            language: "auto",
+            burnIn: true,
+            style: styleResolved,
+            fontSize: op.fontSize ?? "medium",
+            position: op.position ?? "bottom",
+            color: op.color ?? "white",
+            offsetX,
+            offsetY,
+            segments: normalized,
+          };
+        }
         break;
       }
       default:

@@ -150,9 +150,13 @@ class ApiError implements Exception {
         return "גודל הכתוביות הזה לא נתמך.";
       case "UNSUPPORTED_CAPTIONS_COLOR":
         return "צבע הכתוביות הזה לא נתמך.";
-      case "CAPTIONS_TRANSCRIPTION_UNAVAILABLE":
-        return "כתוביות אינן זמינות כרגע.";
-      case "CAPTIONS_GENERATION_FAILED":
+    case "CAPTIONS_TRANSCRIPTION_UNAVAILABLE":
+      return "כתוביות אינן זמינות כרגע.";
+    case "CAPTIONS_DRAFT_UNAVAILABLE":
+      return "לא ניתן ליצור טיוטת כתוביות.";
+    case "INVALID_CAPTION_SEGMENTS":
+      return "הכתוביות הערוכות אינן תקינות.";
+    case "CAPTIONS_GENERATION_FAILED":
         return "לא ניתן ליצור כתוביות לסרטון הזה.";
       case "NETWORK":
         return http != null ? "שגיאת רשת (קוד $http)" : "שגיאת רשת";

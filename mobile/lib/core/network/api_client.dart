@@ -221,6 +221,21 @@ class ApiClient {
     );
   }
 
+  /// Long-running: synchronous server transcription over full trimmed timeline.
+  Future<CaptionDraftResponse> generateCaptionsDraft(GenerateCaptionsDraftRequest body) async {
+    return _unwrap(
+      _dio.post(
+        _trimJoin(_base, "/edits/captions/draft"),
+        data: body.toJson(),
+        options: Options(
+          sendTimeout: const Duration(minutes: 35),
+          receiveTimeout: const Duration(minutes: 35),
+        ),
+      ),
+      (data) => CaptionDraftResponse.fromJson(data is Map ? Map<String, dynamic>.from(data) : null),
+    );
+  }
+
   Future<EditJobDetailResponse> getEditJob(String editJobId) async {
     return _unwrap(
       _dio.get(_trimJoin(_base, "/edits/$editJobId")),

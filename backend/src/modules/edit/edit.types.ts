@@ -19,9 +19,16 @@ export type CaptionsPosition = "top" | "bottom";
 
 export type CaptionsColor = "white" | "yellow";
 
-/** Last `captions` op wins — burn-in transcription after trim/rotate/format/speed timeline. */
+/** Canonical cue for captions burn-in (after normalization). Never logged as full payload. */
+export type CaptionCueSegmentResolved = {
+  readonly startSec: number;
+  readonly endSec: number;
+  readonly text: string;
+};
+
+/** Last `captions` op wins — burn-in after trim/rotate/format/speed timeline. */
 export type CaptionsBurnInV1Resolved = {
-  readonly mode: "auto";
+  readonly mode: "auto" | "segments";
   readonly language: "auto";
   readonly burnIn: true;
   readonly style: CaptionsStyleResolved;
@@ -32,6 +39,11 @@ export type CaptionsBurnInV1Resolved = {
   readonly offsetX: number;
   /** Vertical offset in ASS script pixels; clamped −180…180. Positive moves down after anchor math. */
   readonly offsetY: number;
+  /**
+   * Populated only for `mode: "segments"`. May be empty after skipping blank text cues — results in export without overlays.
+   * Timestamps align with intermediate edit timeline post trim/speed.
+   */
+  readonly segments?: readonly CaptionCueSegmentResolved[];
 };
 
 export type ResolvedEditPlan = {
