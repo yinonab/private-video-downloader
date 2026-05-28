@@ -194,12 +194,24 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     });
   }
 
-  void _onCaptionDraftTextChanged(String id, String t) {
+  void _onCaptionDraftSegmentUpdated(
+    String id, {
+    required String text,
+    required double startSec,
+    required double endSec,
+  }) {
     final list = _captionsDraftSegments;
     if (list == null) return;
     setState(() {
       _captionsDraftSegments = [
-        for (final s in list) s.id == id ? s.copyWith(text: t) : s,
+        for (final s in list)
+          s.id == id
+              ? s.copyWith(
+                  text: text,
+                  startSec: startSec,
+                  endSec: endSec,
+                )
+              : s,
       ];
     });
   }
@@ -1110,10 +1122,11 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                         onRegenerateCaptionsDraftRequested:
                             _confirmAndRegenerateCaptionsDraft,
                         captionDraftSegments: _captionsDraftSegments,
-                        onCaptionDraftSegmentTextChanged: _onCaptionDraftTextChanged,
+                        onCaptionDraftSegmentUpdated: _onCaptionDraftSegmentUpdated,
                         onClearCaptionDraftSegmentText: _onClearCaptionDraftSegment,
                         isCaptionDraftGenerating: _captionsDraftGenerating,
                         showCaptionDraftTimingStaleHint: _captionsDraftRegenHint,
+                        videoDurationSec: _durationSec,
                         onAutoCaptionsChanged: (v) => setState(() {
                           _captionsAuto = v;
                           if (!v) {

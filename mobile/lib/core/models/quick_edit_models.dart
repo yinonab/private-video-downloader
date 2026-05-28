@@ -73,26 +73,45 @@ final class CreateEditJobResponse {
   final String status;
 }
 
-/// Single editable captions draft cue from `POST /edits/captions/draft` (V2.4A).
+/// Single editable captions draft cue from `POST /edits/captions/draft` (V2.4A+).
 final class CaptionDraftSegment {
   CaptionDraftSegment({
     required this.id,
     required this.startSec,
     required this.endSec,
     required this.text,
+    required this.originalStartSec,
+    required this.originalEndSec,
   });
 
   final String id;
   final double startSec;
   final double endSec;
   final String text;
+  /// Whisper draft start before user timing edits (V2.4B reset).
+  final double originalStartSec;
+  /// Whisper draft end before user timing edits (V2.4B reset).
+  final double originalEndSec;
 
-  CaptionDraftSegment copyWith({String? id, double? startSec, double? endSec, String? text}) =>
+  bool get hasTimingAdjustment =>
+      (startSec - originalStartSec).abs() > 1e-6 ||
+      (endSec - originalEndSec).abs() > 1e-6;
+
+  CaptionDraftSegment copyWith({
+    String? id,
+    double? startSec,
+    double? endSec,
+    String? text,
+    double? originalStartSec,
+    double? originalEndSec,
+  }) =>
       CaptionDraftSegment(
         id: id ?? this.id,
         startSec: startSec ?? this.startSec,
         endSec: endSec ?? this.endSec,
         text: text ?? this.text,
+        originalStartSec: originalStartSec ?? this.originalStartSec,
+        originalEndSec: originalEndSec ?? this.originalEndSec,
       );
 
   factory CaptionDraftSegment.fromJson(Map<String, dynamic>? j) {
@@ -104,11 +123,15 @@ final class CaptionDraftSegment {
       return x;
     }
 
+    final start = n(m["startSec"]);
+    final end = n(m["endSec"]);
     return CaptionDraftSegment(
       id: sid,
-      startSec: n(m["startSec"]),
-      endSec: n(m["endSec"]),
+      startSec: start,
+      endSec: end,
       text: "${m["text"] ?? ""}",
+      originalStartSec: start,
+      originalEndSec: end,
     );
   }
 

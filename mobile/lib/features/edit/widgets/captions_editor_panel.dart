@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 
+import "../../../core/edit/caption_draft_timing.dart";
 import "../../../core/theme/linkclip_palette.dart";
 import "../../../core/models/quick_edit_models.dart";
 import "../../../l10n/app_localizations.dart";
@@ -27,10 +28,11 @@ class CaptionsEditorPanel extends StatelessWidget {
     required this.onGenerateCaptionsDraft,
     required this.onRegenerateCaptionsDraftRequested,
     this.captionDraftSegments,
-    required this.onCaptionDraftSegmentTextChanged,
+    required this.onCaptionDraftSegmentUpdated,
     required this.onClearCaptionDraftSegmentText,
     required this.isCaptionDraftGenerating,
     required this.showCaptionDraftTimingStaleHint,
+    required this.videoDurationSec,
   });
 
   final bool autoCaptionsEnabled;
@@ -52,11 +54,17 @@ class CaptionsEditorPanel extends StatelessWidget {
   /// When a draft is already loaded; parent shows confirm then re-requests draft API.
   final VoidCallback onRegenerateCaptionsDraftRequested;
   final List<CaptionDraftSegment>? captionDraftSegments;
-  final void Function(String segmentId, String newText) onCaptionDraftSegmentTextChanged;
+  final void Function(
+    String segmentId, {
+    required String text,
+    required double startSec,
+    required double endSec,
+  }) onCaptionDraftSegmentUpdated;
   final void Function(String segmentId) onClearCaptionDraftSegmentText;
   final bool isCaptionDraftGenerating;
   /// After trim/speed/source identity changed post-draft.
   final bool showCaptionDraftTimingStaleHint;
+  final double videoDurationSec;
 
   final ValueChanged<bool> onAutoCaptionsChanged;
   final ValueChanged<QuickEditCaptionsStylePreset> onStyleChanged;
@@ -236,11 +244,19 @@ class CaptionsEditorPanel extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 10),
                     child: _CaptionDraftSegmentRow(
                       segment: seg,
-                      timeRangeLabel: _captionRangeClockLabel(seg.startSec, seg.endSec),
+                      segmentIndex: i,
+                      allSegments: captionDraftSegments!,
+                      videoDurationSec: videoDurationSec,
                       editSemanticsLabel: l10n.editCaptionsDraftEditTitle,
                       clearSemanticsLabel: l10n.editCaptionsDraftClearSegment,
-                      onSave: (text) =>
-                          onCaptionDraftSegmentTextChanged(seg.id, text),
+                      adjustedLabel: l10n.editCaptionsDraftTimingAdjusted,
+                      onSave: (text, startSec, endSec) =>
+                          onCaptionDraftSegmentUpdated(
+                        seg.id,
+                        text: text,
+                        startSec: startSec,
+                        endSec: endSec,
+                      ),
                       onClear: () => onClearCaptionDraftSegmentText(seg.id),
                     ),
                   );
@@ -402,30 +418,32 @@ class CaptionsEditorPanel extends StatelessWidget {
   }
 }
 
-String _captionRangeClockLabel(double startSec, double endSec) {
-  String fmt(double s) {
-    var x = s;
-    if (!x.isFinite || x < 0) x = 0;
-    final d = Duration(milliseconds: (x * 1000).round());
-    final mm = d.inMinutes.toString().padLeft(2, '0');
-    final ss = (d.inSeconds % 60).toString().padLeft(2, '0');
-    return '$mm:$ss';
-  }
-
-  return '${fmt(startSec)}–${fmt(endSec)}';
-}
+String _captionRangeClockLabel(double startSec, double endSec) =>
+    captionDraftPreciseRangeLabel(startSec, endSec);
 
 Future<void> _showCaptionDraftSegmentEditSheet(
   BuildContext context, {
   required CaptionDraftSegment segment,
-  required String timeRangeLabel,
-  required void Function(String text) onSave,
+  required int segmentIndex,
+  required List<CaptionDraftSegment> allSegments,
+  required double? videoDurationSec,
+  required void Function(String text, double startSec, double endSec) onSave,
 }) async {
   final l10n = AppLocalizations.of(context);
   final theme = Theme.of(context);
   final scheme = theme.colorScheme;
   final controller = TextEditingController(text: segment.text);
   final focusNode = FocusNode();
+  var startSec = segment.startSec;
+  var endSec = segment.endSec;
+
+  CaptionDraftTimingBounds currentBounds() => boundsForDraftTimingEdit(
+        segmentIndex: segmentIndex,
+        segments: allSegments,
+        startSec: startSec,
+        endSec: endSec,
+        videoDurationSec: videoDurationSec,
+      );
 
   try {
     await showModalBottomSheet<void>(
@@ -436,121 +454,212 @@ Future<void> _showCaptionDraftSegmentEditSheet(
       builder: (sheetCtx) {
         final inset = MediaQuery.viewInsetsOf(sheetCtx).bottom;
 
-        return AnimatedPadding(
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOut,
-          padding: EdgeInsets.only(bottom: inset),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(22),
-              ),
-              border: Border.all(
-                color: scheme.outline.withValues(alpha: 0.35),
-              ),
-            ),
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                18,
-                20,
-                18 + MediaQuery.paddingOf(sheetCtx).bottom,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      l10n.editCaptionsDraftEditTitle,
-                      style: theme.textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 8),
-                    Directionality(
-                      textDirection: TextDirection.ltr,
-                      child: Text(
-                        timeRangeLabel,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: scheme.onSurfaceVariant.withValues(alpha: 0.88),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: controller,
-                      focusNode: focusNode,
-                      autofocus: true,
-                      minLines: 3,
-                      maxLines: 8,
-                      keyboardType: TextInputType.multiline,
-                      textInputAction: TextInputAction.newline,
-                      style: theme.textTheme.bodyLarge?.copyWith(height: 1.42),
-                      onTapOutside: (_) => FocusScope.of(sheetCtx).unfocus(),
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        filled: true,
-                        fillColor: scheme.surface.withValues(alpha: 0.92),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: TextButton(
-                        onPressed: () => controller.clear(),
-                        child: Text(l10n.editCaptionsDraftEditClearText),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
+        return StatefulBuilder(
+          builder: (ctx, setSheet) {
+            final rangeLabel = _captionRangeClockLabel(startSec, endSec);
+            final bounds = currentBounds();
+
+            void nudgeStart(double delta) {
+              setSheet(() {
+                startSec = nudgeCaptionDraftStartSec(
+                  startSec: startSec,
+                  endSec: endSec,
+                  deltaSec: delta,
+                  bounds: bounds,
+                );
+              });
+            }
+
+            void nudgeEnd(double delta) {
+              setSheet(() {
+                endSec = nudgeCaptionDraftEndSec(
+                  startSec: startSec,
+                  endSec: endSec,
+                  deltaSec: delta,
+                  bounds: bounds,
+                );
+              });
+            }
+
+            void resetTiming() {
+              setSheet(() {
+                startSec = roundCaptionDraftTimingSec(segment.originalStartSec);
+                endSec = roundCaptionDraftTimingSec(segment.originalEndSec);
+                final resetBounds = boundsForDraftTimingEdit(
+                  segmentIndex: segmentIndex,
+                  segments: allSegments,
+                  startSec: startSec,
+                  endSec: endSec,
+                  videoDurationSec: videoDurationSec,
+                );
+                startSec = clampCaptionDraftStartSec(
+                  startSec: startSec,
+                  endSec: endSec,
+                  bounds: resetBounds,
+                );
+                endSec = clampCaptionDraftEndSec(
+                  startSec: startSec,
+                  endSec: endSec,
+                  bounds: resetBounds,
+                );
+              });
+            }
+
+            return AnimatedPadding(
+              duration: const Duration(milliseconds: 120),
+              curve: Curves.easeOut,
+              padding: EdgeInsets.only(bottom: inset),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(22),
+                  ),
+                  border: Border.all(
+                    color: scheme.outline.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    18,
+                    20,
+                    18 + MediaQuery.paddingOf(sheetCtx).bottom,
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
-                              FocusManager.instance.primaryFocus?.unfocus();
-                              Navigator.pop(sheetCtx);
-                            },
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
+                        Text(
+                          l10n.editCaptionsDraftEditTitle,
+                          style: theme.textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 14),
+                        TextField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          autofocus: true,
+                          minLines: 3,
+                          maxLines: 8,
+                          keyboardType: TextInputType.multiline,
+                          textInputAction: TextInputAction.newline,
+                          style:
+                              theme.textTheme.bodyLarge?.copyWith(height: 1.42),
+                          onTapOutside: (_) =>
+                              FocusScope.of(sheetCtx).unfocus(),
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            child: Text(l10n.homeCancel),
+                            filled: true,
+                            fillColor: scheme.surface.withValues(alpha: 0.92),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: () {
-                              onSave(controller.text);
-                              FocusManager.instance.primaryFocus?.unfocus();
-                              Navigator.pop(sheetCtx);
-                            },
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: TextButton(
+                            onPressed: () => controller.clear(),
+                            child: Text(l10n.editCaptionsDraftEditClearText),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          l10n.editCaptionsDraftTimingSectionTitle,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: Text(
+                            rangeLabel,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: scheme.onSurfaceVariant
+                                  .withValues(alpha: 0.88),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _CaptionDraftTimingControlRow(
+                          label: l10n.editTrimStart,
+                          minusTooltip: l10n.editCaptionsDraftTimingEarlier,
+                          plusTooltip: l10n.editCaptionsDraftTimingLater,
+                          onMinus: () => nudgeStart(-kCaptionDraftTimingStepSec),
+                          onPlus: () => nudgeStart(kCaptionDraftTimingStepSec),
+                        ),
+                        const SizedBox(height: 8),
+                        _CaptionDraftTimingControlRow(
+                          label: l10n.editTrimEnd,
+                          minusTooltip: l10n.editCaptionsDraftTimingEarlier,
+                          plusTooltip: l10n.editCaptionsDraftTimingLater,
+                          onMinus: () => nudgeEnd(-kCaptionDraftTimingStepSec),
+                          onPlus: () => nudgeEnd(kCaptionDraftTimingStepSec),
+                        ),
+                        const SizedBox(height: 4),
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: TextButton(
+                            onPressed: resetTiming,
+                            child: Text(l10n.editCaptionsDraftTimingReset),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  FocusManager.instance.primaryFocus
+                                      ?.unfocus();
+                                  Navigator.pop(sheetCtx);
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: Text(l10n.homeCancel),
                               ),
                             ),
-                            child: Text(l10n.editSave),
-                          ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: () {
+                                  onSave(controller.text, startSec, endSec);
+                                  FocusManager.instance.primaryFocus
+                                      ?.unfocus();
+                                  Navigator.pop(sheetCtx);
+                                },
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: Text(l10n.editSave),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -560,28 +669,122 @@ Future<void> _showCaptionDraftSegmentEditSheet(
   }
 }
 
+class _CaptionDraftTimingControlRow extends StatelessWidget {
+  const _CaptionDraftTimingControlRow({
+    required this.label,
+    required this.minusTooltip,
+    required this.plusTooltip,
+    required this.onMinus,
+    required this.onPlus,
+  });
+
+  final String label;
+  final String minusTooltip;
+  final String plusTooltip;
+  final VoidCallback onMinus;
+  final VoidCallback onPlus;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Row(
+      children: [
+        SizedBox(
+          width: 52,
+          child: Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.9),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(
+                child: Tooltip(
+                  message: minusTooltip,
+                  child: OutlinedButton(
+                    onPressed: onMinus,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      visualDensity: VisualDensity.compact,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      '−0.1s',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Tooltip(
+                  message: plusTooltip,
+                  child: OutlinedButton(
+                    onPressed: onPlus,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      visualDensity: VisualDensity.compact,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      '+0.1s',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _CaptionDraftSegmentRow extends StatelessWidget {
   const _CaptionDraftSegmentRow({
     required this.segment,
-    required this.timeRangeLabel,
+    required this.segmentIndex,
+    required this.allSegments,
+    required this.videoDurationSec,
     required this.editSemanticsLabel,
     required this.clearSemanticsLabel,
+    required this.adjustedLabel,
     required this.onSave,
     required this.onClear,
   });
 
   final CaptionDraftSegment segment;
-  final String timeRangeLabel;
+  final int segmentIndex;
+  final List<CaptionDraftSegment> allSegments;
+  final double videoDurationSec;
   final String editSemanticsLabel;
   final String clearSemanticsLabel;
-  final void Function(String text) onSave;
+  final String adjustedLabel;
+  final void Function(String text, double startSec, double endSec) onSave;
   final VoidCallback onClear;
 
   Future<void> _openEditSheet(BuildContext context) {
     return _showCaptionDraftSegmentEditSheet(
       context,
       segment: segment,
-      timeRangeLabel: timeRangeLabel,
+      segmentIndex: segmentIndex,
+      allSegments: allSegments,
+      videoDurationSec: videoDurationSec > 0 ? videoDurationSec : null,
       onSave: onSave,
     );
   }
@@ -593,6 +796,8 @@ class _CaptionDraftSegmentRow extends StatelessWidget {
     final dark = theme.brightness == Brightness.dark;
     final preview = segment.text.trim();
     final hasText = preview.isNotEmpty;
+    final timeRangeLabel =
+        _captionRangeClockLabel(segment.startSec, segment.endSec);
 
     return Material(
       color: scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.32 : 0.45),
@@ -612,12 +817,28 @@ class _CaptionDraftSegmentRow extends StatelessWidget {
                 textDirection: TextDirection.ltr,
                 child: Padding(
                   padding: const EdgeInsetsDirectional.only(top: 2, end: 8),
-                  child: Text(
-                    timeRangeLabel,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant.withValues(alpha: 0.88),
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        timeRangeLabel,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.88),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (segment.hasTimingAdjustment) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          adjustedLabel,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: scheme.primary.withValues(alpha: 0.82),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),

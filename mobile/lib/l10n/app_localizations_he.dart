@@ -1242,6 +1242,21 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editCaptionsDraftEditClearText => 'נקה טקסט';
 
   @override
+  String get editCaptionsDraftTimingSectionTitle => 'תזמון';
+
+  @override
+  String get editCaptionsDraftTimingReset => 'איפוס תזמון';
+
+  @override
+  String get editCaptionsDraftTimingAdjusted => 'שונה';
+
+  @override
+  String get editCaptionsDraftTimingEarlier => 'מוקדם יותר';
+
+  @override
+  String get editCaptionsDraftTimingLater => 'מאוחר יותר';
+
+  @override
   String get errorCaptionsDraftUnavailable => 'לא ניתן ליצור טיוטת כתוביות.';
 
   @override

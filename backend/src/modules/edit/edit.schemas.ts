@@ -91,6 +91,8 @@ const rotateOpSchema = z
   })
   .strict();
 
+const CAPTION_SEGMENT_MIN_DURATION_SEC = 0.3;
+
 const captionSegmentWireSchema = z
   .object({
     startSec: z.number().finite().min(0),
@@ -100,6 +102,9 @@ const captionSegmentWireSchema = z
   .strict()
   .refine((d) => d.endSec > d.startSec, {
     message: "segments[].endSec must be greater than startSec",
+  })
+  .refine((d) => d.endSec >= d.startSec + CAPTION_SEGMENT_MIN_DURATION_SEC, {
+    message: "segments[].duration must be at least 0.3 seconds",
   });
 
 const captionsAutoOpSchema = z
@@ -253,6 +258,9 @@ export function captionsFieldErrorsFromUnknownBody(body: unknown): AppError | nu
             return new AppError(codes.INVALID_CAPTION_SEGMENTS, INVALID_CAPTION_SEGMENTS_EN, 400);
           }
           if (typeof b !== "number" || !Number.isFinite(b) || b <= a) {
+            return new AppError(codes.INVALID_CAPTION_SEGMENTS, INVALID_CAPTION_SEGMENTS_EN, 400);
+          }
+          if (b < a + CAPTION_SEGMENT_MIN_DURATION_SEC) {
             return new AppError(codes.INVALID_CAPTION_SEGMENTS, INVALID_CAPTION_SEGMENTS_EN, 400);
           }
         }

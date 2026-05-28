@@ -2390,6 +2390,36 @@ abstract class AppLocalizations {
   /// **'Clear text'**
   String get editCaptionsDraftEditClearText;
 
+  /// No description provided for @editCaptionsDraftTimingSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Timing'**
+  String get editCaptionsDraftTimingSectionTitle;
+
+  /// No description provided for @editCaptionsDraftTimingReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset timing'**
+  String get editCaptionsDraftTimingReset;
+
+  /// No description provided for @editCaptionsDraftTimingAdjusted.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjusted'**
+  String get editCaptionsDraftTimingAdjusted;
+
+  /// No description provided for @editCaptionsDraftTimingEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier'**
+  String get editCaptionsDraftTimingEarlier;
+
+  /// No description provided for @editCaptionsDraftTimingLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get editCaptionsDraftTimingLater;
+
   /// No description provided for @errorCaptionsDraftUnavailable.
   ///
   /// In en, this message translates to:

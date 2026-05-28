@@ -1258,6 +1258,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCaptionsDraftEditClearText => 'Clear text';
 
   @override
+  String get editCaptionsDraftTimingSectionTitle => 'Timing';
+
+  @override
+  String get editCaptionsDraftTimingReset => 'Reset timing';
+
+  @override
+  String get editCaptionsDraftTimingAdjusted => 'Adjusted';
+
+  @override
+  String get editCaptionsDraftTimingEarlier => 'Earlier';
+
+  @override
+  String get editCaptionsDraftTimingLater => 'Later';
+
+  @override
   String get errorCaptionsDraftUnavailable =>
       'Could not generate captions draft.';
 
