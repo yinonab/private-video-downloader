@@ -15,20 +15,14 @@ RUN apt-get update && apt-get install -y \
     fonts-noto-extra \
     && rm -rf /var/lib/apt/lists/*
 
-# Caption burn-in fonts (OFL — google/fonts). Not exposed to users; libass/fontconfig only.
+# Caption burn-in fonts (OFL — google/fonts variable TTFs). Not exposed to users; libass/fontconfig only.
 RUN mkdir -p /usr/share/fonts/truetype/linkclip \
-    && curl -fsSL -o /usr/share/fonts/truetype/linkclip/Heebo-Regular.ttf \
-      "https://github.com/google/fonts/raw/main/ofl/heebo/static/Heebo-Regular.ttf" \
-    && curl -fsSL -o /usr/share/fonts/truetype/linkclip/Heebo-Bold.ttf \
-      "https://github.com/google/fonts/raw/main/ofl/heebo/static/Heebo-Bold.ttf" \
-    && curl -fsSL -o /usr/share/fonts/truetype/linkclip/Rubik-Regular.ttf \
-      "https://github.com/google/fonts/raw/main/ofl/rubik/static/Rubik-Regular.ttf" \
-    && curl -fsSL -o /usr/share/fonts/truetype/linkclip/Rubik-Bold.ttf \
-      "https://github.com/google/fonts/raw/main/ofl/rubik/static/Rubik-Bold.ttf" \
-    && curl -fsSL -o /usr/share/fonts/truetype/linkclip/Assistant-Regular.ttf \
-      "https://github.com/google/fonts/raw/main/ofl/assistant/static/Assistant-Regular.ttf" \
-    && curl -fsSL -o /usr/share/fonts/truetype/linkclip/Assistant-Bold.ttf \
-      "https://github.com/google/fonts/raw/main/ofl/assistant/static/Assistant-Bold.ttf" \
+    && curl -fsSL -o /usr/share/fonts/truetype/linkclip/Heebo-Variable.ttf \
+      "https://raw.githubusercontent.com/google/fonts/main/ofl/heebo/Heebo%5Bwght%5D.ttf" \
+    && curl -fsSL -o /usr/share/fonts/truetype/linkclip/Rubik-Variable.ttf \
+      "https://raw.githubusercontent.com/google/fonts/main/ofl/rubik/Rubik%5Bwght%5D.ttf" \
+    && curl -fsSL -o /usr/share/fonts/truetype/linkclip/Assistant-Variable.ttf \
+      "https://raw.githubusercontent.com/google/fonts/main/ofl/assistant/Assistant%5Bwght%5D.ttf" \
     && fc-cache -f
 
 RUN ffmpeg -version && ffprobe -version
