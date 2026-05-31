@@ -21,6 +21,7 @@ const UNSUPPORTED_CAPTIONS_STYLE_EN = "This captions style is not supported.";
 const UNSUPPORTED_CAPTIONS_POSITION_EN = "This captions position is not supported.";
 const UNSUPPORTED_CAPTIONS_OFFSET_EN = "This captions position is not supported.";
 const UNSUPPORTED_CAPTIONS_FONT_SIZE_EN = "This captions size is not supported.";
+const UNSUPPORTED_CAPTIONS_FONT_FAMILY_EN = "This caption font is not supported.";
 const UNSUPPORTED_CAPTIONS_COLOR_EN = "This captions color is not supported.";
 const CANON_EDIT_SPEED_FACTORS = [0.5, 1.25, 1.5, 2] as const satisfies readonly EditSpeedFactor[];
 
@@ -93,6 +94,37 @@ const rotateOpSchema = z
 
 const CAPTION_SEGMENT_MIN_DURATION_SEC = 0.3;
 
+const CAPTIONS_STYLE_API = [
+  "default",
+  "clean",
+  "bold",
+  "dark_box",
+  "clean_pro",
+  "bold_social",
+  "yellow_headline",
+  "dark_bubble",
+  "highlight_box",
+] as const;
+
+const CAPTIONS_FONT_SIZE = [
+  "extra_small",
+  "small",
+  "medium",
+  "large",
+  "x_large",
+  "xx_large",
+] as const;
+
+const CAPTIONS_COLOR = ["white", "yellow", "purple", "mint"] as const;
+
+const CAPTIONS_FONT_FAMILY = [
+  "default",
+  "heebo",
+  "rubik",
+  "assistant",
+  "noto_sans_hebrew",
+] as const;
+
 const captionSegmentWireSchema = z
   .object({
     startSec: z.number().finite().min(0),
@@ -113,10 +145,11 @@ const captionsAutoOpSchema = z
     mode: z.literal("auto"),
     language: z.literal("auto"),
     burnIn: z.literal(true),
-    style: z.enum(["default", "clean", "bold", "dark_box"]),
-    fontSize: z.enum(["extra_small", "small", "medium", "large"]).optional(),
+    style: z.enum(CAPTIONS_STYLE_API),
+    fontSize: z.enum(CAPTIONS_FONT_SIZE).optional(),
+    fontFamily: z.enum(CAPTIONS_FONT_FAMILY).optional(),
     position: z.enum(["top", "bottom"]).optional(),
-    color: z.enum(["white", "yellow"]).optional(),
+    color: z.enum(CAPTIONS_COLOR).optional(),
     offsetX: z.number().int().min(-240).max(240).optional(),
     offsetY: z.number().int().min(-180).max(180).optional(),
   })
@@ -128,10 +161,11 @@ const captionsSegmentsOpSchema = z
     mode: z.literal("segments"),
     language: z.literal("auto"),
     burnIn: z.literal(true),
-    style: z.enum(["default", "clean", "bold", "dark_box"]),
-    fontSize: z.enum(["extra_small", "small", "medium", "large"]).optional(),
+    style: z.enum(CAPTIONS_STYLE_API),
+    fontSize: z.enum(CAPTIONS_FONT_SIZE).optional(),
+    fontFamily: z.enum(CAPTIONS_FONT_FAMILY).optional(),
     position: z.enum(["top", "bottom"]).optional(),
-    color: z.enum(["white", "yellow"]).optional(),
+    color: z.enum(CAPTIONS_COLOR).optional(),
     offsetX: z.number().int().min(-240).max(240).optional(),
     offsetY: z.number().int().min(-180).max(180).optional(),
     segments: z.array(captionSegmentWireSchema).min(1),
@@ -273,16 +307,23 @@ export function captionsFieldErrorsFromUnknownBody(body: unknown): AppError | nu
     }
     if (Object.prototype.hasOwnProperty.call(o, "style")) {
       const st = o.style;
-      const allowedStyle = new Set(["default", "clean", "bold", "dark_box"]);
+      const allowedStyle = new Set<string>(CAPTIONS_STYLE_API);
       if (typeof st !== "string" || !allowedStyle.has(st)) {
         return new AppError(codes.UNSUPPORTED_CAPTIONS_STYLE, UNSUPPORTED_CAPTIONS_STYLE_EN, 400);
       }
     }
-    const allowedFs = new Set(["extra_small", "small", "medium", "large"]);
+    const allowedFs = new Set<string>(CAPTIONS_FONT_SIZE);
     if (Object.prototype.hasOwnProperty.call(o, "fontSize")) {
       const fs = o.fontSize;
       if (fs !== undefined && fs !== null && (typeof fs !== "string" || !allowedFs.has(fs))) {
         return new AppError(codes.UNSUPPORTED_CAPTIONS_FONT_SIZE, UNSUPPORTED_CAPTIONS_FONT_SIZE_EN, 400);
+      }
+    }
+    const allowedFf = new Set<string>(CAPTIONS_FONT_FAMILY);
+    if (Object.prototype.hasOwnProperty.call(o, "fontFamily")) {
+      const ff = o.fontFamily;
+      if (ff !== undefined && ff !== null && (typeof ff !== "string" || !allowedFf.has(ff))) {
+        return new AppError(codes.UNSUPPORTED_CAPTIONS_FONT_FAMILY, UNSUPPORTED_CAPTIONS_FONT_FAMILY_EN, 400);
       }
     }
     const allowedPos = new Set(["top", "bottom"]);
@@ -292,7 +333,7 @@ export function captionsFieldErrorsFromUnknownBody(body: unknown): AppError | nu
         return new AppError(codes.UNSUPPORTED_CAPTIONS_POSITION, UNSUPPORTED_CAPTIONS_POSITION_EN, 400);
       }
     }
-    const allowedCol = new Set(["white", "yellow"]);
+    const allowedCol = new Set<string>(CAPTIONS_COLOR);
     if (Object.prototype.hasOwnProperty.call(o, "color")) {
       const c = o.color;
       if (c !== undefined && c !== null && (typeof c !== "string" || !allowedCol.has(c))) {
@@ -331,8 +372,12 @@ export function captionsFieldErrorsFromUnknownBody(body: unknown): AppError | nu
 }
 
 function normalizeCaptionsStyle(style: CaptionsStyleApi): CaptionsStyleResolved {
-  if (style === "default" || style === "clean") return "clean";
+  if (style === "default") return "clean";
   return style;
+}
+
+function normalizeCaptionsFontFamily(ff: (typeof CAPTIONS_FONT_FAMILY)[number] | undefined): CaptionsBurnInV1Resolved["fontFamily"] {
+  return ff ?? "default";
 }
 
 const CAPTIONS_OFFSET_X_CLAMP = [-240, 240] as const;
@@ -388,30 +433,28 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
       case "captions": {
         const styleResolved = normalizeCaptionsStyle(op.style);
         const { offsetX, offsetY } = clampCaptionsBurnInOffsets(op.offsetX, op.offsetY);
+        const fontFamily = normalizeCaptionsFontFamily(op.fontFamily);
+        const base = {
+          language: "auto" as const,
+          burnIn: true as const,
+          style: styleResolved,
+          fontSize: op.fontSize ?? "medium",
+          fontFamily,
+          position: op.position ?? "bottom",
+          color: op.color ?? "white",
+          offsetX,
+          offsetY,
+        };
         if (op.mode === "auto") {
           captionsBurnInV1 = {
             mode: "auto",
-            language: "auto",
-            burnIn: true,
-            style: styleResolved,
-            fontSize: op.fontSize ?? "medium",
-            position: op.position ?? "bottom",
-            color: op.color ?? "white",
-            offsetX,
-            offsetY,
+            ...base,
           };
         } else {
           const normalized = normalizeCaptionSegmentsForBurn(op.segments);
           captionsBurnInV1 = {
             mode: "segments",
-            language: "auto",
-            burnIn: true,
-            style: styleResolved,
-            fontSize: op.fontSize ?? "medium",
-            position: op.position ?? "bottom",
-            color: op.color ?? "white",
-            offsetX,
-            offsetY,
+            ...base,
             segments: normalized,
           };
         }

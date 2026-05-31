@@ -126,8 +126,9 @@ class _EditVideoScreenState extends State<EditVideoScreen>
 
   /// Auto captions burn-in (**V1.5**); off unless user enables.
   bool _captionsAuto = false;
-  QuickEditCaptionsStylePreset _captionsStyle = QuickEditCaptionsStylePreset.clean;
+  QuickEditCaptionsStylePreset _captionsStyle = QuickEditCaptionsStylePreset.cleanPro;
   QuickEditCaptionFontSize _captionsFontSize = QuickEditCaptionFontSize.extraSmall;
+  QuickEditCaptionFontFamily _captionsFontFamily = QuickEditCaptionFontFamily.defaultFamily;
   QuickEditCaptionPosition _captionsPosition = QuickEditCaptionPosition.bottom;
   QuickEditCaptionColor _captionsColor = QuickEditCaptionColor.white;
   int _captionsOffsetX = 0;
@@ -392,6 +393,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     final r = captionPresetRecipe(preset)!;
     setState(() {
       _captionsFontSize = r.fontSize;
+      _captionsFontFamily = r.fontFamily;
       _captionsPosition = r.position;
       _captionsColor = r.color;
       _captionsStyle = r.style;
@@ -432,6 +434,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       captionsAutoEnabled: _captionsAuto,
       captionsStyle: _captionsStyle,
       captionsFontSize: _captionsFontSize,
+      captionsFontFamily: _captionsFontFamily,
       captionsPosition: _captionsPosition,
       captionsColor: _captionsColor,
       captionsOffsetX: _captionsOffsetX,
@@ -624,6 +627,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         captionsAutoEnabled: _captionsAuto,
         captionsStyle: _captionsStyle,
         captionsFontSize: _captionsFontSize,
+        captionsFontFamily: _captionsFontFamily,
         captionsPosition: _captionsPosition,
         captionsColor: _captionsColor,
         captionsOffsetX: _captionsOffsetX,
@@ -1011,6 +1015,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                       l10n: l10n,
                       stylePreset: _captionsStyle,
                       fontSize: _captionsFontSize,
+                      fontFamily: _captionsFontFamily,
                       position: _captionsPosition,
                       color: _captionsColor,
                       offsetXAss: _captionsOffsetX,
@@ -1126,12 +1131,14 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                         autoCaptionsEnabled: _captionsAuto,
                         stylePreset: _captionsStyle,
                         fontSize: _captionsFontSize,
+                        fontFamily: _captionsFontFamily,
                         position: _captionsPosition,
                         color: _captionsColor,
                         offsetX: _captionsOffsetX,
                         offsetY: _captionsOffsetY,
                         effectiveCaptionPreset: inferQuickEditCaptionPreset(
                           fontSize: _captionsFontSize,
+                          fontFamily: _captionsFontFamily,
                           position: _captionsPosition,
                           color: _captionsColor,
                           style: _captionsStyle,
@@ -1161,6 +1168,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                             setState(() => _captionsStyle = v),
                         onFontSizeChanged: (v) =>
                             setState(() => _captionsFontSize = v),
+                        onFontFamilyChanged: (v) =>
+                            setState(() => _captionsFontFamily = v),
                         onPositionChanged: (v) =>
                             setState(() => _captionsPosition = v),
                         onColorChanged: (v) =>

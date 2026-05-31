@@ -85,6 +85,8 @@ String localizedApiErrorMessage(AppLocalizations l10n, ApiError e) {
       return l10n.errorCaptionsPositionNotSupported;
     case "UNSUPPORTED_CAPTIONS_FONT_SIZE":
       return l10n.errorCaptionsFontSizeNotSupported;
+    case "UNSUPPORTED_CAPTIONS_FONT_FAMILY":
+      return l10n.errorCaptionsFontFamilyNotSupported;
     case "UNSUPPORTED_CAPTIONS_COLOR":
       return l10n.errorCaptionsColorNotSupported;
     case "CAPTIONS_TRANSCRIPTION_UNAVAILABLE":

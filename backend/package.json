@@ -13,6 +13,7 @@
     "diag:facebook": "tsx scripts/facebook-fallback-diagnostic.ts",
     "diag:alert": "tsx scripts/send-alert-test.ts",
     "diag:ass-captions": "tsx scripts/test-ass-caption-helpers.ts",
+    "diag:caption-fonts": "tsx scripts/diag-caption-fonts.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",

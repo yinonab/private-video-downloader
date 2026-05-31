@@ -1,6 +1,7 @@
 import "dart:math" as math;
 
 import "package:flutter/material.dart";
+import "package:google_fonts/google_fonts.dart";
 
 import "../../../core/models/quick_edit_models.dart";
 import "../../../l10n/app_localizations.dart";
@@ -13,6 +14,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
     required this.l10n,
     required this.stylePreset,
     required this.fontSize,
+    required this.fontFamily,
     required this.position,
     required this.color,
     required this.offsetXAss,
@@ -22,6 +24,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
   final AppLocalizations l10n;
   final QuickEditCaptionsStylePreset stylePreset;
   final QuickEditCaptionFontSize fontSize;
+  final QuickEditCaptionFontFamily fontFamily;
   final QuickEditCaptionPosition position;
   final QuickEditCaptionColor color;
   final int offsetXAss;
@@ -30,33 +33,42 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textColor = color == QuickEditCaptionColor.yellow
-        ? const Color(0xFFFFD966)
-        : Colors.white;
+    final accent = _accentColor(color);
     final fz = switch (fontSize) {
       QuickEditCaptionFontSize.extraSmall => 9.6,
       QuickEditCaptionFontSize.small => 10.8,
       QuickEditCaptionFontSize.medium => 12.6,
       QuickEditCaptionFontSize.large => 14.8,
+      QuickEditCaptionFontSize.xLarge => 17.2,
+      QuickEditCaptionFontSize.xxLarge => 20.0,
     };
-    final fw = switch (stylePreset) {
-      QuickEditCaptionsStylePreset.bold => FontWeight.w700,
+
+    final boldStyle = switch (stylePreset) {
+      QuickEditCaptionsStylePreset.bold ||
+      QuickEditCaptionsStylePreset.boldSocial ||
+      QuickEditCaptionsStylePreset.yellowHeadline ||
+      QuickEditCaptionsStylePreset.highlightBox =>
+        FontWeight.w700,
       _ => FontWeight.w500,
     };
 
-    TextStyle sampleStyle() => TextStyle(
-          color: textColor,
-          fontSize: fz,
-          fontWeight: fw,
-          height: 1.15,
-        );
+    TextStyle baseStyle({Color? textColor, FontWeight? weight}) {
+      final style = TextStyle(
+        color: textColor ?? accent,
+        fontSize: fz,
+        fontWeight: weight ?? boldStyle,
+        height: 1.15,
+      );
+      return _applyPreviewFont(fontFamily, style);
+    }
 
     late final Widget captionBody;
     switch (stylePreset) {
       case QuickEditCaptionsStylePreset.darkBox:
+      case QuickEditCaptionsStylePreset.darkBubble:
         captionBody = DecoratedBox(
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.78),
+            color: Colors.black.withValues(alpha: stylePreset == QuickEditCaptionsStylePreset.darkBubble ? 0.72 : 0.78),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Padding(
@@ -66,27 +78,69 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: sampleStyle(),
+              style: baseStyle(textColor: Colors.white),
             ),
           ),
         );
         break;
-      case QuickEditCaptionsStylePreset.bold:
+      case QuickEditCaptionsStylePreset.highlightBox:
+        captionBody = DecoratedBox(
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.88),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            child: Text(
+              l10n.editCaptionsSampleLabel,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: baseStyle(
+                textColor: _highlightBoxTextColor(color),
+                weight: FontWeight.w700,
+              ),
+            ),
+          ),
+        );
+        break;
+      case QuickEditCaptionsStylePreset.yellowHeadline:
         captionBody = Text(
           l10n.editCaptionsSampleLabel,
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: sampleStyle().copyWith(
+          style: baseStyle(textColor: const Color(0xFFFFD966)).copyWith(
+            shadows: _strongShadows(),
+          ),
+        );
+        break;
+      case QuickEditCaptionsStylePreset.bold:
+      case QuickEditCaptionsStylePreset.boldSocial:
+        captionBody = Text(
+          l10n.editCaptionsSampleLabel,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: baseStyle().copyWith(shadows: _strongShadows()),
+        );
+        break;
+      case QuickEditCaptionsStylePreset.cleanPro:
+        captionBody = Text(
+          l10n.editCaptionsSampleLabel,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: baseStyle().copyWith(
             shadows: [
               Shadow(
-                blurRadius: 10,
-                color: Colors.black.withValues(alpha: 0.9),
+                blurRadius: 9,
+                color: Colors.black.withValues(alpha: 0.84),
               ),
               Shadow(
                 blurRadius: 0,
-                offset: const Offset(0, 1),
-                color: Colors.black.withValues(alpha: 0.88),
+                offset: const Offset(0, 0.5),
+                color: Colors.black.withValues(alpha: 0.55),
               ),
             ],
           ),
@@ -98,7 +152,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: sampleStyle().copyWith(
+          style: baseStyle().copyWith(
             shadows: [
               Shadow(
                 blurRadius: 8,
@@ -179,4 +233,47 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
       },
     );
   }
+}
+
+Color _accentColor(QuickEditCaptionColor color) {
+  return switch (color) {
+    QuickEditCaptionColor.white => Colors.white,
+    QuickEditCaptionColor.yellow => const Color(0xFFFFD966),
+    QuickEditCaptionColor.purple => const Color(0xFF8B5CF6),
+    QuickEditCaptionColor.mint => const Color(0xFF34D399),
+  };
+}
+
+Color _highlightBoxTextColor(QuickEditCaptionColor color) {
+  return switch (color) {
+    QuickEditCaptionColor.yellow ||
+    QuickEditCaptionColor.mint ||
+    QuickEditCaptionColor.white =>
+      const Color(0xFF101010),
+    QuickEditCaptionColor.purple => Colors.white,
+  };
+}
+
+List<Shadow> _strongShadows() => [
+      Shadow(
+        blurRadius: 10,
+        color: Colors.black.withValues(alpha: 0.9),
+      ),
+      Shadow(
+        blurRadius: 0,
+        offset: const Offset(0, 1),
+        color: Colors.black.withValues(alpha: 0.88),
+      ),
+    ];
+
+TextStyle _applyPreviewFont(QuickEditCaptionFontFamily family, TextStyle base) {
+  return switch (family) {
+    QuickEditCaptionFontFamily.heebo => GoogleFonts.heebo(textStyle: base),
+    QuickEditCaptionFontFamily.rubik => GoogleFonts.rubik(textStyle: base),
+    QuickEditCaptionFontFamily.assistant => GoogleFonts.assistant(textStyle: base),
+    QuickEditCaptionFontFamily.notoSansHebrew =>
+      GoogleFonts.notoSansHebrew(textStyle: base),
+    QuickEditCaptionFontFamily.defaultFamily =>
+      GoogleFonts.notoSansHebrew(textStyle: base),
+  };
 }

@@ -2516,6 +2516,120 @@ abstract class AppLocalizations {
   /// **'Edit captions'**
   String get editCaptionsV31ScreenTitle;
 
+  /// No description provided for @editCaptionsV32SizeXL.
+  ///
+  /// In en, this message translates to:
+  /// **'XL'**
+  String get editCaptionsV32SizeXL;
+
+  /// No description provided for @editCaptionsV32SizeXXL.
+  ///
+  /// In en, this message translates to:
+  /// **'XXL'**
+  String get editCaptionsV32SizeXXL;
+
+  /// No description provided for @editCaptionsV32FontLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Font'**
+  String get editCaptionsV32FontLabel;
+
+  /// No description provided for @editCaptionsV32FontDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get editCaptionsV32FontDefault;
+
+  /// No description provided for @editCaptionsV32FontHeebo.
+  ///
+  /// In en, this message translates to:
+  /// **'Heebo'**
+  String get editCaptionsV32FontHeebo;
+
+  /// No description provided for @editCaptionsV32FontRubik.
+  ///
+  /// In en, this message translates to:
+  /// **'Rubik'**
+  String get editCaptionsV32FontRubik;
+
+  /// No description provided for @editCaptionsV32FontAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistant'**
+  String get editCaptionsV32FontAssistant;
+
+  /// No description provided for @editCaptionsV32FontNotoSansHebrew.
+  ///
+  /// In en, this message translates to:
+  /// **'Noto Sans Hebrew'**
+  String get editCaptionsV32FontNotoSansHebrew;
+
+  /// No description provided for @editCaptionsV32AccentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Accent'**
+  String get editCaptionsV32AccentLabel;
+
+  /// No description provided for @editCaptionsV32ColorPurple.
+  ///
+  /// In en, this message translates to:
+  /// **'Purple'**
+  String get editCaptionsV32ColorPurple;
+
+  /// No description provided for @editCaptionsV32ColorMint.
+  ///
+  /// In en, this message translates to:
+  /// **'Mint'**
+  String get editCaptionsV32ColorMint;
+
+  /// No description provided for @editCaptionsV32StyleCleanPro.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean Pro'**
+  String get editCaptionsV32StyleCleanPro;
+
+  /// No description provided for @editCaptionsV32StyleBoldSocial.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold Social'**
+  String get editCaptionsV32StyleBoldSocial;
+
+  /// No description provided for @editCaptionsV32StyleYellowHeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Yellow Headline'**
+  String get editCaptionsV32StyleYellowHeadline;
+
+  /// No description provided for @editCaptionsV32StyleDarkBubble.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark Bubble'**
+  String get editCaptionsV32StyleDarkBubble;
+
+  /// No description provided for @editCaptionsV32StyleHighlightBox.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight Box'**
+  String get editCaptionsV32StyleHighlightBox;
+
+  /// No description provided for @editCaptionsV32PresetCreatorHighlight.
+  ///
+  /// In en, this message translates to:
+  /// **'Creator Highlight'**
+  String get editCaptionsV32PresetCreatorHighlight;
+
+  /// No description provided for @editCaptionsV32PresetNewsHeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'News Headline'**
+  String get editCaptionsV32PresetNewsHeadline;
+
+  /// No description provided for @errorCaptionsFontFamilyNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This caption font is not supported.'**
+  String get errorCaptionsFontFamilyNotSupported;
+
   /// No description provided for @errorCaptionsDraftUnavailable.
   ///
   /// In en, this message translates to:

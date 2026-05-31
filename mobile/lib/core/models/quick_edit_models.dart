@@ -407,18 +407,39 @@ enum QuickEditSpeedFactor {
       };
 }
 
-/// Captions styling **V1.5** (backend `captions` op schema).
-enum QuickEditCaptionsStylePreset { clean, bold, darkBox }
+/// Captions styling **V1.5+ / V3.2** (backend `captions` op schema).
+enum QuickEditCaptionsStylePreset {
+  clean,
+  bold,
+  darkBox,
+  cleanPro,
+  boldSocial,
+  yellowHeadline,
+  darkBubble,
+  highlightBox,
+}
 
 extension QuickEditCaptionsStylePresetApi on QuickEditCaptionsStylePreset {
   String get apiValue => switch (this) {
         QuickEditCaptionsStylePreset.clean => "clean",
         QuickEditCaptionsStylePreset.bold => "bold",
         QuickEditCaptionsStylePreset.darkBox => "dark_box",
+        QuickEditCaptionsStylePreset.cleanPro => "clean_pro",
+        QuickEditCaptionsStylePreset.boldSocial => "bold_social",
+        QuickEditCaptionsStylePreset.yellowHeadline => "yellow_headline",
+        QuickEditCaptionsStylePreset.darkBubble => "dark_bubble",
+        QuickEditCaptionsStylePreset.highlightBox => "highlight_box",
       };
 }
 
-enum QuickEditCaptionFontSize { extraSmall, small, medium, large }
+enum QuickEditCaptionFontSize {
+  extraSmall,
+  small,
+  medium,
+  large,
+  xLarge,
+  xxLarge,
+}
 
 extension QuickEditCaptionFontSizeApi on QuickEditCaptionFontSize {
   String get apiValue => switch (this) {
@@ -426,6 +447,8 @@ extension QuickEditCaptionFontSizeApi on QuickEditCaptionFontSize {
         QuickEditCaptionFontSize.small => "small",
         QuickEditCaptionFontSize.medium => "medium",
         QuickEditCaptionFontSize.large => "large",
+        QuickEditCaptionFontSize.xLarge => "x_large",
+        QuickEditCaptionFontSize.xxLarge => "xx_large",
       };
 }
 
@@ -438,12 +461,32 @@ extension QuickEditCaptionPositionApi on QuickEditCaptionPosition {
       };
 }
 
-enum QuickEditCaptionColor { white, yellow }
+enum QuickEditCaptionColor { white, yellow, purple, mint }
 
 extension QuickEditCaptionColorApi on QuickEditCaptionColor {
   String get apiValue => switch (this) {
         QuickEditCaptionColor.white => "white",
         QuickEditCaptionColor.yellow => "yellow",
+        QuickEditCaptionColor.purple => "purple",
+        QuickEditCaptionColor.mint => "mint",
+      };
+}
+
+enum QuickEditCaptionFontFamily {
+  defaultFamily,
+  heebo,
+  rubik,
+  assistant,
+  notoSansHebrew,
+}
+
+extension QuickEditCaptionFontFamilyApi on QuickEditCaptionFontFamily {
+  String get apiValue => switch (this) {
+        QuickEditCaptionFontFamily.defaultFamily => "default",
+        QuickEditCaptionFontFamily.heebo => "heebo",
+        QuickEditCaptionFontFamily.rubik => "rubik",
+        QuickEditCaptionFontFamily.assistant => "assistant",
+        QuickEditCaptionFontFamily.notoSansHebrew => "noto_sans_hebrew",
       };
 }
 
@@ -457,12 +500,15 @@ enum QuickEditCaptionPreset {
   boldYellow,
   darkBox,
   topClean,
+  creatorHighlight,
+  newsHeadline,
 }
 
 /// Field snapshot applied when user picks a built-in preset.
 final class CaptionPresetFields {
   const CaptionPresetFields({
     required this.fontSize,
+    required this.fontFamily,
     required this.position,
     required this.color,
     required this.style,
@@ -471,6 +517,7 @@ final class CaptionPresetFields {
   });
 
   final QuickEditCaptionFontSize fontSize;
+  final QuickEditCaptionFontFamily fontFamily;
   final QuickEditCaptionPosition position;
   final QuickEditCaptionColor color;
   final QuickEditCaptionsStylePreset style;
@@ -479,6 +526,7 @@ final class CaptionPresetFields {
 
   bool matches({
     required QuickEditCaptionFontSize fontSize,
+    required QuickEditCaptionFontFamily fontFamily,
     required QuickEditCaptionPosition position,
     required QuickEditCaptionColor color,
     required QuickEditCaptionsStylePreset style,
@@ -486,6 +534,7 @@ final class CaptionPresetFields {
     required int offsetY,
   }) =>
       this.fontSize == fontSize &&
+      this.fontFamily == fontFamily &&
       this.position == position &&
       this.color == color &&
       this.style == style &&
@@ -500,47 +549,72 @@ CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
     case QuickEditCaptionPreset.minimal:
       return const CaptionPresetFields(
         fontSize: QuickEditCaptionFontSize.extraSmall,
+        fontFamily: QuickEditCaptionFontFamily.defaultFamily,
         position: QuickEditCaptionPosition.bottom,
         color: QuickEditCaptionColor.white,
-        style: QuickEditCaptionsStylePreset.clean,
+        style: QuickEditCaptionsStylePreset.cleanPro,
         offsetX: 0,
         offsetY: 0,
       );
     case QuickEditCaptionPreset.social:
       return const CaptionPresetFields(
         fontSize: QuickEditCaptionFontSize.small,
+        fontFamily: QuickEditCaptionFontFamily.rubik,
         position: QuickEditCaptionPosition.bottom,
         color: QuickEditCaptionColor.white,
-        style: QuickEditCaptionsStylePreset.bold,
+        style: QuickEditCaptionsStylePreset.boldSocial,
         offsetX: 0,
         offsetY: -20,
       );
     case QuickEditCaptionPreset.boldYellow:
       return const CaptionPresetFields(
         fontSize: QuickEditCaptionFontSize.small,
+        fontFamily: QuickEditCaptionFontFamily.rubik,
         position: QuickEditCaptionPosition.bottom,
         color: QuickEditCaptionColor.yellow,
-        style: QuickEditCaptionsStylePreset.bold,
+        style: QuickEditCaptionsStylePreset.boldSocial,
         offsetX: 0,
         offsetY: -20,
       );
     case QuickEditCaptionPreset.darkBox:
       return const CaptionPresetFields(
         fontSize: QuickEditCaptionFontSize.small,
+        fontFamily: QuickEditCaptionFontFamily.defaultFamily,
         position: QuickEditCaptionPosition.bottom,
         color: QuickEditCaptionColor.white,
-        style: QuickEditCaptionsStylePreset.darkBox,
+        style: QuickEditCaptionsStylePreset.darkBubble,
         offsetX: 0,
         offsetY: -20,
       );
     case QuickEditCaptionPreset.topClean:
       return const CaptionPresetFields(
         fontSize: QuickEditCaptionFontSize.extraSmall,
+        fontFamily: QuickEditCaptionFontFamily.defaultFamily,
         position: QuickEditCaptionPosition.top,
         color: QuickEditCaptionColor.white,
-        style: QuickEditCaptionsStylePreset.clean,
+        style: QuickEditCaptionsStylePreset.cleanPro,
         offsetX: 0,
         offsetY: 0,
+      );
+    case QuickEditCaptionPreset.creatorHighlight:
+      return const CaptionPresetFields(
+        fontSize: QuickEditCaptionFontSize.xLarge,
+        fontFamily: QuickEditCaptionFontFamily.rubik,
+        position: QuickEditCaptionPosition.bottom,
+        color: QuickEditCaptionColor.purple,
+        style: QuickEditCaptionsStylePreset.highlightBox,
+        offsetX: 0,
+        offsetY: -20,
+      );
+    case QuickEditCaptionPreset.newsHeadline:
+      return const CaptionPresetFields(
+        fontSize: QuickEditCaptionFontSize.xLarge,
+        fontFamily: QuickEditCaptionFontFamily.assistant,
+        position: QuickEditCaptionPosition.bottom,
+        color: QuickEditCaptionColor.yellow,
+        style: QuickEditCaptionsStylePreset.yellowHeadline,
+        offsetX: 0,
+        offsetY: -20,
       );
   }
 }
@@ -551,11 +625,14 @@ const List<QuickEditCaptionPreset> kQuickEditCaptionBuiltInPresetsOrdered = [
   QuickEditCaptionPreset.boldYellow,
   QuickEditCaptionPreset.darkBox,
   QuickEditCaptionPreset.topClean,
+  QuickEditCaptionPreset.creatorHighlight,
+  QuickEditCaptionPreset.newsHeadline,
 ];
 
 /// Which named preset matches the current controls, or [QuickEditCaptionPreset.custom].
 QuickEditCaptionPreset inferQuickEditCaptionPreset({
   required QuickEditCaptionFontSize fontSize,
+  required QuickEditCaptionFontFamily fontFamily,
   required QuickEditCaptionPosition position,
   required QuickEditCaptionColor color,
   required QuickEditCaptionsStylePreset style,
@@ -566,6 +643,7 @@ QuickEditCaptionPreset inferQuickEditCaptionPreset({
     final r = captionPresetRecipe(p)!;
     if (r.matches(
       fontSize: fontSize,
+      fontFamily: fontFamily,
       position: position,
       color: color,
       style: style,
@@ -641,6 +719,7 @@ int clampQuickEditCaptionOffsetY(int v) =>
 Map<String, dynamic> quickEditCaptionsV22Operation({
   required QuickEditCaptionsStylePreset style,
   required QuickEditCaptionFontSize fontSize,
+  required QuickEditCaptionFontFamily fontFamily,
   required QuickEditCaptionPosition position,
   required QuickEditCaptionColor color,
   required int captionsOffsetX,
@@ -653,6 +732,7 @@ Map<String, dynamic> quickEditCaptionsV22Operation({
       "burnIn": true,
       "style": style.apiValue,
       "fontSize": fontSize.apiValue,
+      "fontFamily": fontFamily.apiValue,
       "position": position.apiValue,
       "color": color.apiValue,
       "offsetX": clampQuickEditCaptionOffsetX(captionsOffsetX),
@@ -664,6 +744,7 @@ Map<String, dynamic> quickEditCaptionsSegmentsV24Operation({
   required List<CaptionDraftSegment> segments,
   required QuickEditCaptionsStylePreset style,
   required QuickEditCaptionFontSize fontSize,
+  required QuickEditCaptionFontFamily fontFamily,
   required QuickEditCaptionPosition position,
   required QuickEditCaptionColor color,
   required int captionsOffsetX,
@@ -676,6 +757,7 @@ Map<String, dynamic> quickEditCaptionsSegmentsV24Operation({
       "burnIn": true,
       "style": style.apiValue,
       "fontSize": fontSize.apiValue,
+      "fontFamily": fontFamily.apiValue,
       "position": position.apiValue,
       "color": color.apiValue,
       "offsetX": clampQuickEditCaptionOffsetX(captionsOffsetX),
@@ -693,8 +775,9 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   required QuickEditRotation rotation,
   required QuickEditSpeedFactor speedFactor,
   required bool captionsAutoEnabled,
-  QuickEditCaptionsStylePreset captionsStyle = QuickEditCaptionsStylePreset.clean,
+  QuickEditCaptionsStylePreset captionsStyle = QuickEditCaptionsStylePreset.cleanPro,
   QuickEditCaptionFontSize captionsFontSize = QuickEditCaptionFontSize.medium,
+  QuickEditCaptionFontFamily captionsFontFamily = QuickEditCaptionFontFamily.defaultFamily,
   QuickEditCaptionPosition captionsPosition = QuickEditCaptionPosition.bottom,
   QuickEditCaptionColor captionsColor = QuickEditCaptionColor.white,
   int captionsOffsetX = 0,
@@ -747,6 +830,7 @@ List<Map<String, dynamic>> buildQuickEditOperations({
         segments: captionsDraftForBurn,
         style: captionsStyle,
         fontSize: captionsFontSize,
+        fontFamily: captionsFontFamily,
         position: captionsPosition,
         color: captionsColor,
         captionsOffsetX: captionsOffsetX,
@@ -756,6 +840,7 @@ List<Map<String, dynamic>> buildQuickEditOperations({
       ops.add(quickEditCaptionsV22Operation(
         style: captionsStyle,
         fontSize: captionsFontSize,
+        fontFamily: captionsFontFamily,
         position: captionsPosition,
         color: captionsColor,
         captionsOffsetX: captionsOffsetX,
@@ -787,8 +872,9 @@ bool quickEditHasChanges({
   required QuickEditRotation rotation,
   required QuickEditSpeedFactor speedFactor,
   required bool captionsAutoEnabled,
-  QuickEditCaptionsStylePreset captionsStyle = QuickEditCaptionsStylePreset.clean,
+  QuickEditCaptionsStylePreset captionsStyle = QuickEditCaptionsStylePreset.cleanPro,
   QuickEditCaptionFontSize captionsFontSize = QuickEditCaptionFontSize.medium,
+  QuickEditCaptionFontFamily captionsFontFamily = QuickEditCaptionFontFamily.defaultFamily,
   QuickEditCaptionPosition captionsPosition = QuickEditCaptionPosition.bottom,
   QuickEditCaptionColor captionsColor = QuickEditCaptionColor.white,
   int captionsOffsetX = 0,

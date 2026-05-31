@@ -16,6 +16,8 @@ const FONT_SIZES: Record<CaptionsBurnInV1Resolved["fontSize"], number> = {
   small: 20,
   medium: 24,
   large: 30,
+  x_large: 36,
+  xx_large: 44,
 };
 
 /** Per-line grapheme-ish limits — keeps ≤2 rendered lines via manual wrap (`WrapStyle: 2`). */
@@ -24,6 +26,8 @@ const MAX_CHARS_PER_LINE: Record<CaptionsBurnInV1Resolved["fontSize"], number> =
   small: 28,
   medium: 24,
   large: 20,
+  x_large: 16,
+  xx_large: 14,
 };
 
 const MARGIN_H = 52;
@@ -49,12 +53,13 @@ export function segmentsToAssContent(segments: TranscriptSegment[], opts: Segmen
   const fontSize = FONT_SIZES[opts.fontSize];
   const maxLen = MAX_CHARS_PER_LINE[opts.fontSize];
   const align = opts.position === "top" ? 8 : 2;
-  const primaryColour = captionPrimaryAssColour(opts.color);
   const styleRow = buildDefaultStyleRow({
     fontSize,
-    primaryColour,
+    primaryColour: captionPrimaryAssColour(opts.color, opts.style),
     style: opts.style,
+    color: opts.color,
     alignment: align,
+    fontFamily: opts.fontFamily,
   });
 
   const header = `[Script Info]
@@ -90,16 +95,80 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   return body;
 }
 
-function captionPrimaryAssColour(color: CaptionsBurnInV1Resolved["color"]): string {
-  if (color === "yellow") return "&H0066D9FF"; /** ~#FFD966 BGR opaque */
-  return "&H00FFFFFF";
+function captionAssFontName(family: CaptionsBurnInV1Resolved["fontFamily"]): string {
+  switch (family) {
+    case "heebo":
+      return "Heebo";
+    case "rubik":
+      return "Rubik";
+    case "assistant":
+      return "Assistant";
+    case "noto_sans_hebrew":
+      return "Noto Sans Hebrew";
+    case "default":
+    default:
+      return "Noto Sans Hebrew";
+  }
+}
+
+function captionPrimaryAssColour(
+  color: CaptionsBurnInV1Resolved["color"],
+  style: CaptionsBurnInV1Resolved["style"],
+): string {
+  if (style === "highlight_box") {
+    return highlightBoxTextAssColour(color);
+  }
+  return accentAssColour(color);
+}
+
+/** Accent / main text colour (ASS BGR opaque). */
+function accentAssColour(color: CaptionsBurnInV1Resolved["color"]): string {
+  switch (color) {
+    case "yellow":
+      return "&H0066D9FF";
+    case "purple":
+      return "&H00F65C8B";
+    case "mint":
+      return "&H0099D334";
+    case "white":
+    default:
+      return "&H00FFFFFF";
+  }
+}
+
+function highlightBoxTextAssColour(color: CaptionsBurnInV1Resolved["color"]): string {
+  switch (color) {
+    case "yellow":
+    case "mint":
+    case "white":
+      return "&H00101010";
+    case "purple":
+    default:
+      return "&H00FFFFFF";
+  }
+}
+
+function highlightBoxBackAssColour(color: CaptionsBurnInV1Resolved["color"]): string {
+  switch (color) {
+    case "yellow":
+      return "&HC066D9FF";
+    case "purple":
+      return "&HC0F65C8B";
+    case "mint":
+      return "&HC099D334";
+    case "white":
+    default:
+      return "&HC0FFFFFF";
+  }
 }
 
 function buildDefaultStyleRow(p: {
   fontSize: number;
   primaryColour: string;
   style: CaptionsBurnInV1Resolved["style"];
+  color: CaptionsBurnInV1Resolved["color"];
   alignment: number;
+  fontFamily: CaptionsBurnInV1Resolved["fontFamily"];
 }): string {
   const outlineBlack = "&H00101010";
   let outline = 2.65;
@@ -107,11 +176,19 @@ function buildDefaultStyleRow(p: {
   let bold = 0;
   let borderStyle = 1;
   let back = "&H00000000";
+  let primary = p.primaryColour;
 
   switch (p.style) {
     case "clean":
       outline = 2.45;
       shadow = 1.45;
+      bold = 0;
+      borderStyle = 1;
+      back = "&H00000000";
+      break;
+    case "clean_pro":
+      outline = 2.55;
+      shadow = 1.55;
       bold = 0;
       borderStyle = 1;
       back = "&H00000000";
@@ -123,6 +200,21 @@ function buildDefaultStyleRow(p: {
       borderStyle = 1;
       back = "&H00000000";
       break;
+    case "bold_social":
+      outline = 4.25;
+      shadow = 2.85;
+      bold = 1;
+      borderStyle = 1;
+      back = "&H00000000";
+      break;
+    case "yellow_headline":
+      outline = 4.45;
+      shadow = 2.95;
+      bold = 1;
+      borderStyle = 1;
+      back = "&H00000000";
+      primary = accentAssColour("yellow");
+      break;
     case "dark_box":
       outline = 1.65;
       shadow = 0.85;
@@ -130,13 +222,31 @@ function buildDefaultStyleRow(p: {
       borderStyle = 3;
       back = "&H98303030";
       break;
+    case "dark_bubble":
+      outline = 1.45;
+      shadow = 0.65;
+      bold = 0;
+      borderStyle = 3;
+      back = "&HA0282828";
+      primary = "&H00FFFFFF";
+      break;
+    case "highlight_box":
+      outline = 0.85;
+      shadow = 0.45;
+      bold = 1;
+      borderStyle = 3;
+      back = highlightBoxBackAssColour(p.color);
+      primary = highlightBoxTextAssColour(p.color);
+      break;
     default:
       break;
   }
 
-  const scaleX = p.style === "bold" ? 101 : 100;
-  const scaleY = p.style === "bold" ? 101 : 100;
-  return `Style: Default,Arial,${p.fontSize},${p.primaryColour},${secondaryOrPlaceholder()},${outlineBlack},${back},${bold},0,0,0,${scaleX},${scaleY},0,0,${borderStyle},${outline.toFixed(2)},${shadow.toFixed(2)},${p.alignment},${MARGIN_H},${MARGIN_H},${MARGIN_V},1`;
+  const scaleX =
+    p.style === "bold" || p.style === "bold_social" || p.style === "yellow_headline" ? 101 : 100;
+  const scaleY = scaleX;
+  const fontName = captionAssFontName(p.fontFamily);
+  return `Style: Default,${fontName},${p.fontSize},${primary},${secondaryOrPlaceholder()},${outlineBlack},${back},${bold},0,0,0,${scaleX},${scaleY},0,0,${borderStyle},${outline.toFixed(2)},${shadow.toFixed(2)},${p.alignment},${MARGIN_H},${MARGIN_H},${MARGIN_V},1`;
 }
 
 function secondaryOrPlaceholder(): string {

@@ -1332,6 +1332,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCaptionsV31ScreenTitle => 'Edit captions';
 
   @override
+  String get editCaptionsV32SizeXL => 'XL';
+
+  @override
+  String get editCaptionsV32SizeXXL => 'XXL';
+
+  @override
+  String get editCaptionsV32FontLabel => 'Font';
+
+  @override
+  String get editCaptionsV32FontDefault => 'Default';
+
+  @override
+  String get editCaptionsV32FontHeebo => 'Heebo';
+
+  @override
+  String get editCaptionsV32FontRubik => 'Rubik';
+
+  @override
+  String get editCaptionsV32FontAssistant => 'Assistant';
+
+  @override
+  String get editCaptionsV32FontNotoSansHebrew => 'Noto Sans Hebrew';
+
+  @override
+  String get editCaptionsV32AccentLabel => 'Accent';
+
+  @override
+  String get editCaptionsV32ColorPurple => 'Purple';
+
+  @override
+  String get editCaptionsV32ColorMint => 'Mint';
+
+  @override
+  String get editCaptionsV32StyleCleanPro => 'Clean Pro';
+
+  @override
+  String get editCaptionsV32StyleBoldSocial => 'Bold Social';
+
+  @override
+  String get editCaptionsV32StyleYellowHeadline => 'Yellow Headline';
+
+  @override
+  String get editCaptionsV32StyleDarkBubble => 'Dark Bubble';
+
+  @override
+  String get editCaptionsV32StyleHighlightBox => 'Highlight Box';
+
+  @override
+  String get editCaptionsV32PresetCreatorHighlight => 'Creator Highlight';
+
+  @override
+  String get editCaptionsV32PresetNewsHeadline => 'News Headline';
+
+  @override
+  String get errorCaptionsFontFamilyNotSupported =>
+      'This caption font is not supported.';
+
+  @override
   String get errorCaptionsDraftUnavailable =>
       'Could not generate captions draft.';
 

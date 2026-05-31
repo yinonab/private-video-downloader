@@ -1316,6 +1316,64 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editCaptionsV31ScreenTitle => 'עריכת כתוביות';
 
   @override
+  String get editCaptionsV32SizeXL => 'גדול מאוד';
+
+  @override
+  String get editCaptionsV32SizeXXL => 'ענק';
+
+  @override
+  String get editCaptionsV32FontLabel => 'פונט';
+
+  @override
+  String get editCaptionsV32FontDefault => 'ברירת מחדל';
+
+  @override
+  String get editCaptionsV32FontHeebo => 'Heebo';
+
+  @override
+  String get editCaptionsV32FontRubik => 'Rubik';
+
+  @override
+  String get editCaptionsV32FontAssistant => 'Assistant';
+
+  @override
+  String get editCaptionsV32FontNotoSansHebrew => 'Noto Sans Hebrew';
+
+  @override
+  String get editCaptionsV32AccentLabel => 'צבע הדגשה';
+
+  @override
+  String get editCaptionsV32ColorPurple => 'סגול';
+
+  @override
+  String get editCaptionsV32ColorMint => 'מנטה';
+
+  @override
+  String get editCaptionsV32StyleCleanPro => 'נקי מתקדם';
+
+  @override
+  String get editCaptionsV32StyleBoldSocial => 'מודגש לרשתות';
+
+  @override
+  String get editCaptionsV32StyleYellowHeadline => 'כותרת צהובה';
+
+  @override
+  String get editCaptionsV32StyleDarkBubble => 'בועה כהה';
+
+  @override
+  String get editCaptionsV32StyleHighlightBox => 'תיבת הדגשה';
+
+  @override
+  String get editCaptionsV32PresetCreatorHighlight => 'הדגשת יוצר';
+
+  @override
+  String get editCaptionsV32PresetNewsHeadline => 'כותרת חדשותית';
+
+  @override
+  String get errorCaptionsFontFamilyNotSupported =>
+      'פונט הכתוביות הזה לא נתמך.';
+
+  @override
   String get errorCaptionsDraftUnavailable => 'לא ניתן ליצור טיוטת כתוביות.';
 
   @override

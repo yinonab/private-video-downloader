@@ -148,6 +148,8 @@ class ApiError implements Exception {
         return "מיקום הכתוביות הזה לא נתמך.";
       case "UNSUPPORTED_CAPTIONS_FONT_SIZE":
         return "גודל הכתוביות הזה לא נתמך.";
+      case "UNSUPPORTED_CAPTIONS_FONT_FAMILY":
+        return "פונט הכתוביות הזה לא נתמך.";
       case "UNSUPPORTED_CAPTIONS_COLOR":
         return "צבע הכתוביות הזה לא נתמך.";
     case "CAPTIONS_TRANSCRIPTION_UNAVAILABLE":

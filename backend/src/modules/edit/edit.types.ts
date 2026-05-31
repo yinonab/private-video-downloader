@@ -7,17 +7,47 @@ export type EditFormatMode = "fill" | "fit_blur";
 /** Clockwise pixel rotation (applied after trim, before format Fill/Fit). Omit when no rotate op was sent. */
 export type EditRotationDegrees = 90 | 180 | 270;
 
-/** API `captions.style` accepts `default` (alias for clean). Resolved plan never stores `default`. */
-export type CaptionsStyleApi = "default" | "clean" | "bold" | "dark_box";
+/** API `captions.style` — legacy + V3.2 creator styles. `default` aliases to `clean`. */
+export type CaptionsStyleApi =
+  | "default"
+  | "clean"
+  | "bold"
+  | "dark_box"
+  | "clean_pro"
+  | "bold_social"
+  | "yellow_headline"
+  | "dark_bubble"
+  | "highlight_box";
 
 /** Normalized caption preset for ASS generation. */
-export type CaptionsStyleResolved = "clean" | "bold" | "dark_box";
+export type CaptionsStyleResolved =
+  | "clean"
+  | "bold"
+  | "dark_box"
+  | "clean_pro"
+  | "bold_social"
+  | "yellow_headline"
+  | "dark_bubble"
+  | "highlight_box";
 
-export type CaptionsFontSize = "extra_small" | "small" | "medium" | "large";
+export type CaptionsFontSize =
+  | "extra_small"
+  | "small"
+  | "medium"
+  | "large"
+  | "x_large"
+  | "xx_large";
 
 export type CaptionsPosition = "top" | "bottom";
 
-export type CaptionsColor = "white" | "yellow";
+export type CaptionsColor = "white" | "yellow" | "purple" | "mint";
+
+export type CaptionsFontFamily =
+  | "default"
+  | "heebo"
+  | "rubik"
+  | "assistant"
+  | "noto_sans_hebrew";
 
 /** Canonical cue for captions burn-in (after normalization). Never logged as full payload. */
 export type CaptionCueSegmentResolved = {
@@ -33,6 +63,7 @@ export type CaptionsBurnInV1Resolved = {
   readonly burnIn: true;
   readonly style: CaptionsStyleResolved;
   readonly fontSize: CaptionsFontSize;
+  readonly fontFamily: CaptionsFontFamily;
   readonly position: CaptionsPosition;
   readonly color: CaptionsColor;
   /** Horizontal offset in ASS script pixels (~PlayRes width); clamped −240…240 server-side. */

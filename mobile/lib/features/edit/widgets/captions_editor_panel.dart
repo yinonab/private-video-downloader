@@ -12,6 +12,7 @@ class CaptionsEditorPanel extends StatefulWidget {
     required this.autoCaptionsEnabled,
     required this.stylePreset,
     required this.fontSize,
+    required this.fontFamily,
     required this.position,
     required this.color,
     required this.offsetX,
@@ -19,6 +20,7 @@ class CaptionsEditorPanel extends StatefulWidget {
     required this.onAutoCaptionsChanged,
     required this.onStyleChanged,
     required this.onFontSizeChanged,
+    required this.onFontFamilyChanged,
     required this.onPositionChanged,
     required this.onColorChanged,
     required this.onOffsetReset,
@@ -36,6 +38,7 @@ class CaptionsEditorPanel extends StatefulWidget {
   final bool autoCaptionsEnabled;
   final QuickEditCaptionsStylePreset stylePreset;
   final QuickEditCaptionFontSize fontSize;
+  final QuickEditCaptionFontFamily fontFamily;
   final QuickEditCaptionPosition position;
   final QuickEditCaptionColor color;
   final int offsetX;
@@ -60,6 +63,7 @@ class CaptionsEditorPanel extends StatefulWidget {
   final ValueChanged<bool> onAutoCaptionsChanged;
   final ValueChanged<QuickEditCaptionsStylePreset> onStyleChanged;
   final ValueChanged<QuickEditCaptionFontSize> onFontSizeChanged;
+  final ValueChanged<QuickEditCaptionFontFamily> onFontFamilyChanged;
   final ValueChanged<QuickEditCaptionPosition> onPositionChanged;
   final ValueChanged<QuickEditCaptionColor> onColorChanged;
   final VoidCallback onOffsetReset;
@@ -145,52 +149,33 @@ class _CaptionsEditorPanelState extends State<CaptionsEditorPanel> {
                     onBuiltInSelected: widget.onCaptionBuiltInPresetSelected,
                   ),
                   const SizedBox(height: 4),
-                  _CaptionsChipSection(
-                    accent: accent,
+                  _CaptionsHorizontalChipSection(
                     scheme: scheme,
                     title: l10n.editCaptionsTextSizeLabel,
-                    spacing: () => Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
+                    height: 46,
+                    children: [
+                      for (final e in _kCaptionFontSizesOrdered)
                         _CaptionChip(
-                          label: l10n.editCaptionsSizeExtraSmall,
-                          selected: widget.fontSize ==
-                              QuickEditCaptionFontSize.extraSmall,
+                          label: _captionFontSizeLabel(l10n, e),
+                          selected: widget.fontSize == e,
                           scheme: scheme,
-                          onTap: () => widget.onFontSizeChanged(
-                            QuickEditCaptionFontSize.extraSmall,
-                          ),
+                          onTap: () => widget.onFontSizeChanged(e),
                         ),
+                    ],
+                  ),
+                  _CaptionsHorizontalChipSection(
+                    scheme: scheme,
+                    title: l10n.editCaptionsV32FontLabel,
+                    height: 46,
+                    children: [
+                      for (final f in _kCaptionFontFamiliesOrdered)
                         _CaptionChip(
-                          label: l10n.editCaptionsSizeSmall,
-                          selected:
-                              widget.fontSize == QuickEditCaptionFontSize.small,
+                          label: _captionFontFamilyLabel(l10n, f),
+                          selected: widget.fontFamily == f,
                           scheme: scheme,
-                          onTap: () => widget.onFontSizeChanged(
-                            QuickEditCaptionFontSize.small,
-                          ),
+                          onTap: () => widget.onFontFamilyChanged(f),
                         ),
-                        _CaptionChip(
-                          label: l10n.editCaptionsSizeMedium,
-                          selected: widget.fontSize ==
-                              QuickEditCaptionFontSize.medium,
-                          scheme: scheme,
-                          onTap: () => widget.onFontSizeChanged(
-                            QuickEditCaptionFontSize.medium,
-                          ),
-                        ),
-                        _CaptionChip(
-                          label: l10n.editCaptionsSizeLarge,
-                          selected:
-                              widget.fontSize == QuickEditCaptionFontSize.large,
-                          scheme: scheme,
-                          onTap: () => widget.onFontSizeChanged(
-                            QuickEditCaptionFontSize.large,
-                          ),
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
                   _CaptionsChipSection(
                     accent: accent,
@@ -566,7 +551,7 @@ class _CaptionsAdvancedStylingDisclosure extends StatelessWidget {
           _CaptionsChipSection(
             accent: accent,
             scheme: scheme,
-            title: l10n.editCaptionsColorLabel,
+            title: l10n.editCaptionsV32AccentLabel,
             spacing: () => Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -583,6 +568,18 @@ class _CaptionsAdvancedStylingDisclosure extends StatelessWidget {
                   scheme: scheme,
                   onTap: () => onColorChanged(QuickEditCaptionColor.yellow),
                 ),
+                _CaptionChip(
+                  label: l10n.editCaptionsV32ColorPurple,
+                  selected: color == QuickEditCaptionColor.purple,
+                  scheme: scheme,
+                  onTap: () => onColorChanged(QuickEditCaptionColor.purple),
+                ),
+                _CaptionChip(
+                  label: l10n.editCaptionsV32ColorMint,
+                  selected: color == QuickEditCaptionColor.mint,
+                  scheme: scheme,
+                  onTap: () => onColorChanged(QuickEditCaptionColor.mint),
+                ),
               ],
             ),
           ),
@@ -594,25 +591,13 @@ class _CaptionsAdvancedStylingDisclosure extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _CaptionChip(
-                  label: l10n.editCaptionsStyleClean,
-                  selected: stylePreset == QuickEditCaptionsStylePreset.clean,
-                  scheme: scheme,
-                  onTap: () => onStyleChanged(QuickEditCaptionsStylePreset.clean),
-                ),
-                _CaptionChip(
-                  label: l10n.editCaptionsStyleBold,
-                  selected: stylePreset == QuickEditCaptionsStylePreset.bold,
-                  scheme: scheme,
-                  onTap: () => onStyleChanged(QuickEditCaptionsStylePreset.bold),
-                ),
-                _CaptionChip(
-                  label: l10n.editCaptionsStyleDarkBox,
-                  selected: stylePreset == QuickEditCaptionsStylePreset.darkBox,
-                  scheme: scheme,
-                  onTap: () =>
-                      onStyleChanged(QuickEditCaptionsStylePreset.darkBox),
-                ),
+                for (final s in _kCaptionStylesOrdered)
+                  _CaptionChip(
+                    label: _captionStyleLabel(l10n, s),
+                    selected: stylePreset == s,
+                    scheme: scheme,
+                    onTap: () => onStyleChanged(s),
+                  ),
               ],
             ),
           ),
@@ -640,7 +625,71 @@ String _captionsPresetChipLabel(AppLocalizations l10n, QuickEditCaptionPreset pr
     QuickEditCaptionPreset.boldYellow => l10n.editCaptionsPresetBoldYellow,
     QuickEditCaptionPreset.darkBox => l10n.editCaptionsPresetDarkBox,
     QuickEditCaptionPreset.topClean => l10n.editCaptionsPresetTopClean,
+    QuickEditCaptionPreset.creatorHighlight => l10n.editCaptionsV32PresetCreatorHighlight,
+    QuickEditCaptionPreset.newsHeadline => l10n.editCaptionsV32PresetNewsHeadline,
     QuickEditCaptionPreset.custom => "",
+  };
+}
+
+const _kCaptionFontSizesOrdered = [
+  QuickEditCaptionFontSize.extraSmall,
+  QuickEditCaptionFontSize.small,
+  QuickEditCaptionFontSize.medium,
+  QuickEditCaptionFontSize.large,
+  QuickEditCaptionFontSize.xLarge,
+  QuickEditCaptionFontSize.xxLarge,
+];
+
+const _kCaptionFontFamiliesOrdered = [
+  QuickEditCaptionFontFamily.defaultFamily,
+  QuickEditCaptionFontFamily.heebo,
+  QuickEditCaptionFontFamily.rubik,
+  QuickEditCaptionFontFamily.assistant,
+  QuickEditCaptionFontFamily.notoSansHebrew,
+];
+
+const _kCaptionStylesOrdered = [
+  QuickEditCaptionsStylePreset.clean,
+  QuickEditCaptionsStylePreset.bold,
+  QuickEditCaptionsStylePreset.darkBox,
+  QuickEditCaptionsStylePreset.cleanPro,
+  QuickEditCaptionsStylePreset.boldSocial,
+  QuickEditCaptionsStylePreset.yellowHeadline,
+  QuickEditCaptionsStylePreset.darkBubble,
+  QuickEditCaptionsStylePreset.highlightBox,
+];
+
+String _captionFontSizeLabel(AppLocalizations l10n, QuickEditCaptionFontSize size) {
+  return switch (size) {
+    QuickEditCaptionFontSize.extraSmall => l10n.editCaptionsSizeExtraSmall,
+    QuickEditCaptionFontSize.small => l10n.editCaptionsSizeSmall,
+    QuickEditCaptionFontSize.medium => l10n.editCaptionsSizeMedium,
+    QuickEditCaptionFontSize.large => l10n.editCaptionsSizeLarge,
+    QuickEditCaptionFontSize.xLarge => l10n.editCaptionsV32SizeXL,
+    QuickEditCaptionFontSize.xxLarge => l10n.editCaptionsV32SizeXXL,
+  };
+}
+
+String _captionFontFamilyLabel(AppLocalizations l10n, QuickEditCaptionFontFamily family) {
+  return switch (family) {
+    QuickEditCaptionFontFamily.defaultFamily => l10n.editCaptionsV32FontDefault,
+    QuickEditCaptionFontFamily.heebo => l10n.editCaptionsV32FontHeebo,
+    QuickEditCaptionFontFamily.rubik => l10n.editCaptionsV32FontRubik,
+    QuickEditCaptionFontFamily.assistant => l10n.editCaptionsV32FontAssistant,
+    QuickEditCaptionFontFamily.notoSansHebrew => l10n.editCaptionsV32FontNotoSansHebrew,
+  };
+}
+
+String _captionStyleLabel(AppLocalizations l10n, QuickEditCaptionsStylePreset style) {
+  return switch (style) {
+    QuickEditCaptionsStylePreset.clean => l10n.editCaptionsStyleClean,
+    QuickEditCaptionsStylePreset.bold => l10n.editCaptionsStyleBold,
+    QuickEditCaptionsStylePreset.darkBox => l10n.editCaptionsStyleDarkBox,
+    QuickEditCaptionsStylePreset.cleanPro => l10n.editCaptionsV32StyleCleanPro,
+    QuickEditCaptionsStylePreset.boldSocial => l10n.editCaptionsV32StyleBoldSocial,
+    QuickEditCaptionsStylePreset.yellowHeadline => l10n.editCaptionsV32StyleYellowHeadline,
+    QuickEditCaptionsStylePreset.darkBubble => l10n.editCaptionsV32StyleDarkBubble,
+    QuickEditCaptionsStylePreset.highlightBox => l10n.editCaptionsV32StyleHighlightBox,
   };
 }
 
@@ -874,6 +923,51 @@ class _CaptionsFineTuneSection extends StatelessWidget {
 }
 
 typedef _SpacingFn = Wrap Function();
+
+class _CaptionsHorizontalChipSection extends StatelessWidget {
+  const _CaptionsHorizontalChipSection({
+    required this.scheme,
+    required this.title,
+    required this.height,
+    required this.children,
+  });
+
+  final ColorScheme scheme;
+  final String title;
+  final double height;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface.withValues(alpha: 0.88),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: height,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: children.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, i) => children[i],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _CaptionsChipSection extends StatelessWidget {
   const _CaptionsChipSection({

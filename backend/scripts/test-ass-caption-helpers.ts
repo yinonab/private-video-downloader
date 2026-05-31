@@ -22,6 +22,7 @@ const baseOpts: SegmentsToAssOpts = {
   fontSize: "medium",
   position: "bottom",
   color: "white",
+  fontFamily: "default",
   offsetX: 0,
   offsetY: 0,
 };
