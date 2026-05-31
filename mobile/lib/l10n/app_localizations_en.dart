@@ -1273,6 +1273,65 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCaptionsDraftTimingLater => 'Later';
 
   @override
+  String get editCaptionsV3AddSectionTitle => 'Add captions';
+
+  @override
+  String get editCaptionsV3DraftFlowHelper =>
+      'Generate a draft, review the text, then create the final video.';
+
+  @override
+  String get editCaptionsV3DraftReady => 'Draft ready';
+
+  @override
+  String get editCaptionsV3DraftTapHelper =>
+      'Tap a caption to edit its text and timing.';
+
+  @override
+  String get editCaptionsV3DraftStaleHelper =>
+      'Timing changed. Regenerate the draft before creating the video.';
+
+  @override
+  String get editCaptionsV3LookSectionTitle => 'Look';
+
+  @override
+  String get editCaptionsV3LookHelper =>
+      'Choose how captions appear on the final video.';
+
+  @override
+  String get editCaptionsV3MoreStylingTitle => 'More styling options';
+
+  @override
+  String get editCaptionsV3PreviewLabel => 'Preview';
+
+  @override
+  String get editCaptionsV31EditCaptionsButton => 'Edit captions';
+
+  @override
+  String get editCaptionsV31DraftEditHelper =>
+      'Tap Edit captions to review text and timing before creating the video.';
+
+  @override
+  String editCaptionsV31DraftSummaryCount(int count) {
+    return '$count captions';
+  }
+
+  @override
+  String editCaptionsV31DraftSummaryCountAdjusted(
+      int count, int adjustedCount) {
+    return '$count captions · $adjustedCount adjusted';
+  }
+
+  @override
+  String get editCaptionsV31Done => 'Done';
+
+  @override
+  String get editCaptionsV31StaleBeforeEdit =>
+      'Timing changed. Regenerate the draft before editing captions.';
+
+  @override
+  String get editCaptionsV31ScreenTitle => 'Edit captions';
+
+  @override
   String get errorCaptionsDraftUnavailable =>
       'Could not generate captions draft.';
 

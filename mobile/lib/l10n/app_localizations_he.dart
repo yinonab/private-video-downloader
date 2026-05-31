@@ -1257,6 +1257,65 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editCaptionsDraftTimingLater => 'מאוחר יותר';
 
   @override
+  String get editCaptionsV3AddSectionTitle => 'הוספת כתוביות';
+
+  @override
+  String get editCaptionsV3DraftFlowHelper =>
+      'צור טיוטה, בדוק את הטקסט, ואז צור את הסרטון הסופי.';
+
+  @override
+  String get editCaptionsV3DraftReady => 'הטיוטה מוכנה';
+
+  @override
+  String get editCaptionsV3DraftTapHelper =>
+      'הקש על כתובית כדי לערוך טקסט ותזמון.';
+
+  @override
+  String get editCaptionsV3DraftStaleHelper =>
+      'התזמון השתנה. צור את הטיוטה מחדש לפני יצירת הסרטון.';
+
+  @override
+  String get editCaptionsV3LookSectionTitle => 'מראה';
+
+  @override
+  String get editCaptionsV3LookHelper =>
+      'בחר איך הכתוביות יופיעו בסרטון הסופי.';
+
+  @override
+  String get editCaptionsV3MoreStylingTitle => 'אפשרויות עיצוב נוספות';
+
+  @override
+  String get editCaptionsV3PreviewLabel => 'תצוגה מקדימה';
+
+  @override
+  String get editCaptionsV31EditCaptionsButton => 'ערוך כתוביות';
+
+  @override
+  String get editCaptionsV31DraftEditHelper =>
+      'הקש על ערוך כתוביות כדי לבדוק טקסט ותזמון לפני יצירת הסרטון.';
+
+  @override
+  String editCaptionsV31DraftSummaryCount(int count) {
+    return '$count כתוביות';
+  }
+
+  @override
+  String editCaptionsV31DraftSummaryCountAdjusted(
+      int count, int adjustedCount) {
+    return '$count כתוביות · $adjustedCount שונו';
+  }
+
+  @override
+  String get editCaptionsV31Done => 'סיום';
+
+  @override
+  String get editCaptionsV31StaleBeforeEdit =>
+      'התזמון השתנה. צור את הטיוטה מחדש לפני עריכת הכתוביות.';
+
+  @override
+  String get editCaptionsV31ScreenTitle => 'עריכת כתוביות';
+
+  @override
   String get errorCaptionsDraftUnavailable => 'לא ניתן ליצור טיוטת כתוביות.';
 
   @override

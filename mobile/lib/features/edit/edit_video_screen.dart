@@ -33,6 +33,7 @@ import "widgets/edit_video_preview.dart";
 import "widgets/edit_video_preview_source.dart";
 import "widgets/edit_captions_preview_overlay.dart";
 import "quick_edit_source_expired_sheet.dart";
+import "caption_draft_editor_screen.dart";
 import "widgets/captions_editor_panel.dart";
 import "widgets/speed_editor.dart";
 import "widgets/trim_editor.dart";
@@ -300,6 +301,27 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     );
     if (ok != true || !mounted) return;
     await _generateCaptionsDraft();
+  }
+
+  Future<void> _openCaptionDraftEditor() async {
+    final segments = _captionsDraftSegments;
+    if (segments == null ||
+        segments.isEmpty ||
+        _captionsDraftRegenHint ||
+        _captionsDraftGenerating) {
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (ctx) => CaptionDraftEditorScreen(
+          initialSegments: segments,
+          videoDurationSec: _durationSec,
+          onSegmentUpdated: _onCaptionDraftSegmentUpdated,
+          onClearSegment: _onClearCaptionDraftSegment,
+        ),
+      ),
+    );
   }
 
   Future<void> _loadDetail() async {
@@ -1122,11 +1144,9 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                         onRegenerateCaptionsDraftRequested:
                             _confirmAndRegenerateCaptionsDraft,
                         captionDraftSegments: _captionsDraftSegments,
-                        onCaptionDraftSegmentUpdated: _onCaptionDraftSegmentUpdated,
-                        onClearCaptionDraftSegmentText: _onClearCaptionDraftSegment,
+                        onEditCaptionsDraft: _openCaptionDraftEditor,
                         isCaptionDraftGenerating: _captionsDraftGenerating,
                         showCaptionDraftTimingStaleHint: _captionsDraftRegenHint,
-                        videoDurationSec: _durationSec,
                         onAutoCaptionsChanged: (v) => setState(() {
                           _captionsAuto = v;
                           if (!v) {

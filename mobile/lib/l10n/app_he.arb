@@ -470,6 +470,33 @@
   "editCaptionsDraftTimingAdjusted": "שונה",
   "editCaptionsDraftTimingEarlier": "מוקדם יותר",
   "editCaptionsDraftTimingLater": "מאוחר יותר",
+  "editCaptionsV3AddSectionTitle": "הוספת כתוביות",
+  "editCaptionsV3DraftFlowHelper": "צור טיוטה, בדוק את הטקסט, ואז צור את הסרטון הסופי.",
+  "editCaptionsV3DraftReady": "הטיוטה מוכנה",
+  "editCaptionsV3DraftTapHelper": "הקש על כתובית כדי לערוך טקסט ותזמון.",
+  "editCaptionsV3DraftStaleHelper": "התזמון השתנה. צור את הטיוטה מחדש לפני יצירת הסרטון.",
+  "editCaptionsV3LookSectionTitle": "מראה",
+  "editCaptionsV3LookHelper": "בחר איך הכתוביות יופיעו בסרטון הסופי.",
+  "editCaptionsV3MoreStylingTitle": "אפשרויות עיצוב נוספות",
+  "editCaptionsV3PreviewLabel": "תצוגה מקדימה",
+  "editCaptionsV31EditCaptionsButton": "ערוך כתוביות",
+  "editCaptionsV31DraftEditHelper": "הקש על ערוך כתוביות כדי לבדוק טקסט ותזמון לפני יצירת הסרטון.",
+  "editCaptionsV31DraftSummaryCount": "{count} כתוביות",
+  "@editCaptionsV31DraftSummaryCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "editCaptionsV31DraftSummaryCountAdjusted": "{count} כתוביות · {adjustedCount} שונו",
+  "@editCaptionsV31DraftSummaryCountAdjusted": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "adjustedCount": {"type": "int"}
+    }
+  },
+  "editCaptionsV31Done": "סיום",
+  "editCaptionsV31StaleBeforeEdit": "התזמון השתנה. צור את הטיוטה מחדש לפני עריכת הכתוביות.",
+  "editCaptionsV31ScreenTitle": "עריכת כתוביות",
   "errorCaptionsDraftUnavailable": "לא ניתן ליצור טיוטת כתוביות.",
   "errorCaptionsStyleNotSupported": "סגנון הכתוביות הזה לא נתמך.",
   "errorCaptionsPositionNotSupported": "מיקום הכתוביות הזה לא נתמך.",

@@ -2420,6 +2420,102 @@ abstract class AppLocalizations {
   /// **'Later'**
   String get editCaptionsDraftTimingLater;
 
+  /// No description provided for @editCaptionsV3AddSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add captions'**
+  String get editCaptionsV3AddSectionTitle;
+
+  /// No description provided for @editCaptionsV3DraftFlowHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate a draft, review the text, then create the final video.'**
+  String get editCaptionsV3DraftFlowHelper;
+
+  /// No description provided for @editCaptionsV3DraftReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft ready'**
+  String get editCaptionsV3DraftReady;
+
+  /// No description provided for @editCaptionsV3DraftTapHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a caption to edit its text and timing.'**
+  String get editCaptionsV3DraftTapHelper;
+
+  /// No description provided for @editCaptionsV3DraftStaleHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Timing changed. Regenerate the draft before creating the video.'**
+  String get editCaptionsV3DraftStaleHelper;
+
+  /// No description provided for @editCaptionsV3LookSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Look'**
+  String get editCaptionsV3LookSectionTitle;
+
+  /// No description provided for @editCaptionsV3LookHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how captions appear on the final video.'**
+  String get editCaptionsV3LookHelper;
+
+  /// No description provided for @editCaptionsV3MoreStylingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'More styling options'**
+  String get editCaptionsV3MoreStylingTitle;
+
+  /// No description provided for @editCaptionsV3PreviewLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get editCaptionsV3PreviewLabel;
+
+  /// No description provided for @editCaptionsV31EditCaptionsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit captions'**
+  String get editCaptionsV31EditCaptionsButton;
+
+  /// No description provided for @editCaptionsV31DraftEditHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Edit captions to review text and timing before creating the video.'**
+  String get editCaptionsV31DraftEditHelper;
+
+  /// No description provided for @editCaptionsV31DraftSummaryCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} captions'**
+  String editCaptionsV31DraftSummaryCount(int count);
+
+  /// No description provided for @editCaptionsV31DraftSummaryCountAdjusted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} captions · {adjustedCount} adjusted'**
+  String editCaptionsV31DraftSummaryCountAdjusted(int count, int adjustedCount);
+
+  /// No description provided for @editCaptionsV31Done.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get editCaptionsV31Done;
+
+  /// No description provided for @editCaptionsV31StaleBeforeEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Timing changed. Regenerate the draft before editing captions.'**
+  String get editCaptionsV31StaleBeforeEdit;
+
+  /// No description provided for @editCaptionsV31ScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit captions'**
+  String get editCaptionsV31ScreenTitle;
+
   /// No description provided for @errorCaptionsDraftUnavailable.
   ///
   /// In en, this message translates to:

@@ -29,77 +29,104 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor =
-        color == QuickEditCaptionColor.yellow ? const Color(0xFFFFD966) : Colors.white;
+    final theme = Theme.of(context);
+    final textColor = color == QuickEditCaptionColor.yellow
+        ? const Color(0xFFFFD966)
+        : Colors.white;
     final fz = switch (fontSize) {
-      QuickEditCaptionFontSize.extraSmall => 10.4,
-      QuickEditCaptionFontSize.small => 11.8,
-      QuickEditCaptionFontSize.medium => 13.9,
-      QuickEditCaptionFontSize.large => 16.4,
+      QuickEditCaptionFontSize.extraSmall => 9.6,
+      QuickEditCaptionFontSize.small => 10.8,
+      QuickEditCaptionFontSize.medium => 12.6,
+      QuickEditCaptionFontSize.large => 14.8,
     };
     final fw = switch (stylePreset) {
       QuickEditCaptionsStylePreset.bold => FontWeight.w700,
       _ => FontWeight.w500,
     };
 
-    TextStyle cleanBoldBase() => TextStyle(
+    TextStyle sampleStyle() => TextStyle(
           color: textColor,
           fontSize: fz,
           fontWeight: fw,
-          height: 1.2,
+          height: 1.15,
         );
 
-    late final Widget body;
+    late final Widget captionBody;
     switch (stylePreset) {
       case QuickEditCaptionsStylePreset.darkBox:
-        body = DecoratedBox(
+        captionBody = DecoratedBox(
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.74),
-            borderRadius: BorderRadius.circular(10),
+            color: Colors.black.withValues(alpha: 0.78),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             child: Text(
               l10n.editCaptionsSampleLabel,
               textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.fade,
-              style: cleanBoldBase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: sampleStyle(),
             ),
           ),
         );
         break;
       case QuickEditCaptionsStylePreset.bold:
-        body = Text(
+        captionBody = Text(
           l10n.editCaptionsSampleLabel,
           textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.fade,
-          style: cleanBoldBase().copyWith(
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: sampleStyle().copyWith(
             shadows: [
-              Shadow(blurRadius: 14, color: Colors.black.withValues(alpha: 0.92)),
+              Shadow(
+                blurRadius: 10,
+                color: Colors.black.withValues(alpha: 0.9),
+              ),
               Shadow(
                 blurRadius: 0,
-                offset: const Offset(0, 1.5),
-                color: Colors.black.withValues(alpha: 0.92),
+                offset: const Offset(0, 1),
+                color: Colors.black.withValues(alpha: 0.88),
               ),
             ],
           ),
         );
         break;
       case QuickEditCaptionsStylePreset.clean:
-        body = Text(
+        captionBody = Text(
           l10n.editCaptionsSampleLabel,
           textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.fade,
-          style: cleanBoldBase().copyWith(
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: sampleStyle().copyWith(
             shadows: [
-              Shadow(blurRadius: 11, color: Colors.black.withValues(alpha: 0.88)),
+              Shadow(
+                blurRadius: 8,
+                color: Colors.black.withValues(alpha: 0.82),
+              ),
             ],
           ),
         );
     }
+
+    final previewLabel = DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        child: Text(
+          l10n.editCaptionsV3PreviewLabel,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: Colors.white.withValues(alpha: 0.88),
+            fontWeight: FontWeight.w600,
+            fontSize: 9.5,
+            letterSpacing: 0.1,
+          ),
+        ),
+      ),
+    );
 
     return LayoutBuilder(
       builder: (context, c) {
@@ -110,24 +137,40 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
         final dx = offsetXAss * sx;
         final dy = offsetYAss * sy;
         final bottom = position == QuickEditCaptionPosition.bottom;
-        final baseY = bottom ? (-h * 0.086) : (h * 0.086);
-        final fx = dx.clamp(-w * 0.42, w * 0.42).toDouble();
-        final fy = (baseY + dy).clamp(
-          bottom ? -h * 0.42 : -h * 0.06,
-          bottom ? h * 0.06 : h * 0.42,
-        ).toDouble();
+        final baseY = bottom ? (-h * 0.068) : (h * 0.068);
+        final fx = dx.clamp(-w * 0.36, w * 0.36).toDouble();
+        final fy = (baseY + dy)
+            .clamp(
+              bottom ? -h * 0.34 : -h * 0.05,
+              bottom ? h * 0.05 : h * 0.34,
+            )
+            .toDouble();
 
         return Stack(
           fit: StackFit.expand,
           clipBehavior: Clip.hardEdge,
           children: [
             Align(
-              alignment: bottom ? Alignment.bottomCenter : Alignment.topCenter,
+              alignment:
+                  bottom ? Alignment.bottomCenter : Alignment.topCenter,
               child: Transform.translate(
                 offset: Offset(fx, fy),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: body,
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!bottom) ...[
+                        previewLabel,
+                        const SizedBox(height: 4),
+                      ],
+                      captionBody,
+                      if (bottom) ...[
+                        const SizedBox(height: 4),
+                        previewLabel,
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),
