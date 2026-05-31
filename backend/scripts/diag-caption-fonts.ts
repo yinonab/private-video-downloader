@@ -17,9 +17,11 @@ function fcMatch(family: string): string {
 }
 
 console.info("caption fonts diagnostic (fontconfig):");
+let unresolved = 0;
 for (const f of families) {
   const resolved = fcMatch(f);
   const ok = resolved.toLowerCase().includes(f.split(" ")[0]!.toLowerCase());
+  if (!ok) unresolved++;
   console.info(`  ${f} -> ${resolved}${ok ? "" : " (fallback)"}`);
 }
 
@@ -28,4 +30,9 @@ try {
   console.info("fontconfig: OK");
 } catch {
   console.warn("fontconfig: fc-list unavailable");
+}
+
+if (unresolved > 0) {
+  console.error(`caption fonts: ${unresolved} family(ies) not resolved`);
+  process.exit(1);
 }

@@ -27,14 +27,10 @@ RUN mkdir -p /usr/share/fonts/truetype/linkclip \
 
 RUN ffmpeg -version && ffprobe -version
 
-# Bare `pip install yt-dlp` installs almost no deps (pyproject has dependencies=[]).
-# `default` installs yt-dlp-ejs (bundled challenge solver scripts) + requests/websockets/etc.
-# `curl-cffi` adds TLS impersonation support when wheels exist for the platform (recommended for YouTube).
-RUN python3 -m pip install --break-system-packages --no-cache-dir -U "yt-dlp[default,curl-cffi]" \
-    && yt-dlp --version \
-    && python3 -m pip show yt-dlp-ejs \
-    && node --version \
-    && command -v node
+RUN python3 -m pip install --break-system-packages --no-cache-dir -U yt-dlp yt-dlp-ejs
+
+RUN yt-dlp --version \
+    && python3 -m pip show yt-dlp yt-dlp-ejs >/dev/null
 
 WORKDIR /app
 

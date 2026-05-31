@@ -24,7 +24,7 @@ Polished technical overview of the **private-video-downloader** / **LinkClip** r
 | API | Node.js, TypeScript, **Fastify** (`backend/src/`) |
 | Jobs | **Redis** + **BullMQ** (download queue + edit queue) |
 | Database | **PostgreSQL** via **Prisma** |
-| Acquisition | **yt-dlp** (`yt-dlp[default,curl-cffi]`), **ffmpeg** / **ffprobe** |
+| Acquisition | **yt-dlp**, **yt-dlp-ejs** (explicit pip in Docker image), **ffmpeg** / **ffprobe** |
 | Production deploy | **Docker Compose** (documented for Hetzner VPS + Caddy TLS) |
 
 **Documented production API host:** `https://api.linkclip.win` (see `backend/DEPLOY_HETZNER.md`).
@@ -146,7 +146,7 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 
 ### Admin & diagnostics
 
-- **`GET /admin/diagnostics`** — structured checks: storage, yt-dlp, ffmpeg, cookies heuristic, YouTube readiness, DB, Redis, queues, recent failures. Details: `backend/docs/ADMIN_DIAGNOSTICS.md`.
+- **`GET /admin/diagnostics`** — structured checks: storage, yt-dlp, ffmpeg, cookies heuristic, YouTube readiness, DB, Redis, queues, recent failures. Details: `backend/docs/ADMIN_DIAGNOSTICS.md`. **Production runtime:** `cd backend && npm run diag:runtime` validates **yt-dlp**, **yt-dlp-ejs** (pip), **node**, **ffmpeg**, and **caption fonts** (when fontconfig is present) before trusting download health.
 - **`GET /health`** — public liveness.
 - Other admin routes (e.g. invite codes) — see `admin.routes.ts`.
 
@@ -286,7 +286,7 @@ mobile/build/app/outputs/flutter-apk/app-release.apk
 
 - **`COOKIES_FILE`:** Points to Netscape-format cookies (e.g. `/app/secrets/cookies/global.txt`); diagnostics validate existence, non-empty, heuristic Netscape shape (`ADMIN_DIAGNOSTICS.md`).
 - **Writable copy:** yt-dlp invocations use a **temp copy** so the mounted secret stays read-only (`linkclip-cookies-*.txt` pattern in `ytdlp.ts`).
-- **Install:** Docker image installs **`yt-dlp[default,curl-cffi]`** — brings **`yt-dlp-ejs`** and TLS impersonation extras (`backend/Dockerfile`). **Caption fonts (V3.2):** **`fontconfig`**, **`fonts-noto-core`/`extra`**, OFL **Heebo/Rubik/Assistant** TTFs + **`fc-cache`** for ASS burn-in.
+- **Install:** Docker image installs **`yt-dlp`** and **`yt-dlp-ejs`** explicitly via pip (build fails if either is missing — `yt-dlp --version` + `pip show` in image build). **Caption fonts (V3.2):** **`fontconfig`**, **`fonts-noto-core`/`extra`**, OFL variable **Heebo/Rubik/Assistant** TTFs + **`fc-cache`** for ASS burn-in. **Runtime check:** `cd backend && npm run diag:runtime` (yt-dlp, yt-dlp-ejs, node, ffmpeg; caption fonts when fontconfig is present).
 - **Node as JS runtime:** Image ensures `node` on PATH; yt-dlp gets **`--no-js-runtimes --js-runtimes node`** (`YTDLP_JS_RUNTIME_ARGS`) for YouTube **n/challenge** scripts.
 - **Diagnostics:** `youtubeReady` combines yt-dlp version, Node, `yt-dlp-ejs` import, and JS args match (`diagnostics.service.ts`).
 
