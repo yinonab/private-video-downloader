@@ -45,7 +45,15 @@ export async function renderCaptionHighlightPlate(input: RenderPlateInput): Prom
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, input.canvasWidth, input.canvasHeight);
 
-  const layout = layoutCaptionBlock(ctx, { ...input, offsetY: input.offsetY }, fontLabel);
+  const layout = layoutCaptionBlock(
+    ctx,
+    {
+      ...input,
+      offsetY: input.offsetY,
+      canvas: { width: input.canvasWidth, height: input.canvasHeight },
+    },
+    fontLabel,
+  );
   const tokens = tokenizeCaptionText(input.text);
   const activeIdx = Math.max(0, Math.min(input.activeWordIndex, Math.max(0, tokens.length - 1)));
 

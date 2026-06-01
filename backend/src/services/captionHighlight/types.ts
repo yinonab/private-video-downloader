@@ -81,6 +81,8 @@ export type HighlightBurnPlan = {
   readonly plateCount: number;
   readonly wordCount: number;
   readonly usedFallbackTiming: boolean;
+  readonly canvasWidth: number;
+  readonly canvasHeight: number;
 };
 
 export type ResolvedHighlightStyle = {

@@ -3,7 +3,7 @@
  * Run: npm run diag:caption-highlight
  */
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -11,10 +11,15 @@ import { spawnSync } from "node:child_process";
 import type { CaptionsBurnInV1Resolved } from "../src/modules/edit/edit.types";
 import {
   buildCaptionHighlightBurnPlan,
+  buildOverlayFfmpegInputArgs,
+  buildTimedOverlayFilterComplex,
   captionsConfigForAssBurn,
   renderCaptionHighlightPlate,
   tokenizeCaptionText,
+  validateOverlayFilterComplex,
+  type TimedOverlayPlate,
 } from "../src/services/captionHighlight";
+import { createCanvas } from "@napi-rs/canvas";
 import { segmentsToAssContent } from "../src/services/assSubtitles.service";
 import type { TranscriptSegment } from "../src/services/transcription.service";
 
@@ -101,8 +106,90 @@ function assertKillSwitchStaticAss(): void {
   console.info("diag:caption-highlight ok kill-switch static ASS (flag-off / fallback path)");
 }
 
+function syntheticTimedPlates(count: number): TimedOverlayPlate[] {
+  return Array.from({ length: count }, (_, i) => ({
+    path: `plate-${i}.png`,
+    startSec: i * 0.5,
+    endSec: (i + 1) * 0.5,
+  }));
+}
+
+function assertFilterComplexLabels(): void {
+  for (const n of [1, 2, 3, 60] as const) {
+    const built = buildTimedOverlayFilterComplex(syntheticTimedPlates(n));
+    assert.ok(built, `filter build for ${n} plates`);
+    validateOverlayFilterComplex(built);
+    if (n === 1) {
+      assert.ok(built.filter.includes("[0:v][1:v]overlay") && built.filter.endsWith("[vout]"));
+    }
+    if (n === 3) {
+      assert.ok(built.filter.includes("[vx0][2:v]overlay"));
+      assert.ok(built.filter.includes("[vx1][3:v]overlay"));
+    }
+  }
+  console.info("diag:caption-highlight ok filter_complex labels (1,2,3,60)");
+}
+
+async function writeSolidTestPlate(outPath: string, width: number, height: number): Promise<void> {
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "rgba(255, 217, 102, 0.92)";
+  const bw = Math.round(width * 0.35);
+  const bh = Math.round(height * 0.08);
+  ctx.fillRect(Math.round((width - bw) / 2), Math.round(height * 0.72), bw, bh);
+  writeFileSync(outPath, await canvas.encode("png"));
+}
+
+async function ffmpegOverlaySmoke(
+  label: string,
+  plateCount: number,
+  videoW: number,
+  videoH: number,
+  outDir: string,
+): Promise<void> {
+  const plates: TimedOverlayPlate[] = [];
+  for (let i = 0; i < plateCount; i++) {
+    const platePath = path.join(outDir, `smoke-${label}-${i}.png`);
+    await writeSolidTestPlate(platePath, videoW, videoH);
+    plates.push({ path: platePath, startSec: i * 0.5, endSec: (i + 1) * 0.5 });
+  }
+  const built = buildTimedOverlayFilterComplex(plates);
+  assert.ok(built);
+  validateOverlayFilterComplex(built);
+  const duration = plateCount * 0.5;
+  const mp4 = path.join(outDir, `smoke-${label}.mp4`);
+  const args = [
+    "-hide_banner",
+    "-y",
+    "-f",
+    "lavfi",
+    "-i",
+    `color=c=black:s=${videoW}x${videoH}:d=${duration}:r=30`,
+    ...buildOverlayFfmpegInputArgs(plates),
+    "-filter_complex",
+    built.filter,
+    "-map",
+    "[vout]",
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    mp4,
+  ];
+  const run = spawnSync("ffmpeg", args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+  if (run.status !== 0) {
+    throw new Error(
+      `ffmpeg overlay smoke ${label} failed: ${(run.stderr ?? "").slice(-800)}`,
+    );
+  }
+  assert.ok(existsSync(mp4), `smoke mp4 ${label}`);
+  console.info(`diag:caption-highlight ok ffmpeg overlay smoke ${label} plates=${plateCount} ${videoW}x${videoH}`);
+}
+
 async function main(): Promise<void> {
   assertKillSwitchStaticAss();
+  assertFilterComplexLabels();
 
   const outRoot = mkdtempSync(path.join(os.tmpdir(), "linkclip-diag-cap-"));
   mkdirSync(outRoot, { recursive: true });
@@ -173,17 +260,42 @@ async function main(): Promise<void> {
         id: "missing-words",
         seg: { startSec: 0, endSec: 2, text: he1 },
       },
+      {
+        id: "portrait-probe",
+        seg: {
+          startSec: 0,
+          endSec: 2,
+          text: he1,
+          words: [
+            { startSec: 0, endSec: 0.5, text: "מה" },
+            { startSec: 0.5, endSec: 1, text: "משותף" },
+            { startSec: 1, endSec: 1.5, text: "לדברים" },
+            { startSec: 1.5, endSec: 2, text: "הבאים" },
+          ],
+        },
+        cfg: { wordHighlight: "box", boxShape: "pill" },
+      },
     ];
 
     for (const s of samples) {
       const dir = path.join(outRoot, s.id);
       const cfg = { ...baseCfg, ...s.cfg };
-      const plan = await buildCaptionHighlightBurnPlan([s.seg], cfg, dir);
+      const videoSize =
+        s.id === "portrait-probe"
+          ? { width: 1080, height: 1920 }
+          : undefined;
+      const plan = await buildCaptionHighlightBurnPlan([s.seg], cfg, dir, videoSize);
       assert.ok(plan.plateCount > 0, `${s.id} plates`);
+      if (videoSize) {
+        assert.equal(plan.canvasWidth, 1080, `${s.id} canvas width`);
+        assert.equal(plan.canvasHeight, 1920, `${s.id} canvas height`);
+      }
       for (const p of plan.plates) {
         assertPlateIntegrity(p.platePath, p.activeWordIndex, tokenizeCaptionText(s.seg.text).length);
       }
-      console.info(`diag:caption-highlight ok sample=${s.id} plates=${plan.plateCount} fallback=${plan.usedFallbackTiming}`);
+      console.info(
+        `diag:caption-highlight ok sample=${s.id} plates=${plan.plateCount} size=${plan.canvasWidth}x${plan.canvasHeight} fallback=${plan.usedFallbackTiming}`,
+      );
     }
 
     for (const shape of ["rectangle", "rounded", "pill"] as const) {
@@ -219,46 +331,61 @@ async function main(): Promise<void> {
 
     const ff = spawnSync("ffmpeg", ["-version"], { encoding: "utf8" });
     if (ff.status === 0) {
-      const plates = readdirSync(path.join(outRoot, "he1"))
-        .filter((f) => f.endsWith(".png"))
-        .slice(0, 4)
-        .map((f) => path.join(outRoot, "he1", f));
-      if (plates.length >= 2) {
-        const mp4 = path.join(outRoot, "smoke.mp4");
-        const args = [
-          "-hide_banner",
-          "-y",
-          "-f",
-          "lavfi",
-          "-i",
-          "color=c=black:s=960x540:d=2:r=30",
-          "-loop",
-          "1",
-          "-t",
-          "1",
-          "-i",
-          plates[0]!,
-          "-loop",
-          "1",
-          "-t",
-          "1",
-          "-i",
-          plates[1]!,
-          "-filter_complex",
-          "[0:v][1:v]overlay=enable='between(t,0,1)'[v1];[v1][2:v]overlay=enable='between(t,1,2)'[vout]",
-          "-map",
-          "[vout]",
-          "-c:v",
-          "libx264",
-          "-pix_fmt",
-          "yuv420p",
-          mp4,
-        ];
-        const run = spawnSync("ffmpeg", args, { encoding: "utf8" });
-        assert.equal(run.status, 0, "ffmpeg smoke composite");
-        assert.ok(existsSync(mp4), "smoke mp4 exists");
-        console.info("diag:caption-highlight ok ffmpeg smoke composite");
-      }
+      const smokeDir = path.join(outRoot, "ffmpeg-smoke");
+      mkdirSync(smokeDir, { recursive: true });
+      await ffmpegOverlaySmoke("n1", 1, 960, 540, smokeDir);
+      await ffmpegOverlaySmoke("n3", 3, 960, 540, smokeDir);
+      await ffmpegOverlaySmoke("portrait", 3, 1080, 1920, smokeDir);
+
+      const boxPlan = await buildCaptionHighlightBurnPlan(
+        [
+          {
+            startSec: 0,
+            endSec: 2,
+            text: he1,
+            words: [
+              { startSec: 0, endSec: 0.5, text: "מה" },
+              { startSec: 0.5, endSec: 1, text: "משותף" },
+              { startSec: 1, endSec: 1.5, text: "לדברים" },
+              { startSec: 1.5, endSec: 2, text: "הבאים" },
+            ],
+          },
+        ],
+        { ...baseCfg, wordHighlight: "box", boxShape: "pill" },
+        path.join(smokeDir, "box-plates"),
+        { width: 1080, height: 1920 },
+      );
+      assert.ok(boxPlan.plateCount >= 1);
+      const timed = boxPlan.plates.map((p) => ({
+        path: p.platePath,
+        startSec: p.startSec,
+        endSec: p.endSec,
+      }));
+      const built = buildTimedOverlayFilterComplex(timed)!;
+      validateOverlayFilterComplex(built);
+      const boxMp4 = path.join(smokeDir, "box-visible.mp4");
+      const boxArgs = [
+        "-hide_banner",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        "color=c=black:s=1080x1920:d=2:r=30",
+        ...buildOverlayFfmpegInputArgs(timed),
+        "-filter_complex",
+        built.filter,
+        "-map",
+        "[vout]",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        boxMp4,
+      ];
+      const boxRun = spawnSync("ffmpeg", boxArgs, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+      assert.equal(boxRun.status, 0, `box visible smoke: ${(boxRun.stderr ?? "").slice(-400)}`);
+      assert.ok(existsSync(boxMp4), "box visible mp4");
+      console.info("diag:caption-highlight ok ffmpeg box-visible portrait composite");
     } else {
       console.info("diag:caption-highlight skip ffmpeg (not installed)");
     }

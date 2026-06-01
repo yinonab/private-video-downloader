@@ -6,11 +6,11 @@ import type { TranscriptSegment } from "../transcription.service";
 import { chunkSegmentForHighlight } from "./chunk";
 import { resolveHighlightStyle } from "./colors";
 import {
-  CAPTION_PLAY_H,
-  CAPTION_PLAY_W,
+  type CaptionCanvasSize,
   captionFontSizePx,
   captionFontWeight,
   captionMaxLineWidthPx,
+  resolveCaptionCanvasSize,
 } from "./dimensions";
 import { renderCaptionHighlightPlate } from "./renderPlate";
 import { resolveWordTimingCues } from "./timing";
@@ -22,6 +22,7 @@ function plateCacheKey(
   activeIndex: number,
   style: ReturnType<typeof resolveHighlightStyle>,
   cfg: CaptionsBurnInV1Resolved,
+  canvas: CaptionCanvasSize,
 ): string {
   const h = createHash("sha256");
   h.update(text);
@@ -36,6 +37,8 @@ function plateCacheKey(
   h.update(cfg.position);
   h.update(String(cfg.offsetX));
   h.update(String(cfg.offsetY));
+  h.update(String(canvas.width));
+  h.update(String(canvas.height));
   return h.digest("hex").slice(0, 20);
 }
 
@@ -44,6 +47,7 @@ function buildPlateInput(
   activeWordIndex: number,
   cfg: CaptionsBurnInV1Resolved,
   style: ReturnType<typeof resolveHighlightStyle>,
+  canvas: CaptionCanvasSize,
 ): RenderPlateInput {
   const displayText = text.replace(/\n/g, " ");
   return {
@@ -51,7 +55,7 @@ function buildPlateInput(
     activeWordIndex,
     direction: resolveTextDirection(displayText, "auto"),
     fontFamily: cfg.fontFamily,
-    fontSize: captionFontSizePx(cfg.fontSize),
+    fontSize: captionFontSizePx(cfg.fontSize, canvas),
     fontWeight: captionFontWeight(cfg.style),
     normalTextColor: style.normalCss,
     activeTextColor: style.activeCss,
@@ -59,10 +63,10 @@ function buildPlateInput(
     boxShape: style.boxShape,
     drawBox: style.drawBox,
     maxLines: 2,
-    canvasWidth: CAPTION_PLAY_W,
-    canvasHeight: CAPTION_PLAY_H,
+    canvasWidth: canvas.width,
+    canvasHeight: canvas.height,
     position: cfg.position,
-    maxLineWidthPx: captionMaxLineWidthPx(cfg.fontSize),
+    maxLineWidthPx: captionMaxLineWidthPx(cfg.fontSize, canvas),
     lineGapPx: 10,
     tokenGapPx: 10,
     boxPaddingXPx: 8,
@@ -82,9 +86,11 @@ export async function buildCaptionHighlightBurnPlan(
   segments: readonly TranscriptSegment[],
   cfg: CaptionsBurnInV1Resolved,
   workDir: string,
+  video?: { width?: number; height?: number },
 ): Promise<HighlightBurnPlan> {
   await fs.mkdir(workDir, { recursive: true });
 
+  const canvas = resolveCaptionCanvasSize(video);
   const style = resolveHighlightStyle(cfg);
   const plates: TimedPlate[] = [];
   const cache = new Map<string, string>();
@@ -121,10 +127,10 @@ export async function buildCaptionHighlightBurnPlan(
         const t1 = Math.min(chunk.endSec, next ? next.startSec : cue.endSec);
         if (!(t1 > t0 + 1e-4)) continue;
 
-        const key = plateCacheKey(chunk.text, cue.activeWordIndex, style, cfg);
+        const key = plateCacheKey(chunk.text, cue.activeWordIndex, style, cfg, canvas);
         let platePath = cache.get(key);
         if (!platePath) {
-          const input = buildPlateInput(chunk.text, cue.activeWordIndex, cfg, style);
+          const input = buildPlateInput(chunk.text, cue.activeWordIndex, cfg, style, canvas);
           const rendered = await renderCaptionHighlightPlate(input);
           if (rendered.activeTokenCount !== 1) {
             throw new Error(
@@ -152,5 +158,7 @@ export async function buildCaptionHighlightBurnPlan(
     plateCount: plates.length,
     wordCount,
     usedFallbackTiming,
+    canvasWidth: canvas.width,
+    canvasHeight: canvas.height,
   };
 }

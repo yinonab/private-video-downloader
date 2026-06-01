@@ -1,6 +1,7 @@
 import type { SKRSContext2D } from "@napi-rs/canvas";
 import type { CaptionLayoutResult, CaptionLineLayout, CaptionToken, RenderPlateInput } from "./types";
 import { captionFontCss } from "./fonts";
+import type { CaptionCanvasSize } from "./dimensions";
 import { captionBlockTopBase } from "./dimensions";
 import { resolveTextDirection, tokenizeCaptionText } from "./tokenize";
 
@@ -121,7 +122,7 @@ export function layoutCaptionBlock(
     | "maxLineWidthPx"
     | "lineGapPx"
     | "tokenGapPx"
-  > & { offsetY?: number },
+  > & { offsetY?: number; canvas: CaptionCanvasSize },
   fontFamilyLabel: string,
 ): CaptionLayoutResult {
   const tokens = tokenizeCaptionText(input.text);
@@ -152,8 +153,13 @@ export function layoutCaptionBlock(
   });
   const blockWidth = Math.max(...lineWidths, 0);
 
-  const blockTop = captionBlockTopBase(input.position, blockHeight, input.offsetY ?? 0);
-  const blockLeft = Math.round((input.canvasWidth - blockWidth) / 2);
+  const blockTop = captionBlockTopBase(
+    input.position,
+    blockHeight,
+    input.offsetY ?? 0,
+    input.canvas,
+  );
+  const blockLeft = Math.round((input.canvas.width - blockWidth) / 2);
 
   const lines: CaptionLineLayout[] = [];
   let yCursor = blockTop;

@@ -22,6 +22,7 @@ import {
   buildTimedOverlayFilterComplex,
   captionsConfigForAssBurn,
   usesCaptionHighlightOverlay,
+  validateOverlayFilterComplex,
 } from "../services/captionHighlight";
 import { ffprobeMedia } from "../services/ffmpegNormalize";
 import { ffmpegSubtitlesVFArgument } from "../services/ffmpegSubtitlePath";
@@ -283,10 +284,11 @@ export function createEditWorker(prisma: PrismaClient): Worker {
           }
 
           let midDurSec = timelineDurationSecGuess;
+          let midProbe: Awaited<ReturnType<typeof ffprobeMedia>> | null = null;
           try {
-            const midPb = await ffprobeMedia(captionMidAbs);
-            midDurSec = midPb.durationMs > 0 ? midPb.durationMs / 1000 : midDurSec;
-            muxHasTimelineAudio = midPb.audio != null;
+            midProbe = await ffprobeMedia(captionMidAbs);
+            midDurSec = midProbe.durationMs > 0 ? midProbe.durationMs / 1000 : midDurSec;
+            muxHasTimelineAudio = midProbe.audio != null;
           } catch {
             await unlinkCaptionArtifacts();
             await cleanupTmp();
@@ -412,7 +414,10 @@ export function createEditWorker(prisma: PrismaClient): Worker {
 
             if (wantsHighlight && overlayEnabled) {
               try {
-                const plan = await buildCaptionHighlightBurnPlan(segments, cfg, highlightDir);
+                const plan = await buildCaptionHighlightBurnPlan(segments, cfg, highlightDir, {
+                  width: midProbe?.video?.width,
+                  height: midProbe?.video?.height,
+                });
                 if (plan.plates.length === 0) {
                   throw new Error("caption_highlight_no_plates");
                 }
@@ -421,18 +426,22 @@ export function createEditWorker(prisma: PrismaClient): Worker {
                   startSec: p.startSec,
                   endSec: p.endSec,
                 }));
-                const filter = buildTimedOverlayFilterComplex(timed);
-                const extraInputArgs = buildOverlayFfmpegInputArgs(timed);
-                if (!filter) {
+                const filterBuild = buildTimedOverlayFilterComplex(timed);
+                if (!filterBuild) {
                   throw new Error("caption_highlight_no_filter");
                 }
-                captionBurn = { kind: "filter_complex", filter, extraInputArgs };
+                validateOverlayFilterComplex(filterBuild);
+                const extraInputArgs = buildOverlayFfmpegInputArgs(timed);
+                captionBurn = { kind: "filter_complex", filter: filterBuild.filter, extraInputArgs };
                 logger.info(
                   {
                     editJobId,
                     segmentCount: segments.length,
                     plateCount: plan.plateCount,
                     wordCount: plan.wordCount,
+                    durationSec: Math.round(timelineDurationSecGuess * 10) / 10,
+                    videoWidth: plan.canvasWidth,
+                    videoHeight: plan.canvasHeight,
                     highlightMode: cfg.wordHighlight,
                     boxShape: cfg.boxShape ?? "pill",
                     usedFallbackTiming: plan.usedFallbackTiming,
