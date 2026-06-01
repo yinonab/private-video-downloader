@@ -7,12 +7,20 @@ export type TranscriptSegment = {
   startSec: number;
   endSec: number;
   text: string;
+  words?: readonly TranscriptWord[];
+};
+
+export type TranscriptWord = {
+  startSec: number;
+  endSec: number;
+  text: string;
 };
 
 type VerboseSegment = {
   start?: unknown;
   end?: unknown;
   text?: unknown;
+  words?: unknown;
 };
 
 type VerbosePayload = {
@@ -40,11 +48,9 @@ export async function transcribeAudioFile(opts: {
 
   let res: Response;
   try {
-    res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${opts.apiKey}` },
-      body: fd,
-    });
+    fd.append("timestamp_granularities[]", "segment");
+    fd.append("timestamp_granularities[]", "word");
+    res = await fetchTranscription(fd, opts.apiKey);
   } catch (e) {
     logger.warn({ editJobId: opts.editJobId, model: opts.model, err: String(e) }, "openai transcription network error");
     throw new AppError(codes.CAPTIONS_GENERATION_FAILED, "Transcription failed (network)", 503);
@@ -55,6 +61,21 @@ export async function transcribeAudioFile(opts: {
     bodyText = await res.text();
   } catch {
     bodyText = "";
+  }
+
+  if (!res.ok && res.status === 400) {
+    /** Keep existing model behavior stable: retry without word timestamp request if provider rejects it. */
+    const fdFallback = new FormData();
+    fdFallback.append("file", new Blob([buf], { type: "audio/wav" }), base);
+    fdFallback.append("model", opts.model);
+    fdFallback.append("response_format", "verbose_json");
+    try {
+      res = await fetchTranscription(fdFallback, opts.apiKey);
+      bodyText = await res.text();
+    } catch (e) {
+      logger.warn({ editJobId: opts.editJobId, model: opts.model, err: String(e) }, "openai transcription network error");
+      throw new AppError(codes.CAPTIONS_GENERATION_FAILED, "Transcription failed (network)", 503);
+    }
   }
 
   if (!res.ok) {
@@ -91,6 +112,7 @@ export async function transcribeAudioFile(opts: {
   }
 
   const out: TranscriptSegment[] = [];
+  let wordCount = 0;
   for (const s of segmentsRaw) {
     const row = s as VerboseSegment;
     const started = typeof row.start === "number" ? row.start : Number.NaN;
@@ -99,12 +121,48 @@ export async function transcribeAudioFile(opts: {
     if (!Number.isFinite(started) || !Number.isFinite(ended)) continue;
     if (ended <= started) continue;
     if (txt.length === 0) continue;
-    out.push({ startSec: started, endSec: ended, text: txt });
+    const words = parseWordsFromUnknown(row.words, started, ended);
+    if (words?.length) wordCount += words.length;
+    out.push({ startSec: started, endSec: ended, text: txt, words });
   }
 
   logger.info(
-    { editJobId: opts.editJobId, model: opts.model, segmentCount: out.length, durationSec: durationKnown },
+    {
+      editJobId: opts.editJobId,
+      model: opts.model,
+      segmentCount: out.length,
+      wordCount,
+      hasWordTimestamps: wordCount > 0,
+      durationSec: durationKnown,
+    },
     "openai transcription completed"
   );
   return { segments: out, durationSec: durationKnown };
+}
+
+async function fetchTranscription(fd: FormData, apiKey: string): Promise<Response> {
+  return fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: fd,
+  });
+}
+
+function parseWordsFromUnknown(raw: unknown, segStart: number, segEnd: number): TranscriptWord[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: TranscriptWord[] = [];
+  for (const row of raw) {
+    if (row == null || typeof row !== "object") continue;
+    const w = row as { start?: unknown; end?: unknown; word?: unknown; text?: unknown };
+    const startSec = typeof w.start === "number" ? w.start : Number.NaN;
+    const endSec = typeof w.end === "number" ? w.end : Number.NaN;
+    const text = typeof w.word === "string" ? w.word.trim() : typeof w.text === "string" ? w.text.trim() : "";
+    if (!Number.isFinite(startSec) || !Number.isFinite(endSec)) continue;
+    if (!(endSec > startSec) || text.length === 0) continue;
+    const st = Math.max(segStart, Math.min(segEnd, startSec));
+    const en = Math.max(st, Math.min(segEnd, endSec));
+    if (en <= st + 1e-4) continue;
+    out.push({ startSec: st, endSec: en, text });
+  }
+  return out.length ? out : undefined;
 }

@@ -44,11 +44,21 @@ export type SegmentsToAssOpts = CaptionsBurnInV1Resolved & {
   readonly title?: string;
 };
 
+export type SegmentsToAssMeta = {
+  ass: string;
+  wordCount: number;
+  usedFallbackTiming: boolean;
+};
+
 /**
  * Produce a playable ASS subtitle file for ffmpeg burn-in.
  * Rendering fix 1.5.1: smaller font map, `\N` only between escaped lines (no visible backslashes).
  */
 export function segmentsToAssContent(segments: TranscriptSegment[], opts: SegmentsToAssOpts): string {
+  return segmentsToAssContentWithMeta(segments, opts).ass;
+}
+
+export function segmentsToAssContentWithMeta(segments: TranscriptSegment[], opts: SegmentsToAssOpts): SegmentsToAssMeta {
   const title = opts.title ?? "linkclip-caption";
   const fontSize = FONT_SIZES[opts.fontSize];
   const maxLen = MAX_CHARS_PER_LINE[opts.fontSize];
@@ -79,8 +89,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
   const lines: string[] = [header.trimEnd()];
+  let wordCount = 0;
+  let usedFallbackTiming = false;
   for (const s of segments) {
-    const events = segmentToDialogueEvents(s, maxLen);
+    const out = segmentToDialogueEvents(s, maxLen, opts);
+    const events = out.events;
+    wordCount += out.wordCount;
+    usedFallbackTiming = usedFallbackTiming || out.usedFallbackTiming;
     const { x: px, y: py, an: pan } = computeDialoguePos(opts);
     const posPre = dialoguePosOverridePrefix(pan, px, py);
     for (const ev of events) {
@@ -92,7 +107,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   }
   const body = `${lines.join("\n")}\n`;
   debugAssIntegrityLog(body);
-  return body;
+  return { ass: body, wordCount, usedFallbackTiming };
 }
 
 function captionAssFontName(family: CaptionsBurnInV1Resolved["fontFamily"]): string {
@@ -286,6 +301,11 @@ function computeDialoguePos(opts: CaptionsBurnInV1Resolved): { x: number; y: num
 }
 
 type DialogueEvent = { startSec: number; endSec: number; text: string };
+type SegmentEventsOut = {
+  events: DialogueEvent[];
+  wordCount: number;
+  usedFallbackTiming: boolean;
+};
 
 /**
  * Strip Whisper/transcription artefacts that otherwise render as slashes or bogus line breaks.
@@ -362,9 +382,13 @@ function debugAssIntegrityLog(assBody: string): void {
 /**
  * Whisper segment span is preserved; Dialogue slices are subdivisions of [start,end) only — no timestamp shift.
  */
-function segmentToDialogueEvents(seg: TranscriptSegment, maxCharsPerLine: number): DialogueEvent[] {
+function segmentToDialogueEvents(
+  seg: TranscriptSegment,
+  maxCharsPerLine: number,
+  opts: SegmentsToAssOpts
+): SegmentEventsOut {
   const plain = normalizeCaptionText(seg.text);
-  if (!plain.length) return [];
+  if (!plain.length) return { events: [], wordCount: 0, usedFallbackTiming: false };
 
   const rawStart = seg.startSec;
   const rawEnd = seg.endSec;
@@ -412,7 +436,7 @@ function segmentToDialogueEvents(seg: TranscriptSegment, maxCharsPerLine: number
     chunks = next.chunks;
   }
 
-  if (chunks.length === 0) return [];
+  if (chunks.length === 0) return { events: [], wordCount: 0, usedFallbackTiming: false };
 
   const k = chunks.length;
   const events: DialogueEvent[] = [];
@@ -422,8 +446,22 @@ function segmentToDialogueEvents(seg: TranscriptSegment, maxCharsPerLine: number
     events.push({ startSec: t0, endSec: t1, text: chunks[i]! });
   }
 
+  if (opts.wordHighlight === "none") {
+    return { events, wordCount: 0, usedFallbackTiming: false };
+  }
+
+  const highlight: DialogueEvent[] = [];
+  let wordsUsed = 0;
+  let usedFallback = false;
+  for (const ev of events) {
+    const sliced = buildHighlightedEventsForChunk(seg, ev, opts.wordHighlight, opts.color);
+    wordsUsed += sliced.wordCount;
+    usedFallback = usedFallback || sliced.usedFallbackTiming;
+    highlight.push(...sliced.events);
+  }
+
   void wrappedLines;
-  return events;
+  return { events: highlight, wordCount: wordsUsed, usedFallbackTiming: usedFallback };
 }
 
 /** For script-based regression checks only — not a public API guarantee. */
@@ -431,7 +469,134 @@ export function segmentToDialogueEventsForTests(
   seg: TranscriptSegment,
   maxCharsPerLine: number,
 ): DialogueEvent[] {
-  return segmentToDialogueEvents(seg, maxCharsPerLine);
+  return segmentToDialogueEvents(seg, maxCharsPerLine, {
+    mode: "auto",
+    language: "auto",
+    burnIn: true,
+    style: "clean",
+    fontSize: "medium",
+    fontFamily: "default",
+    position: "bottom",
+    color: "white",
+    wordHighlight: "none",
+    offsetX: 0,
+    offsetY: 0,
+  }).events;
+}
+
+function buildHighlightedEventsForChunk(
+  seg: TranscriptSegment,
+  ev: DialogueEvent,
+  mode: CaptionsBurnInV1Resolved["wordHighlight"],
+  color: CaptionsBurnInV1Resolved["color"]
+): { events: DialogueEvent[]; wordCount: number; usedFallbackTiming: boolean } {
+  const words = ev.text.split(ASS_HARD_BREAK).flatMap((ln) => ln.split(/\s+/).map((w) => normalizeCaptionText(w)).filter(Boolean));
+  if (words.length < 2) return { events: [ev], wordCount: words.length, usedFallbackTiming: false };
+  const cues = resolveWordCues(seg, words, ev.startSec, ev.endSec);
+  if (!cues.length) return { events: [ev], wordCount: 0, usedFallbackTiming: true };
+  const out: DialogueEvent[] = [];
+  for (let i = 0; i < cues.length; i++) {
+    const cue = cues[i]!;
+    const next = cues[i + 1];
+    const t0 = Math.max(ev.startSec, cue.startSec);
+    const t1 = Math.min(ev.endSec, next ? next.startSec : cue.endSec);
+    if (!(t1 > t0 + 1e-4)) continue;
+    out.push({
+      startSec: t0,
+      endSec: t1,
+      text: applyWordHighlight(ev.text, cue.word, mode, color),
+    });
+  }
+  if (!out.length) return { events: [ev], wordCount: cues.length, usedFallbackTiming: true };
+  return { events: out, wordCount: cues.length, usedFallbackTiming: Boolean(cues.usedFallback) };
+}
+
+function resolveWordCues(
+  seg: TranscriptSegment,
+  displayWords: readonly string[],
+  sliceStart: number,
+  sliceEnd: number
+): (readonly { startSec: number; endSec: number; word: string }[] & { usedFallback?: boolean }) {
+  const wordsRaw = Array.isArray(seg.words) ? seg.words : undefined;
+  const fromPayload = wordsRaw
+    ?.map((w) => ({
+      startSec: Number.isFinite(w.startSec) ? w.startSec : Number.NaN,
+      endSec: Number.isFinite(w.endSec) ? w.endSec : Number.NaN,
+      word: normalizeCaptionText(w.text),
+    }))
+    .filter((w) => Number.isFinite(w.startSec) && Number.isFinite(w.endSec) && w.endSec > w.startSec && w.word.length > 0);
+  const payloadWords = fromPayload && fromPayload.length ? fromPayload : undefined;
+  const normalizedDisplay = displayWords.map((w) => normalizeCaptionText(w)).filter(Boolean);
+  if (!normalizedDisplay.length) return [] as readonly { startSec: number; endSec: number; word: string }[];
+  if (!payloadWords?.length) {
+    return Object.assign(approximateWords(normalizedDisplay, sliceStart, sliceEnd), { usedFallback: true });
+  }
+  const payloadNormalized = payloadWords.map((w) => w.word);
+  const canReuse = payloadNormalized.length === normalizedDisplay.length && payloadNormalized.every((w, i) => w === normalizedDisplay[i]);
+  if (!canReuse) {
+    return Object.assign(approximateWords(normalizedDisplay, sliceStart, sliceEnd), { usedFallback: true });
+  }
+  const minStart = payloadWords[0]!.startSec;
+  const maxEnd = payloadWords[payloadWords.length - 1]!.endSec;
+  const srcDur = Math.max(1e-4, maxEnd - minStart);
+  const dstDur = Math.max(1e-4, seg.endSec - seg.startSec);
+  const scaled = payloadWords.map((w) => {
+    const stNorm = (w.startSec - minStart) / srcDur;
+    const enNorm = (w.endSec - minStart) / srcDur;
+    const st = seg.startSec + stNorm * dstDur;
+    const en = seg.startSec + enNorm * dstDur;
+    return {
+      startSec: Math.max(seg.startSec, Math.min(seg.endSec, st)),
+      endSec: Math.max(seg.startSec, Math.min(seg.endSec, en)),
+      word: w.word,
+    };
+  });
+  return Object.assign(
+    scaled
+      .map((w) => ({
+        startSec: Math.max(sliceStart, Math.min(sliceEnd, w.startSec)),
+        endSec: Math.max(sliceStart, Math.min(sliceEnd, w.endSec)),
+        word: w.word,
+      }))
+      .filter((w) => w.endSec > w.startSec + 1e-4),
+    { usedFallback: false }
+  );
+}
+
+function approximateWords(
+  words: readonly string[],
+  startSec: number,
+  endSec: number
+): readonly { startSec: number; endSec: number; word: string }[] {
+  const dur = Math.max(1e-4, endSec - startSec);
+  return words.map((word, i) => ({
+    startSec: startSec + (dur * i) / words.length,
+    endSec: i === words.length - 1 ? endSec : startSec + (dur * (i + 1)) / words.length,
+    word,
+  }));
+}
+
+function applyWordHighlight(
+  chunkText: string,
+  targetWord: string,
+  mode: CaptionsBurnInV1Resolved["wordHighlight"],
+  color: CaptionsBurnInV1Resolved["color"]
+): string {
+  const escaped = escapeRegExp(targetWord);
+  const rx = new RegExp(`(^|\\s)(${escaped})(?=\\s|$)`, "u");
+  const accent = accentAssColour(color);
+  const boxBack = highlightBoxBackAssColour(color);
+  const boxText = highlightBoxTextAssColour(color);
+  return chunkText.replace(rx, (_m, lead: string, w: string) => {
+    if (mode === "box") {
+      return `${lead}{\\bord1.8\\shad0.7\\1c${boxText}\\3c&H00101010\\4c${boxBack}}${w}{\\r}`;
+    }
+    return `${lead}{\\1c${accent}}${w}{\\r}`;
+  });
+}
+
+function escapeRegExp(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /** Greedy word wrap → lines (respect word boundaries when possible). */

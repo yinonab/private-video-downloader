@@ -15,7 +15,7 @@ import {
 import { resolveEditOperations } from "../modules/edit/edit.schemas";
 import type { EditQueuePayload } from "../modules/edit/edit.types";
 import type { TranscriptSegment } from "../services/transcription.service";
-import { segmentsToAssContent } from "../services/assSubtitles.service";
+import { segmentsToAssContentWithMeta } from "../services/assSubtitles.service";
 import { ffprobeMedia } from "../services/ffmpegNormalize";
 import { ffmpegSubtitlesVFArgument } from "../services/ffmpegSubtitlePath";
 import { logger } from "../services/logger";
@@ -296,7 +296,12 @@ export function createEditWorker(prisma: PrismaClient): Worker {
           let segments: TranscriptSegment[] = [];
 
           function clampCueTimesToTimeline(
-            segs: readonly { readonly startSec: number; readonly endSec: number; readonly text: string }[],
+            segs: readonly {
+              readonly startSec: number;
+              readonly endSec: number;
+              readonly text: string;
+              readonly words?: readonly { readonly startSec: number; readonly endSec: number; readonly text: string }[];
+            }[],
             timelineSec: number
           ): TranscriptSegment[] {
             const upper = timelineSec > 0 && Number.isFinite(timelineSec) ? timelineSec : Number.POSITIVE_INFINITY;
@@ -307,7 +312,18 @@ export function createEditWorker(prisma: PrismaClient): Worker {
               const t = typeof s.text === "string" ? s.text.trim() : "";
               if (t.length === 0) continue;
               if (en <= st + 1e-4) continue;
-              outCue.push({ startSec: st, endSec: en, text: t });
+              const words = Array.isArray(s.words)
+                ? s.words
+                    .map((w) => {
+                      const wst = Math.max(st, Math.min(en, w.startSec));
+                      const wen = Math.max(wst, Math.min(en, w.endSec));
+                      const wt = typeof w.text === "string" ? w.text.trim() : "";
+                      if (!wt || wen <= wst + 1e-4) return null;
+                      return { startSec: wst, endSec: wen, text: wt };
+                    })
+                    .filter((w): w is { startSec: number; endSec: number; text: string } => w != null)
+                : undefined;
+              outCue.push({ startSec: st, endSec: en, text: t, words: words?.length ? words : undefined });
             }
             return outCue;
           }
@@ -359,12 +375,22 @@ export function createEditWorker(prisma: PrismaClient): Worker {
           let subtitlesVfClause: string | null = null;
           if (segments.length > 0) {
             const cfg = captionCfg;
-            const assTxt = segmentsToAssContent(segments, {
+            const assOut = segmentsToAssContentWithMeta(segments, {
               title: `edit-${editJobId}-cap`,
               ...cfg,
             });
-            await fs.writeFile(assAbs, assTxt, "utf8");
+            await fs.writeFile(assAbs, assOut.ass, "utf8");
             subtitlesVfClause = ffmpegSubtitlesVFArgument(assAbs);
+            logger.info(
+              {
+                editJobId,
+                segmentCount: segments.length,
+                wordCount: assOut.wordCount,
+                highlightMode: cfg.wordHighlight,
+                usedFallbackTiming: assOut.usedFallbackTiming,
+              },
+              "captions burn-in ASS prepared"
+            );
           } else {
             logger.warn({ editJobId }, "captions: no subtitle segments — exporting without burn-in overlays");
           }

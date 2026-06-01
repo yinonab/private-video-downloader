@@ -152,6 +152,8 @@ class ApiError implements Exception {
         return "פונט הכתוביות הזה לא נתמך.";
       case "UNSUPPORTED_CAPTIONS_COLOR":
         return "צבע הכתוביות הזה לא נתמך.";
+      case "UNSUPPORTED_CAPTIONS_WORD_HIGHLIGHT":
+        return "אפשרות הדגשת המילה הזו לא נתמכת.";
     case "CAPTIONS_TRANSCRIPTION_UNAVAILABLE":
       return "כתוביות אינן זמינות כרגע.";
     case "CAPTIONS_DRAFT_UNAVAILABLE":

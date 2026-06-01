@@ -15,6 +15,7 @@ class CaptionsEditorPanel extends StatefulWidget {
     required this.fontFamily,
     required this.position,
     required this.color,
+    required this.wordHighlight,
     required this.offsetX,
     required this.offsetY,
     required this.onAutoCaptionsChanged,
@@ -23,6 +24,7 @@ class CaptionsEditorPanel extends StatefulWidget {
     required this.onFontFamilyChanged,
     required this.onPositionChanged,
     required this.onColorChanged,
+    required this.onWordHighlightChanged,
     required this.onOffsetReset,
     required this.onOffsetNudgeAss,
     required this.effectiveCaptionPreset,
@@ -41,6 +43,7 @@ class CaptionsEditorPanel extends StatefulWidget {
   final QuickEditCaptionFontFamily fontFamily;
   final QuickEditCaptionPosition position;
   final QuickEditCaptionColor color;
+  final QuickEditCaptionWordHighlight wordHighlight;
   final int offsetX;
   final int offsetY;
 
@@ -66,6 +69,7 @@ class CaptionsEditorPanel extends StatefulWidget {
   final ValueChanged<QuickEditCaptionFontFamily> onFontFamilyChanged;
   final ValueChanged<QuickEditCaptionPosition> onPositionChanged;
   final ValueChanged<QuickEditCaptionColor> onColorChanged;
+  final ValueChanged<QuickEditCaptionWordHighlight> onWordHighlightChanged;
   final VoidCallback onOffsetReset;
 
   /// Nudge offsets in ASS PlayRes pixels (typically ± [kQuickEditCaptionsOffsetFineStep]). Screen-absolute axes (not mirrored in RTL).
@@ -216,10 +220,12 @@ class _CaptionsEditorPanelState extends State<CaptionsEditorPanel> {
                     onExpandedChanged: (v) =>
                         setState(() => _advancedStylingExpanded = v),
                     stylePreset: widget.stylePreset,
+                    wordHighlight: widget.wordHighlight,
                     color: widget.color,
                     offsetX: widget.offsetX,
                     offsetY: widget.offsetY,
                     onStyleChanged: widget.onStyleChanged,
+                    onWordHighlightChanged: widget.onWordHighlightChanged,
                     onColorChanged: widget.onColorChanged,
                     onOffsetReset: widget.onOffsetReset,
                     onOffsetNudge: widget.onOffsetNudgeAss,
@@ -487,10 +493,12 @@ class _CaptionsAdvancedStylingDisclosure extends StatelessWidget {
     required this.expanded,
     required this.onExpandedChanged,
     required this.stylePreset,
+    required this.wordHighlight,
     required this.color,
     required this.offsetX,
     required this.offsetY,
     required this.onStyleChanged,
+    required this.onWordHighlightChanged,
     required this.onColorChanged,
     required this.onOffsetReset,
     required this.onOffsetNudge,
@@ -503,10 +511,12 @@ class _CaptionsAdvancedStylingDisclosure extends StatelessWidget {
   final bool expanded;
   final ValueChanged<bool> onExpandedChanged;
   final QuickEditCaptionsStylePreset stylePreset;
+  final QuickEditCaptionWordHighlight wordHighlight;
   final QuickEditCaptionColor color;
   final int offsetX;
   final int offsetY;
   final ValueChanged<QuickEditCaptionsStylePreset> onStyleChanged;
+  final ValueChanged<QuickEditCaptionWordHighlight> onWordHighlightChanged;
   final ValueChanged<QuickEditCaptionColor> onColorChanged;
   final VoidCallback onOffsetReset;
   final void Function(int dxAss, int dyAss) onOffsetNudge;
@@ -548,6 +558,20 @@ class _CaptionsAdvancedStylingDisclosure extends StatelessWidget {
         ),
         if (expanded) ...[
           const SizedBox(height: 4),
+          _CaptionsHorizontalChipSection(
+            scheme: scheme,
+            title: l10n.editCaptionsV33WordHighlightLabel,
+            height: 46,
+            children: [
+              for (final h in _kCaptionWordHighlightsOrdered)
+                _CaptionChip(
+                  label: _captionWordHighlightLabel(l10n, h),
+                  selected: wordHighlight == h,
+                  scheme: scheme,
+                  onTap: () => onWordHighlightChanged(h),
+                ),
+            ],
+          ),
           _CaptionsChipSection(
             accent: accent,
             scheme: scheme,
@@ -648,6 +672,12 @@ const _kCaptionFontFamiliesOrdered = [
   QuickEditCaptionFontFamily.notoSansHebrew,
 ];
 
+const _kCaptionWordHighlightsOrdered = [
+  QuickEditCaptionWordHighlight.none,
+  QuickEditCaptionWordHighlight.color,
+  QuickEditCaptionWordHighlight.box,
+];
+
 const _kCaptionStylesOrdered = [
   QuickEditCaptionsStylePreset.clean,
   QuickEditCaptionsStylePreset.bold,
@@ -667,6 +697,17 @@ String _captionFontSizeLabel(AppLocalizations l10n, QuickEditCaptionFontSize siz
     QuickEditCaptionFontSize.large => l10n.editCaptionsSizeLarge,
     QuickEditCaptionFontSize.xLarge => l10n.editCaptionsV32SizeXL,
     QuickEditCaptionFontSize.xxLarge => l10n.editCaptionsV32SizeXXL,
+  };
+}
+
+String _captionWordHighlightLabel(
+  AppLocalizations l10n,
+  QuickEditCaptionWordHighlight mode,
+) {
+  return switch (mode) {
+    QuickEditCaptionWordHighlight.none => l10n.editCaptionsV33WordHighlightOff,
+    QuickEditCaptionWordHighlight.color => l10n.editCaptionsV33WordHighlightColor,
+    QuickEditCaptionWordHighlight.box => l10n.editCaptionsV33WordHighlightBox,
   };
 }
 

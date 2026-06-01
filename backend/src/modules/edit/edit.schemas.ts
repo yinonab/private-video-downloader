@@ -23,6 +23,7 @@ const UNSUPPORTED_CAPTIONS_OFFSET_EN = "This captions position is not supported.
 const UNSUPPORTED_CAPTIONS_FONT_SIZE_EN = "This captions size is not supported.";
 const UNSUPPORTED_CAPTIONS_FONT_FAMILY_EN = "This caption font is not supported.";
 const UNSUPPORTED_CAPTIONS_COLOR_EN = "This captions color is not supported.";
+const UNSUPPORTED_CAPTIONS_WORD_HIGHLIGHT_EN = "This word highlight option is not supported.";
 const CANON_EDIT_SPEED_FACTORS = [0.5, 1.25, 1.5, 2] as const satisfies readonly EditSpeedFactor[];
 
 function normalizeEditSpeedFactor(n: unknown): EditSpeedFactor | undefined {
@@ -124,12 +125,15 @@ const CAPTIONS_FONT_FAMILY = [
   "assistant",
   "noto_sans_hebrew",
 ] as const;
+const CAPTIONS_WORD_HIGHLIGHT = ["none", "color", "box"] as const;
 
 const captionSegmentWireSchema = z
   .object({
     startSec: z.number().finite().min(0),
     endSec: z.number().finite(),
     text: z.string(),
+    /** Optional and permissive — invalid words are ignored during normalization/fallback. */
+    words: z.unknown().optional(),
   })
   .strict()
   .refine((d) => d.endSec > d.startSec, {
@@ -150,6 +154,7 @@ const captionsAutoOpSchema = z
     fontFamily: z.enum(CAPTIONS_FONT_FAMILY).optional(),
     position: z.enum(["top", "bottom"]).optional(),
     color: z.enum(CAPTIONS_COLOR).optional(),
+    wordHighlight: z.enum(CAPTIONS_WORD_HIGHLIGHT).optional(),
     offsetX: z.number().int().min(-240).max(240).optional(),
     offsetY: z.number().int().min(-180).max(180).optional(),
   })
@@ -166,6 +171,7 @@ const captionsSegmentsOpSchema = z
     fontFamily: z.enum(CAPTIONS_FONT_FAMILY).optional(),
     position: z.enum(["top", "bottom"]).optional(),
     color: z.enum(CAPTIONS_COLOR).optional(),
+    wordHighlight: z.enum(CAPTIONS_WORD_HIGHLIGHT).optional(),
     offsetX: z.number().int().min(-240).max(240).optional(),
     offsetY: z.number().int().min(-180).max(180).optional(),
     segments: z.array(captionSegmentWireSchema).min(1),
@@ -340,6 +346,13 @@ export function captionsFieldErrorsFromUnknownBody(body: unknown): AppError | nu
         return new AppError(codes.UNSUPPORTED_CAPTIONS_COLOR, UNSUPPORTED_CAPTIONS_COLOR_EN, 400);
       }
     }
+    const allowedWordHighlight = new Set<string>(CAPTIONS_WORD_HIGHLIGHT);
+    if (Object.prototype.hasOwnProperty.call(o, "wordHighlight")) {
+      const wh = o.wordHighlight;
+      if (wh !== undefined && wh !== null && (typeof wh !== "string" || !allowedWordHighlight.has(wh))) {
+        return new AppError(codes.UNSUPPORTED_CAPTIONS_WORD_HIGHLIGHT, UNSUPPORTED_CAPTIONS_WORD_HIGHLIGHT_EN, 400);
+      }
+    }
     if (Object.prototype.hasOwnProperty.call(o, "burnIn")) {
       if (o.burnIn !== true) {
         return new AppError(
@@ -442,6 +455,7 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
           fontFamily,
           position: op.position ?? "bottom",
           color: op.color ?? "white",
+          wordHighlight: op.wordHighlight ?? "none",
           offsetX,
           offsetY,
         };

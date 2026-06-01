@@ -131,6 +131,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   QuickEditCaptionFontFamily _captionsFontFamily = QuickEditCaptionFontFamily.defaultFamily;
   QuickEditCaptionPosition _captionsPosition = QuickEditCaptionPosition.bottom;
   QuickEditCaptionColor _captionsColor = QuickEditCaptionColor.white;
+  QuickEditCaptionWordHighlight _captionsWordHighlight =
+      QuickEditCaptionWordHighlight.none;
   int _captionsOffsetX = 0;
   int _captionsOffsetY = 0;
 
@@ -397,6 +399,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       _captionsPosition = r.position;
       _captionsColor = r.color;
       _captionsStyle = r.style;
+      _captionsWordHighlight = r.wordHighlight;
       _captionsOffsetX = clampQuickEditCaptionOffsetX(r.offsetX);
       _captionsOffsetY = clampQuickEditCaptionOffsetY(r.offsetY);
     });
@@ -437,6 +440,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       captionsFontFamily: _captionsFontFamily,
       captionsPosition: _captionsPosition,
       captionsColor: _captionsColor,
+      captionsWordHighlight: _captionsWordHighlight,
       captionsOffsetX: _captionsOffsetX,
       captionsOffsetY: _captionsOffsetY,
       mute: _mute,
@@ -630,6 +634,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         captionsFontFamily: _captionsFontFamily,
         captionsPosition: _captionsPosition,
         captionsColor: _captionsColor,
+        captionsWordHighlight: _captionsWordHighlight,
         captionsOffsetX: _captionsOffsetX,
         captionsOffsetY: _captionsOffsetY,
         captionsDraftForBurn: (_captionsDraftSegments != null && _captionsDraftSegments!.isNotEmpty)
@@ -1018,6 +1023,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                       fontFamily: _captionsFontFamily,
                       position: _captionsPosition,
                       color: _captionsColor,
+                      wordHighlight: _captionsWordHighlight,
                       offsetXAss: _captionsOffsetX,
                       offsetYAss: _captionsOffsetY,
                     )
@@ -1134,6 +1140,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                         fontFamily: _captionsFontFamily,
                         position: _captionsPosition,
                         color: _captionsColor,
+                        wordHighlight: _captionsWordHighlight,
                         offsetX: _captionsOffsetX,
                         offsetY: _captionsOffsetY,
                         effectiveCaptionPreset: inferQuickEditCaptionPreset(
@@ -1142,6 +1149,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                           position: _captionsPosition,
                           color: _captionsColor,
                           style: _captionsStyle,
+                          wordHighlight: _captionsWordHighlight,
                           offsetX: _captionsOffsetX,
                           offsetY: _captionsOffsetY,
                         ),
@@ -1159,6 +1167,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                           if (!v) {
                             _captionsOffsetX = 0;
                             _captionsOffsetY = 0;
+                            _captionsWordHighlight = QuickEditCaptionWordHighlight.none;
                             _captionsDraftSegments = null;
                             _captionsDraftRegenHint = false;
                             _captionsDraftGenerating = false;
@@ -1174,6 +1183,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                             setState(() => _captionsPosition = v),
                         onColorChanged: (v) =>
                             setState(() => _captionsColor = v),
+                        onWordHighlightChanged: (v) =>
+                            setState(() => _captionsWordHighlight = v),
                         onOffsetReset: _resetCaptionOffsets,
                         onOffsetNudgeAss: _nudgeCaptionOffsetAss,
                       ),

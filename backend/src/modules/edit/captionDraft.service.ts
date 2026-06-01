@@ -61,7 +61,13 @@ export async function generateCaptionsDraftForDevice(opts: {
   deviceId: string;
   body: unknown;
 }): Promise<{
-  segments: readonly { readonly id: string; readonly startSec: number; readonly endSec: number; readonly text: string }[];
+  segments: readonly {
+    readonly id: string;
+    readonly startSec: number;
+    readonly endSec: number;
+    readonly text: string;
+    readonly words?: readonly { readonly startSec: number; readonly endSec: number; readonly text: string }[];
+  }[];
   durationSec: number;
   language: "auto";
 }> {
@@ -190,13 +196,16 @@ export async function generateCaptionsDraftForDevice(opts: {
 
   const maxT = timelineGuess > 0 ? timelineGuess : Number.POSITIVE_INFINITY;
   const clipped: TranscriptSegment[] = [];
+  let wordCount = 0;
   for (const s of segmentsRaw) {
     const st = Math.max(0, Math.min(maxT, s.startSec));
     const en = Math.max(st, Math.min(maxT, s.endSec));
     const t = typeof s.text === "string" ? s.text.trim() : "";
     if (t.length === 0) continue;
     if (en <= st + 1e-4) continue;
-    clipped.push({ startSec: st, endSec: en, text: t });
+    const words = clampWordsToSegmentWindow(s.words, st, en);
+    if (words?.length) wordCount += words.length;
+    clipped.push({ startSec: st, endSec: en, text: t, words });
   }
 
   const outSegments = clipped.map((s, i) => ({
@@ -204,12 +213,15 @@ export async function generateCaptionsDraftForDevice(opts: {
     startSec: s.startSec,
     endSec: s.endSec,
     text: s.text,
+    words: s.words,
   }));
 
   logger.info(
     {
       deviceId: opts.deviceId,
       segmentCount: outSegments.length,
+      wordCount,
+      hasWordTimestamps: wordCount > 0,
       durationSec: timelineGuess > 0 ? timelineGuess : undefined,
       model: config.openaiTranscriptionModel,
     },
@@ -221,4 +233,22 @@ export async function generateCaptionsDraftForDevice(opts: {
     durationSec: timelineGuess > 0 ? timelineGuess : durationSecSrc,
     language: "auto",
   };
+}
+
+function clampWordsToSegmentWindow(
+  words: readonly { startSec: number; endSec: number; text: string }[] | undefined,
+  segStart: number,
+  segEnd: number
+): readonly { startSec: number; endSec: number; text: string }[] | undefined {
+  if (!words?.length) return undefined;
+  const out: { startSec: number; endSec: number; text: string }[] = [];
+  for (const w of words) {
+    const st = Math.max(segStart, Math.min(segEnd, w.startSec));
+    const en = Math.max(st, Math.min(segEnd, w.endSec));
+    const text = typeof w.text === "string" ? w.text.trim() : "";
+    if (!text.length) continue;
+    if (en <= st + 1e-4) continue;
+    out.push({ startSec: st, endSec: en, text });
+  }
+  return out.length ? out : undefined;
 }

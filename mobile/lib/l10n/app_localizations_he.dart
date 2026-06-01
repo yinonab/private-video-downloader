@@ -1370,6 +1370,22 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editCaptionsV32PresetNewsHeadline => 'כותרת חדשותית';
 
   @override
+  String get editCaptionsV33WordHighlightLabel => 'הדגשת מילה';
+
+  @override
+  String get editCaptionsV33WordHighlightOff => 'כבוי';
+
+  @override
+  String get editCaptionsV33WordHighlightColor => 'צבע';
+
+  @override
+  String get editCaptionsV33WordHighlightBox => 'קופסה';
+
+  @override
+  String get errorCaptionsWordHighlightNotSupported =>
+      'אפשרות הדגשת המילה הזו לא נתמכת.';
+
+  @override
   String get errorCaptionsFontFamilyNotSupported =>
       'פונט הכתוביות הזה לא נתמך.';
 

@@ -1,4 +1,5 @@
 import type { TranscriptSegment } from "../../services/transcription.service";
+import type { CaptionCueWordResolved } from "./edit.types";
 
 function trimText(raw: unknown): string {
   if (typeof raw !== "string") return "";
@@ -10,11 +11,16 @@ function trimText(raw: unknown): string {
  * Does not validate raw numeric ranges beyond basic finiteness.
  */
 export function normalizeCaptionSegmentsForBurn(
-  input: readonly { readonly startSec: number; readonly endSec: number; readonly text: string }[]
+  input: readonly {
+    readonly startSec: number;
+    readonly endSec: number;
+    readonly text: string;
+    readonly words?: unknown;
+  }[]
 ): TranscriptSegment[] {
   const EPS = 1e-4;
 
-  type Prep = { startSec: number; endSec: number; text: string };
+  type Prep = { startSec: number; endSec: number; text: string; words?: readonly CaptionCueWordResolved[] };
   const prepared: Prep[] = [];
 
   for (const raw of input) {
@@ -24,7 +30,7 @@ export function normalizeCaptionSegmentsForBurn(
     const e = raw.endSec;
     if (!Number.isFinite(s) || !Number.isFinite(e)) continue;
     if (s < 0 || e <= s + EPS) continue;
-    prepared.push({ startSec: s, endSec: e, text });
+    prepared.push({ startSec: s, endSec: e, text, words: normalizeRawWords(raw.words) });
   }
 
   prepared.sort((a, b) => a.startSec - b.startSec);
@@ -54,8 +60,45 @@ export function normalizeCaptionSegmentsForBurn(
       s = Math.max(s, last.endSec);
     }
     if (eIn <= s + EPS) continue;
-    out.push({ startSec: s, endSec: eIn, text: row.text });
+    out.push({ startSec: s, endSec: eIn, text: row.text, words: clampWordsToSegment(row.words, s, eIn, EPS) });
   }
 
   return out;
+}
+
+function normalizeRawWords(raw: unknown): readonly CaptionCueWordResolved[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: CaptionCueWordResolved[] = [];
+  for (const w of raw) {
+    if (w == null || typeof w !== "object") continue;
+    const row = w as Record<string, unknown>;
+    const startSec = row.startSec;
+    const endSec = row.endSec;
+    const text = trimText(row.text);
+    if (typeof startSec !== "number" || typeof endSec !== "number") continue;
+    if (!Number.isFinite(startSec) || !Number.isFinite(endSec)) continue;
+    if (endSec <= startSec) continue;
+    if (!text.length) continue;
+    out.push({ startSec, endSec, text });
+  }
+  if (!out.length) return undefined;
+  out.sort((a, b) => a.startSec - b.startSec);
+  return out;
+}
+
+function clampWordsToSegment(
+  words: readonly CaptionCueWordResolved[] | undefined,
+  segStart: number,
+  segEnd: number,
+  eps: number
+): readonly CaptionCueWordResolved[] | undefined {
+  if (!words?.length) return undefined;
+  const out: CaptionCueWordResolved[] = [];
+  for (const w of words) {
+    const st = Math.max(segStart, Math.min(segEnd, w.startSec));
+    const en = Math.max(st, Math.min(segEnd, w.endSec));
+    if (en <= st + eps) continue;
+    out.push({ startSec: st, endSec: en, text: w.text });
+  }
+  return out.length ? out : undefined;
 }

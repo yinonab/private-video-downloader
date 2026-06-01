@@ -23,6 +23,7 @@ const baseOpts: SegmentsToAssOpts = {
   position: "bottom",
   color: "white",
   fontFamily: "default",
+  wordHighlight: "none",
   offsetX: 0,
   offsetY: 0,
 };
@@ -145,4 +146,54 @@ assert.ok(punctBody.includes('"'), "ASCII quote");
 assert.ok(punctBody.includes("(") && punctBody.includes(")"), "parens");
 assert.ok(punctBody.includes("25/5") && punctBody.includes("ו/או"), "slashes in words");
 assert.ok(!punctBody.includes("\\,"), "no comma escape in caption text");
+
+const segWithWords: TranscriptSegment = {
+  startSec: 0,
+  endSec: 2.4,
+  text: "hello world now",
+  words: [
+    { startSec: 0.0, endSec: 0.8, text: "hello" },
+    { startSec: 0.8, endSec: 1.6, text: "world" },
+    { startSec: 1.6, endSec: 2.4, text: "now" },
+  ],
+};
+const assNone = segmentsToAssContent([segWithWords], { ...baseOpts, wordHighlight: "none", title: "none" });
+const assColor = segmentsToAssContent([segWithWords], { ...baseOpts, wordHighlight: "color", title: "color" });
+const assBox = segmentsToAssContent([segWithWords], { ...baseOpts, wordHighlight: "box", title: "box" });
+assert.ok(dialogueLines(assNone).length >= 1, "wordHighlight none has dialogue");
+assert.ok(dialogueLines(assColor).length >= 1, "wordHighlight color has dialogue");
+assert.ok(dialogueLines(assBox).length >= 1, "wordHighlight box has dialogue");
+assert.ok(assColor.includes("{\\1c"), "color mode injects inline highlight");
+assert.ok(assBox.includes("{\\bord"), "box mode injects inline box-ish highlight");
+assert.ok(!assColor.includes("\\\\N"), "no double break in color mode");
+assert.ok(!assBox.includes("\\\\N"), "no double break in box mode");
+
+const editedTextMismatch: TranscriptSegment = {
+  startSec: 0,
+  endSec: 2.4,
+  text: "edited words here",
+  words: [
+    { startSec: 0.0, endSec: 1.2, text: "hello" },
+    { startSec: 1.2, endSec: 2.4, text: "world" },
+  ],
+};
+const mismatchAss = segmentsToAssContent([editedTextMismatch], { ...baseOpts, wordHighlight: "color", title: "mismatch" });
+assert.ok(dialogueLines(mismatchAss).length >= 1, "mismatch fallback still renders");
+
+const hebrewWordsAss = segmentsToAssContent(
+  [
+    {
+      startSec: 0,
+      endSec: 2.0,
+      text: "כתוביות לדוגמה, בסדר?",
+      words: [
+        { startSec: 0.0, endSec: 0.7, text: "כתוביות" },
+        { startSec: 0.7, endSec: 1.3, text: "לדוגמה" },
+        { startSec: 1.3, endSec: 2.0, text: "בסדר?" },
+      ],
+    } satisfies TranscriptSegment,
+  ],
+  { ...baseOpts, wordHighlight: "box", title: "he" },
+);
+assert.ok(hebrewWordsAss.includes("בסדר?"), "hebrew punctuation preserved");
 console.log("diag:ass-captions — ok");

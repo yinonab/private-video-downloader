@@ -2624,6 +2624,36 @@ abstract class AppLocalizations {
   /// **'News Headline'**
   String get editCaptionsV32PresetNewsHeadline;
 
+  /// No description provided for @editCaptionsV33WordHighlightLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Word highlight'**
+  String get editCaptionsV33WordHighlightLabel;
+
+  /// No description provided for @editCaptionsV33WordHighlightOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get editCaptionsV33WordHighlightOff;
+
+  /// No description provided for @editCaptionsV33WordHighlightColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get editCaptionsV33WordHighlightColor;
+
+  /// No description provided for @editCaptionsV33WordHighlightBox.
+  ///
+  /// In en, this message translates to:
+  /// **'Box'**
+  String get editCaptionsV33WordHighlightBox;
+
+  /// No description provided for @errorCaptionsWordHighlightNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This word highlight option is not supported.'**
+  String get errorCaptionsWordHighlightNotSupported;
+
   /// No description provided for @errorCaptionsFontFamilyNotSupported.
   ///
   /// In en, this message translates to:

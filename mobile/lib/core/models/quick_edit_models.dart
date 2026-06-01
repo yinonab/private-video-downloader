@@ -73,6 +73,39 @@ final class CreateEditJobResponse {
   final String status;
 }
 
+/// Optional word-level timing on a draft/burn segment (V3.3).
+final class CaptionDraftWord {
+  const CaptionDraftWord({
+    required this.startSec,
+    required this.endSec,
+    required this.text,
+  });
+
+  final double startSec;
+  final double endSec;
+  final String text;
+
+  factory CaptionDraftWord.fromJson(Map<String, dynamic>? j) {
+    final m = Map<String, dynamic>.from(j ?? {});
+    double n(dynamic v) {
+      final x = v is num ? v.toDouble() : double.tryParse("$v") ?? 0;
+      return x;
+    }
+
+    return CaptionDraftWord(
+      startSec: n(m["startSec"]),
+      endSec: n(m["endSec"]),
+      text: "${m["text"] ?? ""}".trim(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        "startSec": startSec,
+        "endSec": endSec,
+        "text": text,
+      };
+}
+
 /// Single editable captions draft cue from `POST /edits/captions/draft` (V2.4A+).
 final class CaptionDraftSegment {
   CaptionDraftSegment({
@@ -82,6 +115,7 @@ final class CaptionDraftSegment {
     required this.text,
     required this.originalStartSec,
     required this.originalEndSec,
+    this.words,
   });
 
   final String id;
@@ -92,6 +126,7 @@ final class CaptionDraftSegment {
   final double originalStartSec;
   /// Whisper draft end before user timing edits (V2.4B reset).
   final double originalEndSec;
+  final List<CaptionDraftWord>? words;
 
   bool get hasTimingAdjustment =>
       (startSec - originalStartSec).abs() > 1e-6 ||
@@ -104,6 +139,7 @@ final class CaptionDraftSegment {
     String? text,
     double? originalStartSec,
     double? originalEndSec,
+    List<CaptionDraftWord>? words,
   }) =>
       CaptionDraftSegment(
         id: id ?? this.id,
@@ -112,6 +148,7 @@ final class CaptionDraftSegment {
         text: text ?? this.text,
         originalStartSec: originalStartSec ?? this.originalStartSec,
         originalEndSec: originalEndSec ?? this.originalEndSec,
+        words: words ?? this.words,
       );
 
   factory CaptionDraftSegment.fromJson(Map<String, dynamic>? j) {
@@ -125,6 +162,18 @@ final class CaptionDraftSegment {
 
     final start = n(m["startSec"]);
     final end = n(m["endSec"]);
+    final wordsRaw = m["words"];
+    final words = <CaptionDraftWord>[];
+    if (wordsRaw is List) {
+      for (final e in wordsRaw) {
+        if (e is Map) {
+          final w = CaptionDraftWord.fromJson(Map<String, dynamic>.from(e));
+          if (w.text.isNotEmpty && w.endSec > w.startSec) {
+            words.add(w);
+          }
+        }
+      }
+    }
     return CaptionDraftSegment(
       id: sid,
       startSec: start,
@@ -132,14 +181,22 @@ final class CaptionDraftSegment {
       text: "${m["text"] ?? ""}",
       originalStartSec: start,
       originalEndSec: end,
+      words: words.isEmpty ? null : words,
     );
   }
 
-  Map<String, dynamic> toCaptionsBurnJson() => {
-        "startSec": startSec,
-        "endSec": endSec,
-        "text": text.trim(),
-      };
+  Map<String, dynamic> toCaptionsBurnJson() {
+    final out = <String, dynamic>{
+      "startSec": startSec,
+      "endSec": endSec,
+      "text": text.trim(),
+    };
+    final w = words;
+    if (w != null && w.isNotEmpty) {
+      out["words"] = w.map((e) => e.toJson()).toList();
+    }
+    return out;
+  }
 }
 
 final class CaptionDraftResponse {
@@ -480,6 +537,21 @@ enum QuickEditCaptionFontFamily {
   notoSansHebrew,
 }
 
+/// Current spoken-word highlight for burned captions (V3.3).
+enum QuickEditCaptionWordHighlight {
+  none,
+  color,
+  box,
+}
+
+extension QuickEditCaptionWordHighlightApi on QuickEditCaptionWordHighlight {
+  String get apiValue => switch (this) {
+        QuickEditCaptionWordHighlight.none => "none",
+        QuickEditCaptionWordHighlight.color => "color",
+        QuickEditCaptionWordHighlight.box => "box",
+      };
+}
+
 extension QuickEditCaptionFontFamilyApi on QuickEditCaptionFontFamily {
   String get apiValue => switch (this) {
         QuickEditCaptionFontFamily.defaultFamily => "default",
@@ -512,6 +584,7 @@ final class CaptionPresetFields {
     required this.position,
     required this.color,
     required this.style,
+    required this.wordHighlight,
     required this.offsetX,
     required this.offsetY,
   });
@@ -521,6 +594,7 @@ final class CaptionPresetFields {
   final QuickEditCaptionPosition position;
   final QuickEditCaptionColor color;
   final QuickEditCaptionsStylePreset style;
+  final QuickEditCaptionWordHighlight wordHighlight;
   final int offsetX;
   final int offsetY;
 
@@ -530,6 +604,7 @@ final class CaptionPresetFields {
     required QuickEditCaptionPosition position,
     required QuickEditCaptionColor color,
     required QuickEditCaptionsStylePreset style,
+    required QuickEditCaptionWordHighlight wordHighlight,
     required int offsetX,
     required int offsetY,
   }) =>
@@ -538,6 +613,7 @@ final class CaptionPresetFields {
       this.position == position &&
       this.color == color &&
       this.style == style &&
+      this.wordHighlight == wordHighlight &&
       this.offsetX == offsetX &&
       this.offsetY == offsetY;
 }
@@ -553,6 +629,7 @@ CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
         position: QuickEditCaptionPosition.bottom,
         color: QuickEditCaptionColor.white,
         style: QuickEditCaptionsStylePreset.cleanPro,
+        wordHighlight: QuickEditCaptionWordHighlight.none,
         offsetX: 0,
         offsetY: 0,
       );
@@ -563,6 +640,7 @@ CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
         position: QuickEditCaptionPosition.bottom,
         color: QuickEditCaptionColor.white,
         style: QuickEditCaptionsStylePreset.boldSocial,
+        wordHighlight: QuickEditCaptionWordHighlight.color,
         offsetX: 0,
         offsetY: -20,
       );
@@ -573,6 +651,7 @@ CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
         position: QuickEditCaptionPosition.bottom,
         color: QuickEditCaptionColor.yellow,
         style: QuickEditCaptionsStylePreset.boldSocial,
+        wordHighlight: QuickEditCaptionWordHighlight.color,
         offsetX: 0,
         offsetY: -20,
       );
@@ -583,6 +662,7 @@ CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
         position: QuickEditCaptionPosition.bottom,
         color: QuickEditCaptionColor.white,
         style: QuickEditCaptionsStylePreset.darkBubble,
+        wordHighlight: QuickEditCaptionWordHighlight.none,
         offsetX: 0,
         offsetY: -20,
       );
@@ -593,6 +673,7 @@ CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
         position: QuickEditCaptionPosition.top,
         color: QuickEditCaptionColor.white,
         style: QuickEditCaptionsStylePreset.cleanPro,
+        wordHighlight: QuickEditCaptionWordHighlight.none,
         offsetX: 0,
         offsetY: 0,
       );
@@ -603,6 +684,7 @@ CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
         position: QuickEditCaptionPosition.bottom,
         color: QuickEditCaptionColor.purple,
         style: QuickEditCaptionsStylePreset.highlightBox,
+        wordHighlight: QuickEditCaptionWordHighlight.box,
         offsetX: 0,
         offsetY: -20,
       );
@@ -613,6 +695,7 @@ CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
         position: QuickEditCaptionPosition.bottom,
         color: QuickEditCaptionColor.yellow,
         style: QuickEditCaptionsStylePreset.yellowHeadline,
+        wordHighlight: QuickEditCaptionWordHighlight.color,
         offsetX: 0,
         offsetY: -20,
       );
@@ -636,6 +719,7 @@ QuickEditCaptionPreset inferQuickEditCaptionPreset({
   required QuickEditCaptionPosition position,
   required QuickEditCaptionColor color,
   required QuickEditCaptionsStylePreset style,
+  required QuickEditCaptionWordHighlight wordHighlight,
   required int offsetX,
   required int offsetY,
 }) {
@@ -647,6 +731,7 @@ QuickEditCaptionPreset inferQuickEditCaptionPreset({
       position: position,
       color: color,
       style: style,
+      wordHighlight: wordHighlight,
       offsetX: offsetX,
       offsetY: offsetY,
     )) {
@@ -722,6 +807,7 @@ Map<String, dynamic> quickEditCaptionsV22Operation({
   required QuickEditCaptionFontFamily fontFamily,
   required QuickEditCaptionPosition position,
   required QuickEditCaptionColor color,
+  required QuickEditCaptionWordHighlight wordHighlight,
   required int captionsOffsetX,
   required int captionsOffsetY,
 }) =>
@@ -735,6 +821,7 @@ Map<String, dynamic> quickEditCaptionsV22Operation({
       "fontFamily": fontFamily.apiValue,
       "position": position.apiValue,
       "color": color.apiValue,
+      "wordHighlight": wordHighlight.apiValue,
       "offsetX": clampQuickEditCaptionOffsetX(captionsOffsetX),
       "offsetY": clampQuickEditCaptionOffsetY(captionsOffsetY),
     };
@@ -747,6 +834,7 @@ Map<String, dynamic> quickEditCaptionsSegmentsV24Operation({
   required QuickEditCaptionFontFamily fontFamily,
   required QuickEditCaptionPosition position,
   required QuickEditCaptionColor color,
+  required QuickEditCaptionWordHighlight wordHighlight,
   required int captionsOffsetX,
   required int captionsOffsetY,
 }) =>
@@ -760,6 +848,7 @@ Map<String, dynamic> quickEditCaptionsSegmentsV24Operation({
       "fontFamily": fontFamily.apiValue,
       "position": position.apiValue,
       "color": color.apiValue,
+      "wordHighlight": wordHighlight.apiValue,
       "offsetX": clampQuickEditCaptionOffsetX(captionsOffsetX),
       "offsetY": clampQuickEditCaptionOffsetY(captionsOffsetY),
       "segments": segments.map((s) => s.toCaptionsBurnJson()).toList(),
@@ -780,6 +869,7 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   QuickEditCaptionFontFamily captionsFontFamily = QuickEditCaptionFontFamily.defaultFamily,
   QuickEditCaptionPosition captionsPosition = QuickEditCaptionPosition.bottom,
   QuickEditCaptionColor captionsColor = QuickEditCaptionColor.white,
+  QuickEditCaptionWordHighlight captionsWordHighlight = QuickEditCaptionWordHighlight.none,
   int captionsOffsetX = 0,
   int captionsOffsetY = 0,
   List<CaptionDraftSegment>? captionsDraftForBurn,
@@ -833,6 +923,7 @@ List<Map<String, dynamic>> buildQuickEditOperations({
         fontFamily: captionsFontFamily,
         position: captionsPosition,
         color: captionsColor,
+        wordHighlight: captionsWordHighlight,
         captionsOffsetX: captionsOffsetX,
         captionsOffsetY: captionsOffsetY,
       ));
@@ -843,6 +934,7 @@ List<Map<String, dynamic>> buildQuickEditOperations({
         fontFamily: captionsFontFamily,
         position: captionsPosition,
         color: captionsColor,
+        wordHighlight: captionsWordHighlight,
         captionsOffsetX: captionsOffsetX,
         captionsOffsetY: captionsOffsetY,
       ));
@@ -877,6 +969,7 @@ bool quickEditHasChanges({
   QuickEditCaptionFontFamily captionsFontFamily = QuickEditCaptionFontFamily.defaultFamily,
   QuickEditCaptionPosition captionsPosition = QuickEditCaptionPosition.bottom,
   QuickEditCaptionColor captionsColor = QuickEditCaptionColor.white,
+  QuickEditCaptionWordHighlight captionsWordHighlight = QuickEditCaptionWordHighlight.none,
   int captionsOffsetX = 0,
   int captionsOffsetY = 0,
   required bool mute,
@@ -893,8 +986,10 @@ bool quickEditHasChanges({
     captionsAutoEnabled: captionsAutoEnabled,
     captionsStyle: captionsStyle,
     captionsFontSize: captionsFontSize,
+    captionsFontFamily: captionsFontFamily,
     captionsPosition: captionsPosition,
     captionsColor: captionsColor,
+    captionsWordHighlight: captionsWordHighlight,
     captionsOffsetX: captionsOffsetX,
     captionsOffsetY: captionsOffsetY,
     captionsDraftForBurn: null,

@@ -89,6 +89,8 @@ String localizedApiErrorMessage(AppLocalizations l10n, ApiError e) {
       return l10n.errorCaptionsFontFamilyNotSupported;
     case "UNSUPPORTED_CAPTIONS_COLOR":
       return l10n.errorCaptionsColorNotSupported;
+    case "UNSUPPORTED_CAPTIONS_WORD_HIGHLIGHT":
+      return l10n.errorCaptionsWordHighlightNotSupported;
     case "CAPTIONS_TRANSCRIPTION_UNAVAILABLE":
       return l10n.errorCaptionsTranscriptionUnavailable;
     case "CAPTIONS_DRAFT_UNAVAILABLE":

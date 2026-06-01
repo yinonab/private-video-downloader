@@ -49,11 +49,21 @@ export type CaptionsFontFamily =
   | "assistant"
   | "noto_sans_hebrew";
 
+export type CaptionsWordHighlight = "none" | "color" | "box";
+
+/** Optional word-level cue timing. */
+export type CaptionCueWordResolved = {
+  readonly startSec: number;
+  readonly endSec: number;
+  readonly text: string;
+};
+
 /** Canonical cue for captions burn-in (after normalization). Never logged as full payload. */
 export type CaptionCueSegmentResolved = {
   readonly startSec: number;
   readonly endSec: number;
   readonly text: string;
+  readonly words?: readonly CaptionCueWordResolved[];
 };
 
 /** Last `captions` op wins — burn-in after trim/rotate/format/speed timeline. */
@@ -66,6 +76,7 @@ export type CaptionsBurnInV1Resolved = {
   readonly fontFamily: CaptionsFontFamily;
   readonly position: CaptionsPosition;
   readonly color: CaptionsColor;
+  readonly wordHighlight: CaptionsWordHighlight;
   /** Horizontal offset in ASS script pixels (~PlayRes width); clamped −240…240 server-side. */
   readonly offsetX: number;
   /** Vertical offset in ASS script pixels; clamped −180…180. Positive moves down after anchor math. */

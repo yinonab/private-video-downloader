@@ -1386,6 +1386,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCaptionsV32PresetNewsHeadline => 'News Headline';
 
   @override
+  String get editCaptionsV33WordHighlightLabel => 'Word highlight';
+
+  @override
+  String get editCaptionsV33WordHighlightOff => 'Off';
+
+  @override
+  String get editCaptionsV33WordHighlightColor => 'Color';
+
+  @override
+  String get editCaptionsV33WordHighlightBox => 'Box';
+
+  @override
+  String get errorCaptionsWordHighlightNotSupported =>
+      'This word highlight option is not supported.';
+
+  @override
   String get errorCaptionsFontFamilyNotSupported =>
       'This caption font is not supported.';
 

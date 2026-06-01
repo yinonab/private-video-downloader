@@ -17,6 +17,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
     required this.fontFamily,
     required this.position,
     required this.color,
+    required this.wordHighlight,
     required this.offsetXAss,
     required this.offsetYAss,
   });
@@ -27,6 +28,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
   final QuickEditCaptionFontFamily fontFamily;
   final QuickEditCaptionPosition position;
   final QuickEditCaptionColor color;
+  final QuickEditCaptionWordHighlight wordHighlight;
   final int offsetXAss;
   final int offsetYAss;
 
@@ -62,24 +64,58 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
       return _applyPreviewFont(fontFamily, style);
     }
 
+    final sampleFull = l10n.editCaptionsSampleLabel;
+    final sampleParts = _sampleHighlightParts(sampleFull);
+
+    Widget sampleText({Color? textColor, List<Shadow>? shadows, FontWeight? weight}) {
+      if (wordHighlight == QuickEditCaptionWordHighlight.none) {
+        return Text(
+          sampleFull,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: baseStyle(textColor: textColor, weight: weight).copyWith(shadows: shadows),
+        );
+      }
+
+      final normalStyle = baseStyle(textColor: textColor, weight: weight).copyWith(shadows: shadows);
+      final hiStyle = switch (wordHighlight) {
+        QuickEditCaptionWordHighlight.color => normalStyle.copyWith(color: accent),
+        QuickEditCaptionWordHighlight.box => normalStyle.copyWith(
+            color: _highlightBoxTextColor(color),
+            backgroundColor: accent.withValues(alpha: 0.88),
+          ),
+        QuickEditCaptionWordHighlight.none => normalStyle,
+      };
+
+      return RichText(
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        text: TextSpan(
+          children: [
+            if (sampleParts.before.isNotEmpty)
+              TextSpan(text: sampleParts.before, style: normalStyle),
+            TextSpan(text: sampleParts.highlight, style: hiStyle),
+          ],
+        ),
+      );
+    }
+
     late final Widget captionBody;
     switch (stylePreset) {
       case QuickEditCaptionsStylePreset.darkBox:
       case QuickEditCaptionsStylePreset.darkBubble:
         captionBody = DecoratedBox(
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: stylePreset == QuickEditCaptionsStylePreset.darkBubble ? 0.72 : 0.78),
+            color: Colors.black.withValues(
+              alpha: stylePreset == QuickEditCaptionsStylePreset.darkBubble ? 0.72 : 0.78,
+            ),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            child: Text(
-              l10n.editCaptionsSampleLabel,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: baseStyle(textColor: Colors.white),
-            ),
+            child: sampleText(textColor: Colors.white),
           ),
         );
         break;
@@ -91,75 +127,46 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            child: Text(
-              l10n.editCaptionsSampleLabel,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: baseStyle(
-                textColor: _highlightBoxTextColor(color),
-                weight: FontWeight.w700,
-              ),
+            child: sampleText(
+              textColor: _highlightBoxTextColor(color),
+              weight: FontWeight.w700,
             ),
           ),
         );
         break;
       case QuickEditCaptionsStylePreset.yellowHeadline:
-        captionBody = Text(
-          l10n.editCaptionsSampleLabel,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: baseStyle(textColor: const Color(0xFFFFD966)).copyWith(
-            shadows: _strongShadows(),
-          ),
+        captionBody = sampleText(
+          textColor: const Color(0xFFFFD966),
+          shadows: _strongShadows(),
         );
         break;
       case QuickEditCaptionsStylePreset.bold:
       case QuickEditCaptionsStylePreset.boldSocial:
-        captionBody = Text(
-          l10n.editCaptionsSampleLabel,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: baseStyle().copyWith(shadows: _strongShadows()),
-        );
+        captionBody = sampleText(shadows: _strongShadows());
         break;
       case QuickEditCaptionsStylePreset.cleanPro:
-        captionBody = Text(
-          l10n.editCaptionsSampleLabel,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: baseStyle().copyWith(
-            shadows: [
-              Shadow(
-                blurRadius: 9,
-                color: Colors.black.withValues(alpha: 0.84),
-              ),
-              Shadow(
-                blurRadius: 0,
-                offset: const Offset(0, 0.5),
-                color: Colors.black.withValues(alpha: 0.55),
-              ),
-            ],
-          ),
+        captionBody = sampleText(
+          shadows: [
+            Shadow(
+              blurRadius: 9,
+              color: Colors.black.withValues(alpha: 0.84),
+            ),
+            Shadow(
+              blurRadius: 0,
+              offset: const Offset(0, 0.5),
+              color: Colors.black.withValues(alpha: 0.55),
+            ),
+          ],
         );
         break;
       case QuickEditCaptionsStylePreset.clean:
-        captionBody = Text(
-          l10n.editCaptionsSampleLabel,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: baseStyle().copyWith(
-            shadows: [
-              Shadow(
-                blurRadius: 8,
-                color: Colors.black.withValues(alpha: 0.82),
-              ),
-            ],
-          ),
+        captionBody = sampleText(
+          shadows: [
+            Shadow(
+              blurRadius: 8,
+              color: Colors.black.withValues(alpha: 0.82),
+            ),
+          ],
         );
     }
 
@@ -233,6 +240,17 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
       },
     );
   }
+}
+
+({String before, String highlight}) _sampleHighlightParts(String full) {
+  final trimmed = full.trim();
+  final parts = trimmed.split(RegExp(r"\s+"));
+  if (parts.length < 2) {
+    return (before: "", highlight: trimmed);
+  }
+  final highlight = parts.last;
+  final before = "${parts.sublist(0, parts.length - 1).join(" ")} ";
+  return (before: before, highlight: highlight);
 }
 
 Color _accentColor(QuickEditCaptionColor color) {
