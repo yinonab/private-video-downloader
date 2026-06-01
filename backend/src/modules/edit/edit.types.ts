@@ -42,6 +42,11 @@ export type CaptionsPosition = "top" | "bottom";
 
 export type CaptionsColor = "white" | "yellow" | "purple" | "mint";
 
+/** V3.4B — text/box colors for word-highlight overlay (includes black). */
+export type CaptionsTextColor = CaptionsColor | "black";
+
+export type CaptionsBoxShape = "rectangle" | "rounded" | "pill";
+
 export type CaptionsFontFamily =
   | "default"
   | "heebo"
@@ -77,6 +82,11 @@ export type CaptionsBurnInV1Resolved = {
   readonly position: CaptionsPosition;
   readonly color: CaptionsColor;
   readonly wordHighlight: CaptionsWordHighlight;
+  /** V3.4B overlay — optional; defaults from `color` / highlight mode. */
+  readonly normalTextColor?: CaptionsTextColor;
+  readonly activeTextColor?: CaptionsTextColor;
+  readonly boxColor?: CaptionsTextColor;
+  readonly boxShape?: CaptionsBoxShape;
   /** Horizontal offset in ASS script pixels (~PlayRes width); clamped −240…240 server-side. */
   readonly offsetX: number;
   /** Vertical offset in ASS script pixels; clamped −180…180. Positive moves down after anchor math. */

@@ -67,6 +67,9 @@ export const config = {
   openaiTranscriptionModel: (
     ((process.env.OPENAI_TRANSCRIPTION_MODEL ?? "").trim() || "whisper-1")
   ).trim(),
+
+  /** V3.4B — canvas overlay for wordHighlight=color|box (ASS for none). */
+  captionHighlightOverlay: parseBooleanEnv(process.env.LINKCLIP_CAPTION_HIGHLIGHT_OVERLAY, true),
 };
 
 export type AppConfig = typeof config;

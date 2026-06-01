@@ -24,6 +24,7 @@ const UNSUPPORTED_CAPTIONS_FONT_SIZE_EN = "This captions size is not supported."
 const UNSUPPORTED_CAPTIONS_FONT_FAMILY_EN = "This caption font is not supported.";
 const UNSUPPORTED_CAPTIONS_COLOR_EN = "This captions color is not supported.";
 const UNSUPPORTED_CAPTIONS_WORD_HIGHLIGHT_EN = "This word highlight option is not supported.";
+const UNSUPPORTED_CAPTIONS_BOX_SHAPE_EN = "This caption box shape is not supported.";
 const CANON_EDIT_SPEED_FACTORS = [0.5, 1.25, 1.5, 2] as const satisfies readonly EditSpeedFactor[];
 
 function normalizeEditSpeedFactor(n: unknown): EditSpeedFactor | undefined {
@@ -117,6 +118,8 @@ const CAPTIONS_FONT_SIZE = [
 ] as const;
 
 const CAPTIONS_COLOR = ["white", "yellow", "purple", "mint"] as const;
+const CAPTIONS_TEXT_COLOR = ["white", "yellow", "purple", "mint", "black"] as const;
+const CAPTIONS_BOX_SHAPE = ["rectangle", "rounded", "pill"] as const;
 
 const CAPTIONS_FONT_FAMILY = [
   "default",
@@ -155,6 +158,10 @@ const captionsAutoOpSchema = z
     position: z.enum(["top", "bottom"]).optional(),
     color: z.enum(CAPTIONS_COLOR).optional(),
     wordHighlight: z.enum(CAPTIONS_WORD_HIGHLIGHT).optional(),
+    normalTextColor: z.enum(CAPTIONS_TEXT_COLOR).optional(),
+    activeTextColor: z.enum(CAPTIONS_TEXT_COLOR).optional(),
+    boxColor: z.enum(CAPTIONS_TEXT_COLOR).optional(),
+    boxShape: z.enum(CAPTIONS_BOX_SHAPE).optional(),
     offsetX: z.number().int().min(-240).max(240).optional(),
     offsetY: z.number().int().min(-180).max(180).optional(),
   })
@@ -172,6 +179,10 @@ const captionsSegmentsOpSchema = z
     position: z.enum(["top", "bottom"]).optional(),
     color: z.enum(CAPTIONS_COLOR).optional(),
     wordHighlight: z.enum(CAPTIONS_WORD_HIGHLIGHT).optional(),
+    normalTextColor: z.enum(CAPTIONS_TEXT_COLOR).optional(),
+    activeTextColor: z.enum(CAPTIONS_TEXT_COLOR).optional(),
+    boxColor: z.enum(CAPTIONS_TEXT_COLOR).optional(),
+    boxShape: z.enum(CAPTIONS_BOX_SHAPE).optional(),
     offsetX: z.number().int().min(-240).max(240).optional(),
     offsetY: z.number().int().min(-180).max(180).optional(),
     segments: z.array(captionSegmentWireSchema).min(1),
@@ -353,6 +364,22 @@ export function captionsFieldErrorsFromUnknownBody(body: unknown): AppError | nu
         return new AppError(codes.UNSUPPORTED_CAPTIONS_WORD_HIGHLIGHT, UNSUPPORTED_CAPTIONS_WORD_HIGHLIGHT_EN, 400);
       }
     }
+    const allowedTextCol = new Set<string>(CAPTIONS_TEXT_COLOR);
+    for (const key of ["normalTextColor", "activeTextColor", "boxColor"] as const) {
+      if (Object.prototype.hasOwnProperty.call(o, key)) {
+        const v = o[key];
+        if (v !== undefined && v !== null && (typeof v !== "string" || !allowedTextCol.has(v))) {
+          return new AppError(codes.UNSUPPORTED_CAPTIONS_COLOR, UNSUPPORTED_CAPTIONS_COLOR_EN, 400);
+        }
+      }
+    }
+    const allowedBoxShape = new Set<string>(CAPTIONS_BOX_SHAPE);
+    if (Object.prototype.hasOwnProperty.call(o, "boxShape")) {
+      const bs = o.boxShape;
+      if (bs !== undefined && bs !== null && (typeof bs !== "string" || !allowedBoxShape.has(bs))) {
+        return new AppError(codes.UNSUPPORTED_CAPTIONS_BOX_SHAPE, UNSUPPORTED_CAPTIONS_BOX_SHAPE_EN, 400);
+      }
+    }
     if (Object.prototype.hasOwnProperty.call(o, "burnIn")) {
       if (o.burnIn !== true) {
         return new AppError(
@@ -444,28 +471,33 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
         compressPreset = op.preset;
         break;
       case "captions": {
-        const styleResolved = normalizeCaptionsStyle(op.style);
-        const { offsetX, offsetY } = clampCaptionsBurnInOffsets(op.offsetX, op.offsetY);
-        const fontFamily = normalizeCaptionsFontFamily(op.fontFamily);
+        const capOp: z.infer<typeof captionsOpSchema> = op;
+        const styleResolved = normalizeCaptionsStyle(capOp.style);
+        const { offsetX, offsetY } = clampCaptionsBurnInOffsets(capOp.offsetX, capOp.offsetY);
+        const fontFamily = normalizeCaptionsFontFamily(capOp.fontFamily);
         const base = {
           language: "auto" as const,
           burnIn: true as const,
           style: styleResolved,
-          fontSize: op.fontSize ?? "medium",
+          fontSize: capOp.fontSize ?? "medium",
           fontFamily,
-          position: op.position ?? "bottom",
-          color: op.color ?? "white",
-          wordHighlight: op.wordHighlight ?? "none",
+          position: capOp.position ?? "bottom",
+          color: capOp.color ?? "white",
+          wordHighlight: capOp.wordHighlight ?? "none",
+          normalTextColor: capOp.normalTextColor,
+          activeTextColor: capOp.activeTextColor,
+          boxColor: capOp.boxColor,
+          boxShape: capOp.boxShape,
           offsetX,
           offsetY,
         };
-        if (op.mode === "auto") {
+        if (capOp.mode === "auto") {
           captionsBurnInV1 = {
             mode: "auto",
             ...base,
           };
         } else {
-          const normalized = normalizeCaptionSegmentsForBurn(op.segments);
+          const normalized = normalizeCaptionSegmentsForBurn(capOp.segments);
           captionsBurnInV1 = {
             mode: "segments",
             ...base,

@@ -15,6 +15,8 @@
     "diag:ass-captions": "tsx scripts/test-ass-caption-helpers.ts",
     "diag:caption-fonts": "tsx scripts/diag-caption-fonts.ts",
     "diag:runtime": "tsx scripts/diag-runtime.ts",
+    "poc:caption-highlight": "tsx scripts/poc-caption-highlight-overlay.ts",
+    "diag:caption-highlight": "tsx scripts/diag-caption-highlight.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
@@ -26,6 +28,7 @@
   "dependencies": {
     "@fastify/cors": "^10.0.2",
     "@fastify/multipart": "^10.0.0",
+    "@napi-rs/canvas": "^1.0.0",
     "@prisma/client": "^6.8.2",
     "bullmq": "^5.52.2",
     "dotenv": "^16.5.0",

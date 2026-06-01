@@ -213,6 +213,15 @@ export function buildEditFfmpegArgs(opts: {
   return { args, segmentDurationSec };
 }
 
+export type CaptionBurnVideo =
+  | { readonly kind: "vf"; readonly clause: string }
+  | {
+      readonly kind: "filter_complex";
+      readonly filter: string;
+      /** Extra `-loop 1 -t … -i plate.png` args after main input. */
+      readonly extraInputArgs: readonly string[];
+    };
+
 /**
  * Final pass: burn ASS (optional) + export codec + respect mute on **output** mux only.
  * Input is the sped/trimmed/formatted intermediate MP4 (`buildEditFfmpegArgs` `keepAudioDespiteMute` path).
@@ -221,25 +230,28 @@ export function buildEditFinalEncodeAfterCaptionsArgs(opts: {
   intermediatePath: string;
   outputPath: string;
   plan: ResolvedEditPlan;
-  /** Full `-vf` clause (e.g. `subtitles=/path/file.ass`). **Null** skips burn-in filter. */
-  videoFilter: string | null;
+  /** Simple `-vf` (e.g. ASS subtitles) or timed PNG overlay via `-filter_complex`. */
+  captionBurn: CaptionBurnVideo | null;
   /** From ffprobe on the intermediate file */
   intermediateHasAudio: boolean;
   /** Output duration for ffmpeg progress parsing */
   timelineDurationSec: number;
 }): BuiltEditFfmpeg {
-  const { intermediatePath, outputPath, plan, videoFilter, intermediateHasAudio, timelineDurationSec } = opts;
+  const { intermediatePath, outputPath, plan, captionBurn, intermediateHasAudio, timelineDurationSec } = opts;
   const { crf, presetName } = x264EncodeOpts(plan.compressPreset);
 
-  const args: string[] = [
-    "-hide_banner",
-    "-nostats",
-    "-y",
-    "-i",
-    intermediatePath,
-    ...(videoFilter ? (["-vf", videoFilter] as const) : []),
-    "-map",
-    "0:v",
+  const args: string[] = ["-hide_banner", "-nostats", "-y", "-i", intermediatePath];
+
+  if (captionBurn?.kind === "filter_complex") {
+    args.push(...captionBurn.extraInputArgs);
+    args.push("-filter_complex", captionBurn.filter, "-map", "[vout]");
+  } else if (captionBurn?.kind === "vf") {
+    args.push("-vf", captionBurn.clause, "-map", "0:v");
+  } else {
+    args.push("-map", "0:v");
+  }
+
+  args.push(
     "-c:v",
     "libx264",
     "-preset",
@@ -248,7 +260,7 @@ export function buildEditFinalEncodeAfterCaptionsArgs(opts: {
     crf,
     "-pix_fmt",
     "yuv420p",
-  ];
+  );
 
   if (!plan.mute && intermediateHasAudio) {
     args.push("-map", "0:a:0?", "-c:a", "aac", "-b:a", "128k");

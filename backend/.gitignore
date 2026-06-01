@@ -15,6 +15,9 @@ secrets/cookies/*
 
 .DS_Store
 
+.poc-output/
+fonts/poc/
+
 # Media / artifacts (never commit)
 *.mp4
 *.mp3

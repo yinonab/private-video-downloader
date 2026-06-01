@@ -16,8 +16,16 @@ import { resolveEditOperations } from "../modules/edit/edit.schemas";
 import type { EditQueuePayload } from "../modules/edit/edit.types";
 import type { TranscriptSegment } from "../services/transcription.service";
 import { segmentsToAssContentWithMeta } from "../services/assSubtitles.service";
+import {
+  buildCaptionHighlightBurnPlan,
+  buildOverlayFfmpegInputArgs,
+  buildTimedOverlayFilterComplex,
+  captionsConfigForAssBurn,
+  usesCaptionHighlightOverlay,
+} from "../services/captionHighlight";
 import { ffprobeMedia } from "../services/ffmpegNormalize";
 import { ffmpegSubtitlesVFArgument } from "../services/ffmpegSubtitlePath";
+import type { CaptionBurnVideo } from "../modules/edit/edit.ffmpeg";
 import { logger } from "../services/logger";
 import { ensureDeviceDirs, getEditsDir } from "../services/storage";
 import { transcribeAudioFile } from "../services/transcription.service";
@@ -109,11 +117,13 @@ export function createEditWorker(prisma: PrismaClient): Worker {
       const captionMidAbs = path.join(editsRoot, `${editJobId}.mid.tmp.mp4`);
       const wavAbs = path.join(editsRoot, `${editJobId}.asr.wav`);
       const assAbs = path.join(editsRoot, `${editJobId}.cap.tmp.ass`);
+      const highlightDir = path.join(editsRoot, `${editJobId}.cap.highlight`);
 
       const unlinkCaptionArtifacts = async (): Promise<void> => {
         await fs.unlink(captionMidAbs).catch(() => undefined);
         await fs.unlink(wavAbs).catch(() => undefined);
         await fs.unlink(assAbs).catch(() => undefined);
+        await fs.rm(highlightDir, { recursive: true, force: true }).catch(() => undefined);
       };
 
       try {
@@ -372,25 +382,81 @@ export function createEditWorker(prisma: PrismaClient): Worker {
             }
           }
 
-          let subtitlesVfClause: string | null = null;
+          let captionBurn: CaptionBurnVideo | null = null;
           if (segments.length > 0) {
             const cfg = captionCfg;
-            const assOut = segmentsToAssContentWithMeta(segments, {
-              title: `edit-${editJobId}-cap`,
-              ...cfg,
-            });
-            await fs.writeFile(assAbs, assOut.ass, "utf8");
-            subtitlesVfClause = ffmpegSubtitlesVFArgument(assAbs);
-            logger.info(
-              {
-                editJobId,
-                segmentCount: segments.length,
-                wordCount: assOut.wordCount,
-                highlightMode: cfg.wordHighlight,
-                usedFallbackTiming: assOut.usedFallbackTiming,
-              },
-              "captions burn-in ASS prepared"
-            );
+            const wantsHighlight = usesCaptionHighlightOverlay(cfg);
+            const overlayEnabled = config.captionHighlightOverlay;
+
+            const burnStaticAssCaptions = async (reason: string): Promise<void> => {
+              const assCfg = captionsConfigForAssBurn(cfg);
+              const assOut = segmentsToAssContentWithMeta(segments, {
+                title: `edit-${editJobId}-cap`,
+                ...assCfg,
+              });
+              await fs.writeFile(assAbs, assOut.ass, "utf8");
+              captionBurn = { kind: "vf", clause: ffmpegSubtitlesVFArgument(assAbs) };
+              logger.info(
+                {
+                  editJobId,
+                  segmentCount: segments.length,
+                  wordCount: assOut.wordCount,
+                  requestedHighlight: cfg.wordHighlight,
+                  highlightMode: "none",
+                  usedFallbackTiming: assOut.usedFallbackTiming,
+                  reason,
+                },
+                "captions burn-in static ASS prepared"
+              );
+            };
+
+            if (wantsHighlight && overlayEnabled) {
+              try {
+                const plan = await buildCaptionHighlightBurnPlan(segments, cfg, highlightDir);
+                if (plan.plates.length === 0) {
+                  throw new Error("caption_highlight_no_plates");
+                }
+                const timed = plan.plates.map((p) => ({
+                  path: p.platePath,
+                  startSec: p.startSec,
+                  endSec: p.endSec,
+                }));
+                const filter = buildTimedOverlayFilterComplex(timed);
+                const extraInputArgs = buildOverlayFfmpegInputArgs(timed);
+                if (!filter) {
+                  throw new Error("caption_highlight_no_filter");
+                }
+                captionBurn = { kind: "filter_complex", filter, extraInputArgs };
+                logger.info(
+                  {
+                    editJobId,
+                    segmentCount: segments.length,
+                    plateCount: plan.plateCount,
+                    wordCount: plan.wordCount,
+                    highlightMode: cfg.wordHighlight,
+                    boxShape: cfg.boxShape ?? "pill",
+                    usedFallbackTiming: plan.usedFallbackTiming,
+                  },
+                  "captions burn-in highlight overlay prepared"
+                );
+              } catch (overlayErr) {
+                logger.warn(
+                  { editJobId, err: overlayErr instanceof Error ? overlayErr.message : "overlay_failed" },
+                  "caption highlight overlay failed; falling back to static captions"
+                );
+                await burnStaticAssCaptions("overlay_failed");
+              }
+            } else {
+              if (wantsHighlight && !overlayEnabled) {
+                logger.warn(
+                  { editJobId, requestedHighlight: cfg.wordHighlight },
+                  "caption highlight overlay disabled; burning static captions"
+                );
+              }
+              await burnStaticAssCaptions(
+                wantsHighlight && !overlayEnabled ? "overlay_flag_disabled" : "static_only",
+              );
+            }
           } else {
             logger.warn({ editJobId }, "captions: no subtitle segments — exporting without burn-in overlays");
           }
@@ -405,7 +471,7 @@ export function createEditWorker(prisma: PrismaClient): Worker {
             intermediatePath: captionMidAbs,
             outputPath: tmpOut,
             plan,
-            videoFilter: subtitlesVfClause,
+            captionBurn,
             intermediateHasAudio: muxHasTimelineAudio,
             timelineDurationSec: timelineDurationSecGuess > 0 ? timelineDurationSecGuess : 1,
           });
