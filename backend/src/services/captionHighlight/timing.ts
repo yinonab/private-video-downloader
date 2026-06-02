@@ -1,6 +1,39 @@
 import type { CaptionCueWordResolved } from "../../modules/edit/edit.types";
 import { normalizeCaptionText, tokenizeCaptionText } from "./tokenize";
 
+/**
+ * Map segment-level word timestamps to a highlight chunk (multi-chunk segments, Whisper punctuation).
+ */
+export function alignWordsForChunk(
+  chunkText: string,
+  chunkStartSec: number,
+  chunkEndSec: number,
+  segmentWords: readonly CaptionCueWordResolved[] | undefined,
+): readonly CaptionCueWordResolved[] | undefined {
+  if (!segmentWords?.length) return undefined;
+  const chunkTokens = tokenizeCaptionText(chunkText).map((t) => t.text);
+  if (!chunkTokens.length) return undefined;
+
+  const inWindow = segmentWords.filter(
+    (w) => w.endSec > chunkStartSec + 1e-4 && w.startSec < chunkEndSec - 1e-4,
+  );
+  const windowNorm = inWindow.map((w) => normalizeCaptionText(w.text));
+  if (
+    windowNorm.length === chunkTokens.length &&
+    windowNorm.every((w, i) => w === chunkTokens[i])
+  ) {
+    return inWindow;
+  }
+
+  const allNorm = segmentWords.map((w) => normalizeCaptionText(w.text));
+  for (let off = 0; off <= allNorm.length - chunkTokens.length; off++) {
+    if (chunkTokens.every((t, i) => allNorm[off + i] === t)) {
+      return segmentWords.slice(off, off + chunkTokens.length);
+    }
+  }
+  return undefined;
+}
+
 export type WordTimingCue = {
   readonly startSec: number;
   readonly endSec: number;

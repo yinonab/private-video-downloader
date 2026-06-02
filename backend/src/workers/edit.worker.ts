@@ -16,13 +16,13 @@ import { resolveEditOperations } from "../modules/edit/edit.schemas";
 import type { EditQueuePayload } from "../modules/edit/edit.types";
 import type { TranscriptSegment } from "../services/transcription.service";
 import { segmentsToAssContentWithMeta } from "../services/assSubtitles.service";
+import { normalizeCaptionSegmentsForBurn } from "../modules/edit/captionSegments.util";
 import {
+  buildCaptionHighlightAlphaVideo,
   buildCaptionHighlightBurnPlan,
-  buildOverlayFfmpegInputArgs,
-  buildTimedOverlayFilterComplex,
+  CAPTION_ALPHA_OVERLAY_FILTER,
   captionsConfigForAssBurn,
   usesCaptionHighlightOverlay,
-  validateOverlayFilterComplex,
 } from "../services/captionHighlight";
 import { ffprobeMedia } from "../services/ffmpegNormalize";
 import { ffmpegSubtitlesVFArgument } from "../services/ffmpegSubtitlePath";
@@ -340,9 +340,14 @@ export function createEditWorker(prisma: PrismaClient): Worker {
             return outCue;
           }
 
+          const captionsMode = segmentsFromClient ? "segments" : "auto";
+
           if (segmentsFromClient) {
-            segments = clampCueTimesToTimeline(captionCfg.segments ?? [], timelineDurationSecGuess);
-            logger.info({ editJobId, segmentCount: segments.length }, "captions: client segment mode — skipping transcription");
+            segments = clampCueTimesToTimeline(
+              normalizeCaptionSegmentsForBurn(captionCfg.segments ?? []),
+              timelineDurationSecGuess,
+            );
+            logger.info({ editJobId, segmentCount: segments.length, captionsMode }, "captions: client segment mode — skipping transcription");
           } else if (!muxHasTimelineAudio) {
             logger.warn({ editJobId }, "captions burn-in skipped: timeline has no audio track");
           } else {
@@ -382,6 +387,10 @@ export function createEditWorker(prisma: PrismaClient): Worker {
               }
               return;
             }
+            segments = clampCueTimesToTimeline(
+              normalizeCaptionSegmentsForBurn(segments),
+              timelineDurationSecGuess,
+            );
           }
 
           let captionBurn: CaptionBurnVideo | null = null;
@@ -418,39 +427,46 @@ export function createEditWorker(prisma: PrismaClient): Worker {
                   width: midProbe?.video?.width,
                   height: midProbe?.video?.height,
                 });
-                if (plan.plates.length === 0) {
-                  throw new Error("caption_highlight_no_plates");
-                }
-                const timed = plan.plates.map((p) => ({
-                  path: p.platePath,
-                  startSec: p.startSec,
-                  endSec: p.endSec,
-                }));
-                const filterBuild = buildTimedOverlayFilterComplex(timed);
-                if (!filterBuild) {
-                  throw new Error("caption_highlight_no_filter");
-                }
-                validateOverlayFilterComplex(filterBuild);
-                const extraInputArgs = buildOverlayFfmpegInputArgs(timed);
-                captionBurn = { kind: "filter_complex", filter: filterBuild.filter, extraInputArgs };
+                const overlayVideoPath = path.join(highlightDir, "caption-overlay.webm");
+                await buildCaptionHighlightAlphaVideo({
+                  plates: plan.plates,
+                  width: plan.canvasWidth,
+                  height: plan.canvasHeight,
+                  durationSec: timelineDurationSecGuess,
+                  outputPath: overlayVideoPath,
+                });
+                captionBurn = {
+                  kind: "alpha_overlay",
+                  overlayVideoPath,
+                  filter: CAPTION_ALPHA_OVERLAY_FILTER,
+                };
                 logger.info(
                   {
                     editJobId,
+                    captionsMode,
+                    requestedHighlight: cfg.wordHighlight,
+                    highlightMode: cfg.wordHighlight,
                     segmentCount: segments.length,
                     plateCount: plan.plateCount,
                     wordCount: plan.wordCount,
                     durationSec: Math.round(timelineDurationSecGuess * 10) / 10,
                     videoWidth: plan.canvasWidth,
                     videoHeight: plan.canvasHeight,
-                    highlightMode: cfg.wordHighlight,
                     boxShape: cfg.boxShape ?? "pill",
                     usedFallbackTiming: plan.usedFallbackTiming,
+                    overlayStrategy: "alpha_video",
                   },
                   "captions burn-in highlight overlay prepared"
                 );
               } catch (overlayErr) {
                 logger.warn(
-                  { editJobId, err: overlayErr instanceof Error ? overlayErr.message : "overlay_failed" },
+                  {
+                    editJobId,
+                    captionsMode,
+                    requestedHighlight: cfg.wordHighlight,
+                    err: overlayErr instanceof Error ? overlayErr.message : "overlay_failed",
+                    fallback: "static_ass_none",
+                  },
                   "caption highlight overlay failed; falling back to static captions"
                 );
                 await burnStaticAssCaptions("overlay_failed");

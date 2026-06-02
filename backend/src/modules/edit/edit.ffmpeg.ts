@@ -216,9 +216,15 @@ export function buildEditFfmpegArgs(opts: {
 export type CaptionBurnVideo =
   | { readonly kind: "vf"; readonly clause: string }
   | {
+      /** Production: main video + one transparent VP9 overlay (two `-i` inputs only). */
+      readonly kind: "alpha_overlay";
+      readonly overlayVideoPath: string;
+      readonly filter: string;
+    }
+  | {
+      /** Diagnostic / legacy multi-PNG overlay (not used in production edit worker). */
       readonly kind: "filter_complex";
       readonly filter: string;
-      /** Extra `-loop 1 -t … -i plate.png` args after main input. */
       readonly extraInputArgs: readonly string[];
     };
 
@@ -242,7 +248,10 @@ export function buildEditFinalEncodeAfterCaptionsArgs(opts: {
 
   const args: string[] = ["-hide_banner", "-nostats", "-y", "-i", intermediatePath];
 
-  if (captionBurn?.kind === "filter_complex") {
+  if (captionBurn?.kind === "alpha_overlay") {
+    args.push("-i", captionBurn.overlayVideoPath);
+    args.push("-filter_complex", captionBurn.filter, "-map", "[vout]");
+  } else if (captionBurn?.kind === "filter_complex") {
     args.push(...captionBurn.extraInputArgs);
     args.push("-filter_complex", captionBurn.filter, "-map", "[vout]");
   } else if (captionBurn?.kind === "vf") {

@@ -13,7 +13,8 @@ import {
   resolveCaptionCanvasSize,
 } from "./dimensions";
 import { renderCaptionHighlightPlate } from "./renderPlate";
-import { resolveWordTimingCues } from "./timing";
+import { assertHighlightPlatesVisible } from "./plateInspect";
+import { alignWordsForChunk, resolveWordTimingCues } from "./timing";
 import type { HighlightBurnPlan, RenderPlateInput, TimedPlate } from "./types";
 import { resolveTextDirection } from "./tokenize";
 
@@ -110,13 +111,14 @@ export async function buildCaptionHighlightBurnPlan(
 
     for (let ci = 0; ci < chunks.length; ci++) {
       const chunk = chunks[ci]!;
+      const chunkWords = alignWordsForChunk(chunk.text, chunk.startSec, chunk.endSec, wordsPayload);
       const { cues, usedFallback } = resolveWordTimingCues(
         chunk.text,
         seg.startSec,
         seg.endSec,
         chunk.startSec,
         chunk.endSec,
-        wordsPayload,
+        chunkWords,
       );
       usedFallbackTiming = usedFallbackTiming || usedFallback;
 
@@ -152,6 +154,12 @@ export async function buildCaptionHighlightBurnPlan(
       }
     }
   }
+
+  if (!plates.length) {
+    throw new Error("caption_highlight_no_plates");
+  }
+
+  await assertHighlightPlatesVisible([...cache.values()]);
 
   return {
     plates,

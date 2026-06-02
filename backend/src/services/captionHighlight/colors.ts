@@ -22,7 +22,7 @@ export function textColorToCss(color: CaptionsTextColor): string {
   }
 }
 
-export function boxColorToCss(color: CaptionsTextColor, alpha = 0.88): string {
+export function boxColorToCss(color: CaptionsTextColor, alpha = 0.92): string {
   const base = textColorToCss(color);
   if (base.startsWith("#") && base.length === 7) {
     const r = parseInt(base.slice(1, 3), 16);
