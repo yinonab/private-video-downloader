@@ -16,6 +16,10 @@ class CaptionsEditorPanel extends StatefulWidget {
     required this.position,
     required this.color,
     required this.wordHighlight,
+    this.normalTextColor,
+    this.activeTextColor,
+    this.boxColor,
+    required this.boxShape,
     required this.offsetX,
     required this.offsetY,
     required this.onAutoCaptionsChanged,
@@ -25,6 +29,10 @@ class CaptionsEditorPanel extends StatefulWidget {
     required this.onPositionChanged,
     required this.onColorChanged,
     required this.onWordHighlightChanged,
+    required this.onNormalTextColorChanged,
+    required this.onActiveTextColorChanged,
+    required this.onBoxColorChanged,
+    required this.onBoxShapeChanged,
     required this.onOffsetReset,
     required this.onOffsetNudgeAss,
     required this.effectiveCaptionPreset,
@@ -44,6 +52,10 @@ class CaptionsEditorPanel extends StatefulWidget {
   final QuickEditCaptionPosition position;
   final QuickEditCaptionColor color;
   final QuickEditCaptionWordHighlight wordHighlight;
+  final QuickEditCaptionColor? normalTextColor;
+  final QuickEditCaptionColor? activeTextColor;
+  final QuickEditCaptionColor? boxColor;
+  final QuickEditCaptionBoxShape boxShape;
   final int offsetX;
   final int offsetY;
 
@@ -70,6 +82,10 @@ class CaptionsEditorPanel extends StatefulWidget {
   final ValueChanged<QuickEditCaptionPosition> onPositionChanged;
   final ValueChanged<QuickEditCaptionColor> onColorChanged;
   final ValueChanged<QuickEditCaptionWordHighlight> onWordHighlightChanged;
+  final ValueChanged<QuickEditCaptionColor> onNormalTextColorChanged;
+  final ValueChanged<QuickEditCaptionColor> onActiveTextColorChanged;
+  final ValueChanged<QuickEditCaptionColor> onBoxColorChanged;
+  final ValueChanged<QuickEditCaptionBoxShape> onBoxShapeChanged;
   final VoidCallback onOffsetReset;
 
   /// Nudge offsets in ASS PlayRes pixels (typically ± [kQuickEditCaptionsOffsetFineStep]). Screen-absolute axes (not mirrored in RTL).
@@ -222,11 +238,19 @@ class _CaptionsEditorPanelState extends State<CaptionsEditorPanel> {
                     stylePreset: widget.stylePreset,
                     wordHighlight: widget.wordHighlight,
                     color: widget.color,
+                    normalTextColor: widget.normalTextColor,
+                    activeTextColor: widget.activeTextColor,
+                    boxColor: widget.boxColor,
+                    boxShape: widget.boxShape,
                     offsetX: widget.offsetX,
                     offsetY: widget.offsetY,
                     onStyleChanged: widget.onStyleChanged,
                     onWordHighlightChanged: widget.onWordHighlightChanged,
                     onColorChanged: widget.onColorChanged,
+                    onNormalTextColorChanged: widget.onNormalTextColorChanged,
+                    onActiveTextColorChanged: widget.onActiveTextColorChanged,
+                    onBoxColorChanged: widget.onBoxColorChanged,
+                    onBoxShapeChanged: widget.onBoxShapeChanged,
                     onOffsetReset: widget.onOffsetReset,
                     onOffsetNudge: widget.onOffsetNudgeAss,
                   ),
@@ -495,11 +519,19 @@ class _CaptionsAdvancedStylingDisclosure extends StatelessWidget {
     required this.stylePreset,
     required this.wordHighlight,
     required this.color,
+    this.normalTextColor,
+    this.activeTextColor,
+    this.boxColor,
+    required this.boxShape,
     required this.offsetX,
     required this.offsetY,
     required this.onStyleChanged,
     required this.onWordHighlightChanged,
     required this.onColorChanged,
+    required this.onNormalTextColorChanged,
+    required this.onActiveTextColorChanged,
+    required this.onBoxColorChanged,
+    required this.onBoxShapeChanged,
     required this.onOffsetReset,
     required this.onOffsetNudge,
   });
@@ -513,11 +545,19 @@ class _CaptionsAdvancedStylingDisclosure extends StatelessWidget {
   final QuickEditCaptionsStylePreset stylePreset;
   final QuickEditCaptionWordHighlight wordHighlight;
   final QuickEditCaptionColor color;
+  final QuickEditCaptionColor? normalTextColor;
+  final QuickEditCaptionColor? activeTextColor;
+  final QuickEditCaptionColor? boxColor;
+  final QuickEditCaptionBoxShape boxShape;
   final int offsetX;
   final int offsetY;
   final ValueChanged<QuickEditCaptionsStylePreset> onStyleChanged;
   final ValueChanged<QuickEditCaptionWordHighlight> onWordHighlightChanged;
   final ValueChanged<QuickEditCaptionColor> onColorChanged;
+  final ValueChanged<QuickEditCaptionColor> onNormalTextColorChanged;
+  final ValueChanged<QuickEditCaptionColor> onActiveTextColorChanged;
+  final ValueChanged<QuickEditCaptionColor> onBoxColorChanged;
+  final ValueChanged<QuickEditCaptionBoxShape> onBoxShapeChanged;
   final VoidCallback onOffsetReset;
   final void Function(int dxAss, int dyAss) onOffsetNudge;
 
@@ -572,6 +612,70 @@ class _CaptionsAdvancedStylingDisclosure extends StatelessWidget {
                 ),
             ],
           ),
+          if (wordHighlight != QuickEditCaptionWordHighlight.none) ...[
+            _CaptionsChipSection(
+              accent: accent,
+              scheme: scheme,
+              title: l10n.editCaptionsV34NormalTextColor,
+              spacing: () => _captionTextColorChips(
+                l10n: l10n,
+                scheme: scheme,
+                selected: effectiveCaptionNormalTextColor(
+                  color: color,
+                  normalTextColor: normalTextColor,
+                ),
+                onSelected: onNormalTextColorChanged,
+              ),
+            ),
+            _CaptionsChipSection(
+              accent: accent,
+              scheme: scheme,
+              title: l10n.editCaptionsV34ActiveWordColor,
+              spacing: () => _captionTextColorChips(
+                l10n: l10n,
+                scheme: scheme,
+                selected: effectiveCaptionActiveTextColor(
+                  color: color,
+                  wordHighlight: wordHighlight,
+                  normalTextColor: normalTextColor,
+                  activeTextColor: activeTextColor,
+                  boxColor: boxColor,
+                ),
+                onSelected: onActiveTextColorChanged,
+              ),
+            ),
+            if (wordHighlight == QuickEditCaptionWordHighlight.box) ...[
+              _CaptionsChipSection(
+                accent: accent,
+                scheme: scheme,
+                title: l10n.editCaptionsV34BoxColor,
+                spacing: () => _captionBoxColorChips(
+                  l10n: l10n,
+                  scheme: scheme,
+                  selected: effectiveCaptionBoxColor(
+                    color: color,
+                    wordHighlight: wordHighlight,
+                    boxColor: boxColor,
+                  ),
+                  onSelected: onBoxColorChanged,
+                ),
+              ),
+              _CaptionsHorizontalChipSection(
+                scheme: scheme,
+                title: l10n.editCaptionsV34BoxShape,
+                height: 46,
+                children: [
+                  for (final s in _kCaptionBoxShapesOrdered)
+                    _CaptionChip(
+                      label: _captionBoxShapeLabel(l10n, s),
+                      selected: boxShape == s,
+                      scheme: scheme,
+                      onTap: () => onBoxShapeChanged(s),
+                    ),
+                ],
+              ),
+            ],
+          ],
           _CaptionsChipSection(
             accent: accent,
             scheme: scheme,
@@ -603,6 +707,12 @@ class _CaptionsAdvancedStylingDisclosure extends StatelessWidget {
                   selected: color == QuickEditCaptionColor.mint,
                   scheme: scheme,
                   onTap: () => onColorChanged(QuickEditCaptionColor.mint),
+                ),
+                _CaptionChip(
+                  label: l10n.editCaptionsV34ColorPink,
+                  selected: color == QuickEditCaptionColor.pink,
+                  scheme: scheme,
+                  onTap: () => onColorChanged(QuickEditCaptionColor.pink),
                 ),
               ],
             ),
@@ -677,6 +787,91 @@ const _kCaptionWordHighlightsOrdered = [
   QuickEditCaptionWordHighlight.color,
   QuickEditCaptionWordHighlight.box,
 ];
+
+const _kCaptionBoxShapesOrdered = [
+  QuickEditCaptionBoxShape.rectangle,
+  QuickEditCaptionBoxShape.rounded,
+  QuickEditCaptionBoxShape.pill,
+];
+
+const _kCaptionTextColorsOrdered = [
+  QuickEditCaptionColor.white,
+  QuickEditCaptionColor.yellow,
+  QuickEditCaptionColor.purple,
+  QuickEditCaptionColor.mint,
+  QuickEditCaptionColor.pink,
+  QuickEditCaptionColor.black,
+];
+
+const _kCaptionBoxColorsOrdered = [
+  QuickEditCaptionColor.yellow,
+  QuickEditCaptionColor.purple,
+  QuickEditCaptionColor.mint,
+  QuickEditCaptionColor.pink,
+  QuickEditCaptionColor.black,
+  QuickEditCaptionColor.white,
+];
+
+Wrap _captionTextColorChips({
+  required AppLocalizations l10n,
+  required ColorScheme scheme,
+  required QuickEditCaptionColor selected,
+  required ValueChanged<QuickEditCaptionColor> onSelected,
+}) {
+  return Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final c in _kCaptionTextColorsOrdered)
+        _CaptionChip(
+          label: _captionTextColorLabel(l10n, c),
+          selected: selected == c,
+          scheme: scheme,
+          onTap: () => onSelected(c),
+        ),
+    ],
+  );
+}
+
+Wrap _captionBoxColorChips({
+  required AppLocalizations l10n,
+  required ColorScheme scheme,
+  required QuickEditCaptionColor selected,
+  required ValueChanged<QuickEditCaptionColor> onSelected,
+}) {
+  return Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final c in _kCaptionBoxColorsOrdered)
+        _CaptionChip(
+          label: _captionTextColorLabel(l10n, c),
+          selected: selected == c,
+          scheme: scheme,
+          onTap: () => onSelected(c),
+        ),
+    ],
+  );
+}
+
+String _captionTextColorLabel(AppLocalizations l10n, QuickEditCaptionColor c) {
+  return switch (c) {
+    QuickEditCaptionColor.white => l10n.editCaptionsColorWhite,
+    QuickEditCaptionColor.yellow => l10n.editCaptionsColorYellow,
+    QuickEditCaptionColor.purple => l10n.editCaptionsV32ColorPurple,
+    QuickEditCaptionColor.mint => l10n.editCaptionsV32ColorMint,
+    QuickEditCaptionColor.pink => l10n.editCaptionsV34ColorPink,
+    QuickEditCaptionColor.black => l10n.editCaptionsV34ColorBlack,
+  };
+}
+
+String _captionBoxShapeLabel(AppLocalizations l10n, QuickEditCaptionBoxShape s) {
+  return switch (s) {
+    QuickEditCaptionBoxShape.rectangle => l10n.editCaptionsV34BoxShapeRectangle,
+    QuickEditCaptionBoxShape.rounded => l10n.editCaptionsV34BoxShapeRounded,
+    QuickEditCaptionBoxShape.pill => l10n.editCaptionsV34BoxShapePill,
+  };
+}
 
 const _kCaptionStylesOrdered = [
   QuickEditCaptionsStylePreset.clean,

@@ -16,14 +16,17 @@ import {
   buildOverlayFfmpegInputArgs,
   buildTimedOverlayFilterComplex,
   CAPTION_ALPHA_OVERLAY_FILTER,
+  CAPTION_ALPHA_VIDEO_EXT,
   captionsConfigForAssBurn,
   inspectCaptionPlate,
   renderCaptionHighlightPlate,
+  resolveHighlightStyle,
+  textColorToCss,
   tokenizeCaptionText,
   validateOverlayFilterComplex,
   type TimedOverlayPlate,
 } from "../src/services/captionHighlight";
-import { createCanvas } from "@napi-rs/canvas";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { segmentsToAssContent } from "../src/services/assSubtitles.service";
 import type { TranscriptSegment } from "../src/services/transcription.service";
 
@@ -219,6 +222,114 @@ async function writeSolidTestPlate(outPath: string, width: number, height: numbe
   writeFileSync(outPath, await canvas.encode("png"));
 }
 
+function assertColorPropagation(): void {
+  const pinkNormal = resolveHighlightStyle({
+    ...baseCfg,
+    wordHighlight: "color",
+    color: "white",
+    normalTextColor: "pink",
+    activeTextColor: "yellow",
+  });
+  assert.equal(pinkNormal.normalCss, textColorToCss("pink"));
+  assert.equal(pinkNormal.activeCss, textColorToCss("yellow"));
+
+  const boxPurple = resolveHighlightStyle({
+    ...baseCfg,
+    wordHighlight: "box",
+    color: "white",
+    normalTextColor: "white",
+    activeTextColor: "black",
+    boxColor: "purple",
+    boxShape: "rectangle",
+  });
+  assert.ok(boxPurple.boxCss.includes("139") && boxPurple.boxCss.includes("246"), "box purple css");
+  assert.equal(textColorToCss("pink"), "#FF5C8A");
+  assert.equal(boxPurple.boxShape, "rectangle");
+  console.info("diag:caption-highlight ok color propagation (pink/yellow/purple box)");
+}
+
+async function sampleVideoCornerLuma(mp4Path: string): Promise<number> {
+  const framePath = path.join(path.dirname(mp4Path), `${path.basename(mp4Path)}-corner.png`);
+  const run = spawnSync(
+    "ffmpeg",
+    ["-hide_banner", "-y", "-i", mp4Path, "-vf", "select=eq(n\\,20)", "-vframes", "1", framePath],
+    { encoding: "utf8" },
+  );
+  if (run.status !== 0 || !existsSync(framePath)) return 0;
+  const img = await loadImage(readFileSync(framePath));
+  const canvas = createCanvas(img.width, img.height);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+  const { data } = ctx.getImageData(4, 4, 1, 1);
+  return data[0]! + data[1]! + data[2]!;
+}
+
+async function assertBaseVideoPreservedInComposite(outDir: string): Promise<void> {
+  const w = 320;
+  const h = 180;
+  const dur = 1.5;
+  const baseMp4 = path.join(outDir, "base-testsrc.mp4");
+  const baseRun = spawnSync(
+    "ffmpeg",
+    [
+      "-hide_banner",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      `testsrc2=size=${w}x${h}:rate=30:duration=${dur}`,
+      "-c:v",
+      "libx264",
+      "-pix_fmt",
+      "yuv420p",
+      baseMp4,
+    ],
+    { encoding: "utf8", maxBuffer: 8 * 1024 * 1024 },
+  );
+  assert.equal(baseRun.status, 0, `testsrc base: ${(baseRun.stderr ?? "").slice(-300)}`);
+
+  const platePath = path.join(outDir, "base-test-plate.png");
+  await writeSolidTestPlate(platePath, w, h);
+  const overlayPath = path.join(outDir, `base-test-overlay${CAPTION_ALPHA_VIDEO_EXT}`);
+  await buildCaptionHighlightAlphaVideo({
+    plates: [{ startSec: 0.2, endSec: 1.0, platePath, activeWordIndex: 0 }],
+    width: w,
+    height: h,
+    durationSec: dur,
+    outputPath: overlayPath,
+  });
+
+  const outMp4 = path.join(outDir, "base-preserved-composite.mp4");
+  const args = [
+    "-hide_banner",
+    "-y",
+    "-i",
+    baseMp4,
+    "-i",
+    overlayPath,
+    "-filter_complex",
+    CAPTION_ALPHA_OVERLAY_FILTER,
+    "-map",
+    "[vout]",
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    outMp4,
+  ];
+  assertProductionFinalEncodeUsesTwoInputsOnly(args);
+  const compRun = spawnSync("ffmpeg", args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+  assert.equal(compRun.status, 0, `composite: ${(compRun.stderr ?? "").slice(-400)}`);
+
+  const luma = await sampleVideoCornerLuma(outMp4);
+  assert.ok(luma > 24, `composed output corner luma=${luma} (base video must remain visible)`);
+
+  const overlayMeta = await inspectCaptionPlate(platePath);
+  assert.ok(!overlayMeta.isEffectivelyEmpty, "overlay plate has visible pixels");
+
+  console.info("diag:caption-highlight ok base video preserved in alpha composite");
+}
+
 async function ffmpegAlphaCompositeSmoke(
   label: string,
   planPlates: TimedOverlayPlate[],
@@ -227,7 +338,7 @@ async function ffmpegAlphaCompositeSmoke(
   durationSec: number,
   outDir: string,
 ): Promise<void> {
-  const overlayPath = path.join(outDir, `${label}-overlay.webm`);
+  const overlayPath = path.join(outDir, `${label}-overlay${CAPTION_ALPHA_VIDEO_EXT}`);
   await buildCaptionHighlightAlphaVideo({
     plates: planPlates,
     width: videoW,
@@ -244,7 +355,7 @@ async function ffmpegAlphaCompositeSmoke(
     "-f",
     "lavfi",
     "-i",
-    `color=c=black:s=${videoW}x${videoH}:d=${durationSec}:r=30`,
+    `testsrc2=size=${videoW}x${videoH}:rate=30:duration=${durationSec}`,
     "-i",
     overlayPath,
     "-filter_complex",
@@ -272,6 +383,7 @@ async function ffmpegAlphaCompositeSmoke(
 async function main(): Promise<void> {
   assertKillSwitchStaticAss();
   assertFilterComplexLabels();
+  assertColorPropagation();
 
   const outRoot = mkdtempSync(path.join(os.tmpdir(), "linkclip-diag-cap-"));
   mkdirSync(outRoot, { recursive: true });
@@ -410,6 +522,8 @@ async function main(): Promise<void> {
     if (ff.status === 0) {
       const smokeDir = path.join(outRoot, "ffmpeg-smoke");
       mkdirSync(smokeDir, { recursive: true });
+
+      await assertBaseVideoPreservedInComposite(smokeDir);
 
       const platePath = path.join(smokeDir, "solid.png");
       await writeSolidTestPlate(platePath, 960, 540);

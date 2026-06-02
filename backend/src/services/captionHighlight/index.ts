@@ -6,8 +6,10 @@ export {
   CAPTION_ALPHA_OVERLAY_FILTER,
   CAPTION_ALPHA_VIDEO_CODEC,
   CAPTION_ALPHA_VIDEO_PIX_FMT,
+  CAPTION_ALPHA_VIDEO_EXT,
   type AlphaVideoBuildResult,
 } from "./alphaVideo";
+export { resolveHighlightStyle, textColorToCss, boxColorToCss } from "./colors";
 export { inspectCaptionPlate, assertHighlightPlatesVisible, type PlateInspection } from "./plateInspect";
 export {
   buildTimedOverlayFilterComplex,
@@ -17,7 +19,6 @@ export {
   type OverlayFilterBuild,
 } from "./ffmpegOverlay";
 export { resolveCaptionCanvasSize, CAPTION_PLAY_W, CAPTION_PLAY_H } from "./dimensions";
-export { resolveHighlightStyle, textColorToCss } from "./colors";
 export { renderCaptionHighlightPlate } from "./renderPlate";
 export { tokenizeCaptionText, resolveTextDirection } from "./tokenize";
 export { resolveWordTimingCues, alignWordsForChunk } from "./timing";

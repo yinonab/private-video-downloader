@@ -92,6 +92,10 @@ export type ResolvedHighlightStyle = {
   readonly boxShape: BoxShape;
   readonly drawBox: boolean;
   readonly wordHighlight: CaptionsWordHighlight;
+  /** Resolved enum colors (safe for logs). */
+  readonly normalColor: CaptionsTextColor;
+  readonly activeColor: CaptionsTextColor;
+  readonly boxColor: CaptionsTextColor;
 };
 
 export type { CaptionsTextColor };

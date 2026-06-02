@@ -21,7 +21,9 @@ import {
   buildCaptionHighlightAlphaVideo,
   buildCaptionHighlightBurnPlan,
   CAPTION_ALPHA_OVERLAY_FILTER,
+  CAPTION_ALPHA_VIDEO_EXT,
   captionsConfigForAssBurn,
+  resolveHighlightStyle,
   usesCaptionHighlightOverlay,
 } from "../services/captionHighlight";
 import { ffprobeMedia } from "../services/ffmpegNormalize";
@@ -427,7 +429,8 @@ export function createEditWorker(prisma: PrismaClient): Worker {
                   width: midProbe?.video?.width,
                   height: midProbe?.video?.height,
                 });
-                const overlayVideoPath = path.join(highlightDir, "caption-overlay.webm");
+                const highlightStyle = resolveHighlightStyle(cfg);
+                const overlayVideoPath = path.join(highlightDir, `caption-overlay${CAPTION_ALPHA_VIDEO_EXT}`);
                 await buildCaptionHighlightAlphaVideo({
                   plates: plan.plates,
                   width: plan.canvasWidth,
@@ -453,6 +456,9 @@ export function createEditWorker(prisma: PrismaClient): Worker {
                     videoWidth: plan.canvasWidth,
                     videoHeight: plan.canvasHeight,
                     boxShape: cfg.boxShape ?? "pill",
+                    normalTextColor: highlightStyle.normalColor,
+                    activeTextColor: highlightStyle.activeColor,
+                    boxColor: highlightStyle.boxColor,
                     usedFallbackTiming: plan.usedFallbackTiming,
                     overlayStrategy: "alpha_video",
                   },

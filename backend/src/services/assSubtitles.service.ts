@@ -143,6 +143,8 @@ function accentAssColour(color: CaptionsBurnInV1Resolved["color"]): string {
       return "&H0066D9FF";
     case "purple":
       return "&H00F65C8B";
+    case "pink":
+      return "&H008A5CFF";
     case "mint":
       return "&H0099D334";
     case "white":
@@ -156,8 +158,10 @@ function highlightBoxTextAssColour(color: CaptionsBurnInV1Resolved["color"]): st
     case "yellow":
     case "mint":
     case "white":
+    case "pink":
       return "&H00101010";
     case "purple":
+    case "pink":
     default:
       return "&H00FFFFFF";
   }
@@ -169,6 +173,8 @@ function highlightBoxBackAssColour(color: CaptionsBurnInV1Resolved["color"]): st
       return "&HC066D9FF";
     case "purple":
       return "&HC0F65C8B";
+    case "pink":
+      return "&HC08A5CFF";
     case "mint":
       return "&HC099D334";
     case "white":

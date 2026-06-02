@@ -2648,6 +2648,60 @@ abstract class AppLocalizations {
   /// **'Box'**
   String get editCaptionsV33WordHighlightBox;
 
+  /// No description provided for @editCaptionsV34NormalTextColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal text color'**
+  String get editCaptionsV34NormalTextColor;
+
+  /// No description provided for @editCaptionsV34ActiveWordColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Active word color'**
+  String get editCaptionsV34ActiveWordColor;
+
+  /// No description provided for @editCaptionsV34BoxColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Box color'**
+  String get editCaptionsV34BoxColor;
+
+  /// No description provided for @editCaptionsV34BoxShape.
+  ///
+  /// In en, this message translates to:
+  /// **'Box shape'**
+  String get editCaptionsV34BoxShape;
+
+  /// No description provided for @editCaptionsV34ColorPink.
+  ///
+  /// In en, this message translates to:
+  /// **'Pink'**
+  String get editCaptionsV34ColorPink;
+
+  /// No description provided for @editCaptionsV34ColorBlack.
+  ///
+  /// In en, this message translates to:
+  /// **'Black'**
+  String get editCaptionsV34ColorBlack;
+
+  /// No description provided for @editCaptionsV34BoxShapeRectangle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rectangle'**
+  String get editCaptionsV34BoxShapeRectangle;
+
+  /// No description provided for @editCaptionsV34BoxShapeRounded.
+  ///
+  /// In en, this message translates to:
+  /// **'Rounded'**
+  String get editCaptionsV34BoxShapeRounded;
+
+  /// No description provided for @editCaptionsV34BoxShapePill.
+  ///
+  /// In en, this message translates to:
+  /// **'Pill'**
+  String get editCaptionsV34BoxShapePill;
+
   /// No description provided for @errorCaptionsWordHighlightNotSupported.
   ///
   /// In en, this message translates to:

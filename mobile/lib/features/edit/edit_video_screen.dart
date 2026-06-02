@@ -133,6 +133,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   QuickEditCaptionColor _captionsColor = QuickEditCaptionColor.white;
   QuickEditCaptionWordHighlight _captionsWordHighlight =
       QuickEditCaptionWordHighlight.none;
+  QuickEditCaptionColor? _captionsNormalTextColor;
+  QuickEditCaptionColor? _captionsActiveTextColor;
+  QuickEditCaptionColor? _captionsBoxColor;
+  QuickEditCaptionBoxShape _captionsBoxShape = QuickEditCaptionBoxShape.pill;
   int _captionsOffsetX = 0;
   int _captionsOffsetY = 0;
 
@@ -400,6 +404,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       _captionsColor = r.color;
       _captionsStyle = r.style;
       _captionsWordHighlight = r.wordHighlight;
+      _captionsNormalTextColor = r.normalTextColor;
+      _captionsActiveTextColor = r.activeTextColor;
+      _captionsBoxColor = r.boxColor;
+      _captionsBoxShape = r.boxShape;
       _captionsOffsetX = clampQuickEditCaptionOffsetX(r.offsetX);
       _captionsOffsetY = clampQuickEditCaptionOffsetY(r.offsetY);
     });
@@ -637,6 +645,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         captionsWordHighlight: _captionsWordHighlight,
         captionsOffsetX: _captionsOffsetX,
         captionsOffsetY: _captionsOffsetY,
+        captionsNormalTextColor: _captionsNormalTextColor,
+        captionsActiveTextColor: _captionsActiveTextColor,
+        captionsBoxColor: _captionsBoxColor,
+        captionsBoxShape: _captionsBoxShape,
         captionsDraftForBurn: (_captionsDraftSegments != null && _captionsDraftSegments!.isNotEmpty)
             ? _captionsDraftSegments
             : null,
@@ -1024,6 +1036,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                       position: _captionsPosition,
                       color: _captionsColor,
                       wordHighlight: _captionsWordHighlight,
+                      normalTextColor: _captionsNormalTextColor,
+                      activeTextColor: _captionsActiveTextColor,
+                      boxColor: _captionsBoxColor,
+                      boxShape: _captionsBoxShape,
                       offsetXAss: _captionsOffsetX,
                       offsetYAss: _captionsOffsetY,
                     )
@@ -1141,6 +1157,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                         position: _captionsPosition,
                         color: _captionsColor,
                         wordHighlight: _captionsWordHighlight,
+                        normalTextColor: _captionsNormalTextColor,
+                        activeTextColor: _captionsActiveTextColor,
+                        boxColor: _captionsBoxColor,
+                        boxShape: _captionsBoxShape,
                         offsetX: _captionsOffsetX,
                         offsetY: _captionsOffsetY,
                         effectiveCaptionPreset: inferQuickEditCaptionPreset(
@@ -1152,6 +1172,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                           wordHighlight: _captionsWordHighlight,
                           offsetX: _captionsOffsetX,
                           offsetY: _captionsOffsetY,
+                          normalTextColor: _captionsNormalTextColor,
+                          activeTextColor: _captionsActiveTextColor,
+                          boxColor: _captionsBoxColor,
+                          boxShape: _captionsBoxShape,
                         ),
                         onCaptionBuiltInPresetSelected:
                             _applyCaptionBuiltInPreset,
@@ -1183,8 +1207,22 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                             setState(() => _captionsPosition = v),
                         onColorChanged: (v) =>
                             setState(() => _captionsColor = v),
-                        onWordHighlightChanged: (v) =>
-                            setState(() => _captionsWordHighlight = v),
+                        onWordHighlightChanged: (v) => setState(() {
+                          _captionsWordHighlight = v;
+                          if (v == QuickEditCaptionWordHighlight.none) {
+                            _captionsNormalTextColor = null;
+                            _captionsActiveTextColor = null;
+                            _captionsBoxColor = null;
+                          }
+                        }),
+                        onNormalTextColorChanged: (v) =>
+                            setState(() => _captionsNormalTextColor = v),
+                        onActiveTextColorChanged: (v) =>
+                            setState(() => _captionsActiveTextColor = v),
+                        onBoxColorChanged: (v) =>
+                            setState(() => _captionsBoxColor = v),
+                        onBoxShapeChanged: (v) =>
+                            setState(() => _captionsBoxShape = v),
                         onOffsetReset: _resetCaptionOffsets,
                         onOffsetNudgeAss: _nudgeCaptionOffsetAss,
                       ),

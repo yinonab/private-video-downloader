@@ -40,7 +40,7 @@ export type CaptionsFontSize =
 
 export type CaptionsPosition = "top" | "bottom";
 
-export type CaptionsColor = "white" | "yellow" | "purple" | "mint";
+export type CaptionsColor = "white" | "yellow" | "purple" | "mint" | "pink";
 
 /** V3.4B — text/box colors for word-highlight overlay (includes black). */
 export type CaptionsTextColor = CaptionsColor | "black";

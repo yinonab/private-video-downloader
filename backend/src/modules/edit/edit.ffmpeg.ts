@@ -216,7 +216,7 @@ export function buildEditFfmpegArgs(opts: {
 export type CaptionBurnVideo =
   | { readonly kind: "vf"; readonly clause: string }
   | {
-      /** Production: main video + one transparent VP9 overlay (two `-i` inputs only). */
+      /** Production: main video + one transparent ProRes overlay MOV (two `-i` inputs only). */
       readonly kind: "alpha_overlay";
       readonly overlayVideoPath: string;
       readonly filter: string;

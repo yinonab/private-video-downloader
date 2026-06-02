@@ -1382,6 +1382,33 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editCaptionsV33WordHighlightBox => 'קופסה';
 
   @override
+  String get editCaptionsV34NormalTextColor => 'צבע טקסט רגיל';
+
+  @override
+  String get editCaptionsV34ActiveWordColor => 'צבע המילה הפעילה';
+
+  @override
+  String get editCaptionsV34BoxColor => 'צבע הקופסה';
+
+  @override
+  String get editCaptionsV34BoxShape => 'צורת הקופסה';
+
+  @override
+  String get editCaptionsV34ColorPink => 'ורוד';
+
+  @override
+  String get editCaptionsV34ColorBlack => 'שחור';
+
+  @override
+  String get editCaptionsV34BoxShapeRectangle => 'מלבן';
+
+  @override
+  String get editCaptionsV34BoxShapeRounded => 'מעוגל';
+
+  @override
+  String get editCaptionsV34BoxShapePill => 'גלולה';
+
+  @override
   String get errorCaptionsWordHighlightNotSupported =>
       'אפשרות הדגשת המילה הזו לא נתמכת.';
 

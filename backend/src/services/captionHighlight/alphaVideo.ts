@@ -3,15 +3,19 @@ import { createCanvas, loadImage } from "@napi-rs/canvas";
 import type { TimedPlate } from "./types";
 
 /**
- * Production overlay intermediate: WebM VP9 with alpha (`yuva420p`).
- * Chosen over ProRes 4444 — libvpx-vp9 + yuva420p is available in typical Docker ffmpeg builds;
- * ProRes 4444 is heavier and less common on small VPS images.
+ * Production overlay intermediate: ProRes 4444 MOV with alpha (`yuva444p10le`).
+ * VP9 WebM alpha was dropped — ffmpeg final `overlay` often treated missing alpha as
+ * opaque black, hiding the base video. ProRes 4444 preserves alpha reliably in Docker ffmpeg.
  */
-export const CAPTION_ALPHA_VIDEO_CODEC = "libvpx-vp9";
-export const CAPTION_ALPHA_VIDEO_PIX_FMT = "yuva420p";
+export const CAPTION_ALPHA_VIDEO_CODEC = "prores_ks";
+export const CAPTION_ALPHA_VIDEO_PROFILE = "4";
+export const CAPTION_ALPHA_VIDEO_PIX_FMT = "yuva444p10le";
 export const CAPTION_ALPHA_VIDEO_FPS = 30;
+export const CAPTION_ALPHA_VIDEO_EXT = ".mov";
 
-export const CAPTION_ALPHA_OVERLAY_FILTER = "[0:v][1:v]overlay=0:0:format=auto[vout]";
+/** Explicit rgba overlay pad before compositing onto the edited base video. */
+export const CAPTION_ALPHA_OVERLAY_FILTER =
+  "[1:v]format=rgba[cap];[0:v][cap]overlay=0:0:format=auto:shortest=1[vout]";
 
 export type AlphaVideoBuildResult = {
   readonly frameCount: number;
@@ -21,7 +25,7 @@ export type AlphaVideoBuildResult = {
 };
 
 /**
- * Encode timed PNG plates into one transparent overlay video (pipe RGBA frames → VP9).
+ * Encode timed PNG plates into one transparent overlay video (pipe RGBA frames → ProRes 4444).
  * Final edit encode uses only main + this file (two inputs).
  */
 export async function buildCaptionHighlightAlphaVideo(opts: {
@@ -64,10 +68,10 @@ export async function buildCaptionHighlightAlphaVideo(opts: {
     "pipe:0",
     "-c:v",
     CAPTION_ALPHA_VIDEO_CODEC,
+    "-profile:v",
+    CAPTION_ALPHA_VIDEO_PROFILE,
     "-pix_fmt",
     CAPTION_ALPHA_VIDEO_PIX_FMT,
-    "-auto-alt-ref",
-    "0",
     "-an",
     outputPath,
   ];

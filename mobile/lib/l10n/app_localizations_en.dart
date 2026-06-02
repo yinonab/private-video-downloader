@@ -1398,6 +1398,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCaptionsV33WordHighlightBox => 'Box';
 
   @override
+  String get editCaptionsV34NormalTextColor => 'Normal text color';
+
+  @override
+  String get editCaptionsV34ActiveWordColor => 'Active word color';
+
+  @override
+  String get editCaptionsV34BoxColor => 'Box color';
+
+  @override
+  String get editCaptionsV34BoxShape => 'Box shape';
+
+  @override
+  String get editCaptionsV34ColorPink => 'Pink';
+
+  @override
+  String get editCaptionsV34ColorBlack => 'Black';
+
+  @override
+  String get editCaptionsV34BoxShapeRectangle => 'Rectangle';
+
+  @override
+  String get editCaptionsV34BoxShapeRounded => 'Rounded';
+
+  @override
+  String get editCaptionsV34BoxShapePill => 'Pill';
+
+  @override
   String get errorCaptionsWordHighlightNotSupported =>
       'This word highlight option is not supported.';
 

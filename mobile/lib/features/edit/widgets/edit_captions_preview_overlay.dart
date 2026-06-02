@@ -18,6 +18,10 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
     required this.position,
     required this.color,
     required this.wordHighlight,
+    this.normalTextColor,
+    this.activeTextColor,
+    this.boxColor,
+    this.boxShape = QuickEditCaptionBoxShape.pill,
     required this.offsetXAss,
     required this.offsetYAss,
   });
@@ -29,6 +33,10 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
   final QuickEditCaptionPosition position;
   final QuickEditCaptionColor color;
   final QuickEditCaptionWordHighlight wordHighlight;
+  final QuickEditCaptionColor? normalTextColor;
+  final QuickEditCaptionColor? activeTextColor;
+  final QuickEditCaptionColor? boxColor;
+  final QuickEditCaptionBoxShape boxShape;
   final int offsetXAss;
   final int offsetYAss;
 
@@ -36,6 +44,28 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = _accentColor(color);
+    final normal = _accentColor(
+      effectiveCaptionNormalTextColor(
+        color: color,
+        normalTextColor: normalTextColor,
+      ),
+    );
+    final active = _accentColor(
+      effectiveCaptionActiveTextColor(
+        color: color,
+        wordHighlight: wordHighlight,
+        normalTextColor: normalTextColor,
+        activeTextColor: activeTextColor,
+        boxColor: boxColor,
+      ),
+    );
+    final boxFill = _accentColor(
+      effectiveCaptionBoxColor(
+        color: color,
+        wordHighlight: wordHighlight,
+        boxColor: boxColor,
+      ),
+    );
     final fz = switch (fontSize) {
       QuickEditCaptionFontSize.extraSmall => 9.6,
       QuickEditCaptionFontSize.small => 10.8,
@@ -78,15 +108,41 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
         );
       }
 
-      final normalStyle = baseStyle(textColor: textColor, weight: weight).copyWith(shadows: shadows);
+      final normalStyle = baseStyle(textColor: normal, weight: weight).copyWith(shadows: shadows);
       final hiStyle = switch (wordHighlight) {
-        QuickEditCaptionWordHighlight.color => normalStyle.copyWith(color: accent),
+        QuickEditCaptionWordHighlight.color => normalStyle.copyWith(color: active),
         QuickEditCaptionWordHighlight.box => normalStyle.copyWith(
-            color: _highlightBoxTextColor(color),
-            backgroundColor: accent.withValues(alpha: 0.88),
+            color: active,
+            backgroundColor: boxFill.withValues(alpha: 0.92),
+          ).copyWith(
+            // Approximate box shape via padding + radius on highlight span only.
           ),
         QuickEditCaptionWordHighlight.none => normalStyle,
       };
+
+      final highlightSpan = wordHighlight == QuickEditCaptionWordHighlight.box
+          ? WidgetSpan(
+              alignment: PlaceholderAlignment.baseline,
+              baseline: TextBaseline.alphabetic,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: boxFill.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(
+                    switch (boxShape) {
+                      QuickEditCaptionBoxShape.pill => 999,
+                      QuickEditCaptionBoxShape.rounded => 8,
+                      QuickEditCaptionBoxShape.rectangle => 2,
+                    },
+                  ),
+                ),
+                child: Text(
+                  sampleParts.highlight,
+                  style: hiStyle.copyWith(backgroundColor: Colors.transparent),
+                ),
+              ),
+            )
+          : TextSpan(text: sampleParts.highlight, style: hiStyle);
 
       return RichText(
         textAlign: TextAlign.center,
@@ -96,7 +152,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
           children: [
             if (sampleParts.before.isNotEmpty)
               TextSpan(text: sampleParts.before, style: normalStyle),
-            TextSpan(text: sampleParts.highlight, style: hiStyle),
+            highlightSpan,
           ],
         ),
       );
@@ -258,7 +314,9 @@ Color _accentColor(QuickEditCaptionColor color) {
     QuickEditCaptionColor.white => Colors.white,
     QuickEditCaptionColor.yellow => const Color(0xFFFFD966),
     QuickEditCaptionColor.purple => const Color(0xFF8B5CF6),
-    QuickEditCaptionColor.mint => const Color(0xFF34D399),
+    QuickEditCaptionColor.pink => const Color(0xFFFF5C8A),
+    QuickEditCaptionColor.mint => const Color(0xFF99D334),
+    QuickEditCaptionColor.black => const Color(0xFF101010),
   };
 }
 
@@ -266,9 +324,10 @@ Color _highlightBoxTextColor(QuickEditCaptionColor color) {
   return switch (color) {
     QuickEditCaptionColor.yellow ||
     QuickEditCaptionColor.mint ||
-    QuickEditCaptionColor.white =>
+    QuickEditCaptionColor.white ||
+    QuickEditCaptionColor.pink =>
       const Color(0xFF101010),
-    QuickEditCaptionColor.purple => Colors.white,
+    QuickEditCaptionColor.purple || QuickEditCaptionColor.black => Colors.white,
   };
 }
 

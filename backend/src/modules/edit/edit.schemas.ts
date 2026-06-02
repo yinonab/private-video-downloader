@@ -117,8 +117,8 @@ const CAPTIONS_FONT_SIZE = [
   "xx_large",
 ] as const;
 
-const CAPTIONS_COLOR = ["white", "yellow", "purple", "mint"] as const;
-const CAPTIONS_TEXT_COLOR = ["white", "yellow", "purple", "mint", "black"] as const;
+const CAPTIONS_COLOR = ["white", "yellow", "purple", "mint", "pink"] as const;
+const CAPTIONS_TEXT_COLOR = ["white", "yellow", "purple", "mint", "pink", "black"] as const;
 const CAPTIONS_BOX_SHAPE = ["rectangle", "rounded", "pill"] as const;
 
 const CAPTIONS_FONT_FAMILY = [

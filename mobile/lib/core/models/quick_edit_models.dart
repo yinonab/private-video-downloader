@@ -518,7 +518,7 @@ extension QuickEditCaptionPositionApi on QuickEditCaptionPosition {
       };
 }
 
-enum QuickEditCaptionColor { white, yellow, purple, mint }
+enum QuickEditCaptionColor { white, yellow, purple, mint, pink, black }
 
 extension QuickEditCaptionColorApi on QuickEditCaptionColor {
   String get apiValue => switch (this) {
@@ -526,6 +526,18 @@ extension QuickEditCaptionColorApi on QuickEditCaptionColor {
         QuickEditCaptionColor.yellow => "yellow",
         QuickEditCaptionColor.purple => "purple",
         QuickEditCaptionColor.mint => "mint",
+        QuickEditCaptionColor.pink => "pink",
+        QuickEditCaptionColor.black => "black",
+      };
+}
+
+enum QuickEditCaptionBoxShape { rectangle, rounded, pill }
+
+extension QuickEditCaptionBoxShapeApi on QuickEditCaptionBoxShape {
+  String get apiValue => switch (this) {
+        QuickEditCaptionBoxShape.rectangle => "rectangle",
+        QuickEditCaptionBoxShape.rounded => "rounded",
+        QuickEditCaptionBoxShape.pill => "pill",
       };
 }
 
@@ -587,6 +599,10 @@ final class CaptionPresetFields {
     required this.wordHighlight,
     required this.offsetX,
     required this.offsetY,
+    this.normalTextColor,
+    this.activeTextColor,
+    this.boxColor,
+    this.boxShape = QuickEditCaptionBoxShape.pill,
   });
 
   final QuickEditCaptionFontSize fontSize;
@@ -597,6 +613,10 @@ final class CaptionPresetFields {
   final QuickEditCaptionWordHighlight wordHighlight;
   final int offsetX;
   final int offsetY;
+  final QuickEditCaptionColor? normalTextColor;
+  final QuickEditCaptionColor? activeTextColor;
+  final QuickEditCaptionColor? boxColor;
+  final QuickEditCaptionBoxShape boxShape;
 
   bool matches({
     required QuickEditCaptionFontSize fontSize,
@@ -607,6 +627,10 @@ final class CaptionPresetFields {
     required QuickEditCaptionWordHighlight wordHighlight,
     required int offsetX,
     required int offsetY,
+    required QuickEditCaptionColor effectiveNormalTextColor,
+    required QuickEditCaptionColor effectiveActiveTextColor,
+    required QuickEditCaptionColor effectiveBoxColor,
+    required QuickEditCaptionBoxShape boxShape,
   }) =>
       this.fontSize == fontSize &&
       this.fontFamily == fontFamily &&
@@ -615,7 +639,47 @@ final class CaptionPresetFields {
       this.style == style &&
       this.wordHighlight == wordHighlight &&
       this.offsetX == offsetX &&
-      this.offsetY == offsetY;
+      this.offsetY == offsetY &&
+      (normalTextColor ?? color) == effectiveNormalTextColor &&
+      (activeTextColor ?? _defaultActiveForPreset(this)) == effectiveActiveTextColor &&
+      (boxColor ?? _defaultBoxForPreset(this)) == effectiveBoxColor &&
+      this.boxShape == boxShape;
+}
+
+QuickEditCaptionColor _defaultActiveForPreset(CaptionPresetFields p) {
+  if (p.wordHighlight == QuickEditCaptionWordHighlight.box) {
+    final box = p.boxColor ?? _defaultBoxForPreset(p);
+    return switch (box) {
+      QuickEditCaptionColor.yellow ||
+      QuickEditCaptionColor.mint ||
+      QuickEditCaptionColor.white ||
+      QuickEditCaptionColor.pink =>
+        QuickEditCaptionColor.black,
+      _ => QuickEditCaptionColor.white,
+    };
+  }
+  if (p.wordHighlight == QuickEditCaptionWordHighlight.color) {
+    final normal = p.normalTextColor ?? p.color;
+    return switch (normal) {
+      QuickEditCaptionColor.yellow => QuickEditCaptionColor.purple,
+      QuickEditCaptionColor.white => QuickEditCaptionColor.yellow,
+      QuickEditCaptionColor.purple || QuickEditCaptionColor.pink => QuickEditCaptionColor.white,
+      _ => QuickEditCaptionColor.yellow,
+    };
+  }
+  return p.color;
+}
+
+QuickEditCaptionColor _defaultBoxForPreset(CaptionPresetFields p) {
+  if (p.wordHighlight != QuickEditCaptionWordHighlight.box) {
+    return QuickEditCaptionColor.yellow;
+  }
+  return switch (p.color) {
+    QuickEditCaptionColor.pink => QuickEditCaptionColor.pink,
+    QuickEditCaptionColor.purple => QuickEditCaptionColor.purple,
+    QuickEditCaptionColor.mint => QuickEditCaptionColor.mint,
+    _ => QuickEditCaptionColor.yellow,
+  };
 }
 
 CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
@@ -641,6 +705,8 @@ CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
         color: QuickEditCaptionColor.white,
         style: QuickEditCaptionsStylePreset.boldSocial,
         wordHighlight: QuickEditCaptionWordHighlight.color,
+        normalTextColor: QuickEditCaptionColor.white,
+        activeTextColor: QuickEditCaptionColor.pink,
         offsetX: 0,
         offsetY: -20,
       );
@@ -652,6 +718,8 @@ CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
         color: QuickEditCaptionColor.yellow,
         style: QuickEditCaptionsStylePreset.boldSocial,
         wordHighlight: QuickEditCaptionWordHighlight.color,
+        normalTextColor: QuickEditCaptionColor.white,
+        activeTextColor: QuickEditCaptionColor.yellow,
         offsetX: 0,
         offsetY: -20,
       );
@@ -682,9 +750,13 @@ CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
         fontSize: QuickEditCaptionFontSize.xLarge,
         fontFamily: QuickEditCaptionFontFamily.rubik,
         position: QuickEditCaptionPosition.bottom,
-        color: QuickEditCaptionColor.purple,
+        color: QuickEditCaptionColor.white,
         style: QuickEditCaptionsStylePreset.highlightBox,
         wordHighlight: QuickEditCaptionWordHighlight.box,
+        normalTextColor: QuickEditCaptionColor.white,
+        activeTextColor: QuickEditCaptionColor.black,
+        boxColor: QuickEditCaptionColor.pink,
+        boxShape: QuickEditCaptionBoxShape.pill,
         offsetX: 0,
         offsetY: -20,
       );
@@ -695,7 +767,11 @@ CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
         position: QuickEditCaptionPosition.bottom,
         color: QuickEditCaptionColor.yellow,
         style: QuickEditCaptionsStylePreset.yellowHeadline,
-        wordHighlight: QuickEditCaptionWordHighlight.color,
+        wordHighlight: QuickEditCaptionWordHighlight.box,
+        normalTextColor: QuickEditCaptionColor.white,
+        activeTextColor: QuickEditCaptionColor.black,
+        boxColor: QuickEditCaptionColor.yellow,
+        boxShape: QuickEditCaptionBoxShape.rectangle,
         offsetX: 0,
         offsetY: -20,
       );
@@ -712,6 +788,100 @@ const List<QuickEditCaptionPreset> kQuickEditCaptionBuiltInPresetsOrdered = [
   QuickEditCaptionPreset.newsHeadline,
 ];
 
+/// Effective normal text color for highlight burn (falls back to accent [color]).
+QuickEditCaptionColor effectiveCaptionNormalTextColor({
+  required QuickEditCaptionColor color,
+  QuickEditCaptionColor? normalTextColor,
+}) =>
+    normalTextColor ?? color;
+
+QuickEditCaptionColor effectiveCaptionActiveTextColor({
+  required QuickEditCaptionColor color,
+  required QuickEditCaptionWordHighlight wordHighlight,
+  QuickEditCaptionColor? normalTextColor,
+  QuickEditCaptionColor? activeTextColor,
+  QuickEditCaptionColor? boxColor,
+}) {
+  if (activeTextColor != null) return activeTextColor;
+  final normal = effectiveCaptionNormalTextColor(
+    color: color,
+    normalTextColor: normalTextColor,
+  );
+  final box = effectiveCaptionBoxColor(
+    color: color,
+    wordHighlight: wordHighlight,
+    boxColor: boxColor,
+  );
+  if (wordHighlight == QuickEditCaptionWordHighlight.box) {
+    return switch (box) {
+      QuickEditCaptionColor.yellow ||
+      QuickEditCaptionColor.mint ||
+      QuickEditCaptionColor.white ||
+      QuickEditCaptionColor.pink =>
+        QuickEditCaptionColor.black,
+      _ => QuickEditCaptionColor.white,
+    };
+  }
+  if (wordHighlight == QuickEditCaptionWordHighlight.color) {
+    return switch (normal) {
+      QuickEditCaptionColor.yellow => QuickEditCaptionColor.purple,
+      QuickEditCaptionColor.white => QuickEditCaptionColor.yellow,
+      QuickEditCaptionColor.purple || QuickEditCaptionColor.pink => QuickEditCaptionColor.white,
+      _ => QuickEditCaptionColor.yellow,
+    };
+  }
+  return normal;
+}
+
+QuickEditCaptionColor effectiveCaptionBoxColor({
+  required QuickEditCaptionColor color,
+  required QuickEditCaptionWordHighlight wordHighlight,
+  QuickEditCaptionColor? boxColor,
+}) {
+  if (boxColor != null) return boxColor;
+  if (wordHighlight != QuickEditCaptionWordHighlight.box) {
+    return QuickEditCaptionColor.yellow;
+  }
+  return switch (color) {
+    QuickEditCaptionColor.pink => QuickEditCaptionColor.pink,
+    QuickEditCaptionColor.purple => QuickEditCaptionColor.purple,
+    QuickEditCaptionColor.mint => QuickEditCaptionColor.mint,
+    _ => QuickEditCaptionColor.yellow,
+  };
+}
+
+void applyCaptionHighlightFieldsToJson(
+  Map<String, dynamic> op, {
+  required QuickEditCaptionWordHighlight wordHighlight,
+  required QuickEditCaptionColor color,
+  QuickEditCaptionColor? normalTextColor,
+  QuickEditCaptionColor? activeTextColor,
+  QuickEditCaptionColor? boxColor,
+  QuickEditCaptionBoxShape boxShape = QuickEditCaptionBoxShape.pill,
+}) {
+  if (wordHighlight == QuickEditCaptionWordHighlight.none) return;
+  final normal = effectiveCaptionNormalTextColor(
+    color: color,
+    normalTextColor: normalTextColor,
+  );
+  op["normalTextColor"] = normal.apiValue;
+  op["activeTextColor"] = effectiveCaptionActiveTextColor(
+    color: color,
+    wordHighlight: wordHighlight,
+    normalTextColor: normalTextColor,
+    activeTextColor: activeTextColor,
+    boxColor: boxColor,
+  ).apiValue;
+  if (wordHighlight == QuickEditCaptionWordHighlight.box) {
+    op["boxColor"] = effectiveCaptionBoxColor(
+      color: color,
+      wordHighlight: wordHighlight,
+      boxColor: boxColor,
+    ).apiValue;
+    op["boxShape"] = boxShape.apiValue;
+  }
+}
+
 /// Which named preset matches the current controls, or [QuickEditCaptionPreset.custom].
 QuickEditCaptionPreset inferQuickEditCaptionPreset({
   required QuickEditCaptionFontSize fontSize,
@@ -722,7 +892,27 @@ QuickEditCaptionPreset inferQuickEditCaptionPreset({
   required QuickEditCaptionWordHighlight wordHighlight,
   required int offsetX,
   required int offsetY,
+  QuickEditCaptionColor? normalTextColor,
+  QuickEditCaptionColor? activeTextColor,
+  QuickEditCaptionColor? boxColor,
+  QuickEditCaptionBoxShape boxShape = QuickEditCaptionBoxShape.pill,
 }) {
+  final effNormal = effectiveCaptionNormalTextColor(
+    color: color,
+    normalTextColor: normalTextColor,
+  );
+  final effActive = effectiveCaptionActiveTextColor(
+    color: color,
+    wordHighlight: wordHighlight,
+    normalTextColor: normalTextColor,
+    activeTextColor: activeTextColor,
+    boxColor: boxColor,
+  );
+  final effBox = effectiveCaptionBoxColor(
+    color: color,
+    wordHighlight: wordHighlight,
+    boxColor: boxColor,
+  );
   for (final p in kQuickEditCaptionBuiltInPresetsOrdered) {
     final r = captionPresetRecipe(p)!;
     if (r.matches(
@@ -734,6 +924,10 @@ QuickEditCaptionPreset inferQuickEditCaptionPreset({
       wordHighlight: wordHighlight,
       offsetX: offsetX,
       offsetY: offsetY,
+      effectiveNormalTextColor: effNormal,
+      effectiveActiveTextColor: effActive,
+      effectiveBoxColor: effBox,
+      boxShape: boxShape,
     )) {
       return p;
     }
@@ -810,21 +1004,36 @@ Map<String, dynamic> quickEditCaptionsV22Operation({
   required QuickEditCaptionWordHighlight wordHighlight,
   required int captionsOffsetX,
   required int captionsOffsetY,
-}) =>
-    {
-      "type": "captions",
-      "mode": "auto",
-      "language": "auto",
-      "burnIn": true,
-      "style": style.apiValue,
-      "fontSize": fontSize.apiValue,
-      "fontFamily": fontFamily.apiValue,
-      "position": position.apiValue,
-      "color": color.apiValue,
-      "wordHighlight": wordHighlight.apiValue,
-      "offsetX": clampQuickEditCaptionOffsetX(captionsOffsetX),
-      "offsetY": clampQuickEditCaptionOffsetY(captionsOffsetY),
-    };
+  QuickEditCaptionColor? normalTextColor,
+  QuickEditCaptionColor? activeTextColor,
+  QuickEditCaptionColor? boxColor,
+  QuickEditCaptionBoxShape boxShape = QuickEditCaptionBoxShape.pill,
+}) {
+  final op = <String, dynamic>{
+    "type": "captions",
+    "mode": "auto",
+    "language": "auto",
+    "burnIn": true,
+    "style": style.apiValue,
+    "fontSize": fontSize.apiValue,
+    "fontFamily": fontFamily.apiValue,
+    "position": position.apiValue,
+    "color": color.apiValue,
+    "wordHighlight": wordHighlight.apiValue,
+    "offsetX": clampQuickEditCaptionOffsetX(captionsOffsetX),
+    "offsetY": clampQuickEditCaptionOffsetY(captionsOffsetY),
+  };
+  applyCaptionHighlightFieldsToJson(
+    op,
+    wordHighlight: wordHighlight,
+    color: color,
+    normalTextColor: normalTextColor,
+    activeTextColor: activeTextColor,
+    boxColor: boxColor,
+    boxShape: boxShape,
+  );
+  return op;
+}
 
 /// `captions.mode=segments` — server skips OpenAI transcription (V2.4A).
 Map<String, dynamic> quickEditCaptionsSegmentsV24Operation({
@@ -837,22 +1046,37 @@ Map<String, dynamic> quickEditCaptionsSegmentsV24Operation({
   required QuickEditCaptionWordHighlight wordHighlight,
   required int captionsOffsetX,
   required int captionsOffsetY,
-}) =>
-    {
-      "type": "captions",
-      "mode": "segments",
-      "language": "auto",
-      "burnIn": true,
-      "style": style.apiValue,
-      "fontSize": fontSize.apiValue,
-      "fontFamily": fontFamily.apiValue,
-      "position": position.apiValue,
-      "color": color.apiValue,
-      "wordHighlight": wordHighlight.apiValue,
-      "offsetX": clampQuickEditCaptionOffsetX(captionsOffsetX),
-      "offsetY": clampQuickEditCaptionOffsetY(captionsOffsetY),
-      "segments": segments.map((s) => s.toCaptionsBurnJson()).toList(),
-    };
+  QuickEditCaptionColor? normalTextColor,
+  QuickEditCaptionColor? activeTextColor,
+  QuickEditCaptionColor? boxColor,
+  QuickEditCaptionBoxShape boxShape = QuickEditCaptionBoxShape.pill,
+}) {
+  final op = <String, dynamic>{
+    "type": "captions",
+    "mode": "segments",
+    "language": "auto",
+    "burnIn": true,
+    "style": style.apiValue,
+    "fontSize": fontSize.apiValue,
+    "fontFamily": fontFamily.apiValue,
+    "position": position.apiValue,
+    "color": color.apiValue,
+    "wordHighlight": wordHighlight.apiValue,
+    "offsetX": clampQuickEditCaptionOffsetX(captionsOffsetX),
+    "offsetY": clampQuickEditCaptionOffsetY(captionsOffsetY),
+    "segments": segments.map((s) => s.toCaptionsBurnJson()).toList(),
+  };
+  applyCaptionHighlightFieldsToJson(
+    op,
+    wordHighlight: wordHighlight,
+    color: color,
+    normalTextColor: normalTextColor,
+    activeTextColor: activeTextColor,
+    boxColor: boxColor,
+    boxShape: boxShape,
+  );
+  return op;
+}
 
 /// Builds POST `/edits` operations array; empty if nothing changed from defaults.
 List<Map<String, dynamic>> buildQuickEditOperations({
@@ -872,6 +1096,10 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   QuickEditCaptionWordHighlight captionsWordHighlight = QuickEditCaptionWordHighlight.none,
   int captionsOffsetX = 0,
   int captionsOffsetY = 0,
+  QuickEditCaptionColor? captionsNormalTextColor,
+  QuickEditCaptionColor? captionsActiveTextColor,
+  QuickEditCaptionColor? captionsBoxColor,
+  QuickEditCaptionBoxShape captionsBoxShape = QuickEditCaptionBoxShape.pill,
   List<CaptionDraftSegment>? captionsDraftForBurn,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
@@ -926,6 +1154,10 @@ List<Map<String, dynamic>> buildQuickEditOperations({
         wordHighlight: captionsWordHighlight,
         captionsOffsetX: captionsOffsetX,
         captionsOffsetY: captionsOffsetY,
+        normalTextColor: captionsNormalTextColor,
+        activeTextColor: captionsActiveTextColor,
+        boxColor: captionsBoxColor,
+        boxShape: captionsBoxShape,
       ));
     } else {
       ops.add(quickEditCaptionsV22Operation(
@@ -937,6 +1169,10 @@ List<Map<String, dynamic>> buildQuickEditOperations({
         wordHighlight: captionsWordHighlight,
         captionsOffsetX: captionsOffsetX,
         captionsOffsetY: captionsOffsetY,
+        normalTextColor: captionsNormalTextColor,
+        activeTextColor: captionsActiveTextColor,
+        boxColor: captionsBoxColor,
+        boxShape: captionsBoxShape,
       ));
     }
   }

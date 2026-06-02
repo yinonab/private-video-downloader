@@ -11,7 +11,9 @@ export function textColorToCss(color: CaptionsTextColor): string {
     case "yellow":
       return "#FFD966";
     case "purple":
-      return "#F65C8B";
+      return "#8B5CF6";
+    case "pink":
+      return "#FF5C8A";
     case "mint":
       return "#99D334";
     case "black":
@@ -34,7 +36,7 @@ export function boxColorToCss(color: CaptionsTextColor, alpha = 0.92): string {
 }
 
 function contrastingTextForBox(box: CaptionsTextColor): CaptionsTextColor {
-  return box === "yellow" || box === "mint" ? "black" : "white";
+  return box === "yellow" || box === "mint" || box === "white" || box === "pink" ? "black" : "white";
 }
 
 function defaultActiveTextColor(
@@ -45,13 +47,18 @@ function defaultActiveTextColor(
   if (wordHighlight === "box") {
     return contrastingTextForBox(box);
   }
-  if (normal === "yellow") return "purple";
-  if (normal === "white") return "yellow";
-  return "yellow";
+  if (wordHighlight === "color") {
+    if (normal === "yellow") return "purple";
+    if (normal === "white") return "yellow";
+    if (normal === "purple" || normal === "pink") return "white";
+    return "yellow";
+  }
+  return normal;
 }
 
 function defaultBoxColor(color: CaptionsTextColor, wordHighlight: CaptionsWordHighlight): CaptionsTextColor {
   if (wordHighlight !== "box") return "yellow";
+  if (color === "pink") return "pink";
   if (color === "purple") return "purple";
   if (color === "mint") return "mint";
   return "yellow";
@@ -71,5 +78,8 @@ export function resolveHighlightStyle(cfg: CaptionsBurnInV1Resolved): ResolvedHi
     boxShape,
     drawBox: cfg.wordHighlight === "box",
     wordHighlight: cfg.wordHighlight,
+    normalColor: normal,
+    activeColor: active,
+    boxColor: box,
   };
 }
