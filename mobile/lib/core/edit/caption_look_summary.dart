@@ -100,6 +100,34 @@ String buildCaptionLookSummaryLine(
   return "$presetName · $font";
 }
 
+String captionFontSizeShortLabel(
+  AppLocalizations l10n,
+  QuickEditCaptionFontSize size,
+) {
+  return switch (size) {
+    QuickEditCaptionFontSize.extraSmall => l10n.editCaptionsSizeExtraSmall,
+    QuickEditCaptionFontSize.small => l10n.editCaptionsSizeSmall,
+    QuickEditCaptionFontSize.medium => l10n.editCaptionsSizeMedium,
+    QuickEditCaptionFontSize.large => l10n.editCaptionsSizeLarge,
+    QuickEditCaptionFontSize.xLarge => l10n.editCaptionsV32SizeXL,
+    QuickEditCaptionFontSize.xxLarge => l10n.editCaptionsV32SizeXXL,
+  };
+}
+
+/// Two-line compact summary for preset cards (no large preview).
+String captionPresetCompactSubtitle(
+  AppLocalizations l10n,
+  QuickEditCaptionPreset preset,
+) {
+  final r = captionPresetRecipe(preset);
+  if (r == null) return "";
+  final line1 = captionPresetTagLine(l10n, preset);
+  final line2 =
+      "${captionFontFamilyShortLabel(l10n, r.fontFamily)} · ${captionFontSizeShortLabel(l10n, r.fontSize)}";
+  if (line1.isEmpty) return line2;
+  return "$line1\n$line2";
+}
+
 String captionPresetTagLine(
   AppLocalizations l10n,
   QuickEditCaptionPreset preset,

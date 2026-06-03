@@ -6,6 +6,9 @@ import "../../../../core/models/quick_edit_models.dart";
 import "../../../../l10n/app_localizations.dart";
 import "../edit_captions_preview_overlay.dart";
 
+/// Minimum width for two-column preset grid.
+const double kCaptionLookPresetGridMinWidth = 340;
+
 /// Section card with title for look editor tabs.
 class CaptionLookSectionCard extends StatelessWidget {
   const CaptionLookSectionCard({
@@ -13,11 +16,13 @@ class CaptionLookSectionCard extends StatelessWidget {
     required this.title,
     this.subtitle,
     required this.child,
+    this.dense = false,
   });
 
   final String title;
   final String? subtitle;
   final Widget child;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +37,7 @@ class CaptionLookSectionCard extends StatelessWidget {
         border: Border.all(color: scheme.outline.withValues(alpha: 0.22)),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        padding: EdgeInsets.fromLTRB(14, dense ? 10 : 12, 14, dense ? 12 : 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -48,11 +53,13 @@ class CaptionLookSectionCard extends StatelessWidget {
                 subtitle!,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant.withValues(alpha: 0.88),
-                  height: 1.35,
+                  height: 1.3,
                 ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
-            const SizedBox(height: 14),
+            SizedBox(height: dense ? 10 : 12),
             child,
           ],
         ),
@@ -79,8 +86,8 @@ class CaptionColorSwatchGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 12,
-      runSpacing: 14,
+      spacing: 8,
+      runSpacing: 10,
       alignment: WrapAlignment.start,
       children: [
         for (final c in colors)
@@ -250,7 +257,7 @@ class CaptionLookChoiceTile extends StatelessWidget {
   }
 }
 
-/// Visual preset card for the Presets tab.
+/// Compact preset card — color dots + tags (no embedded video preview).
 class CaptionLookPresetCard extends StatelessWidget {
   const CaptionLookPresetCard({
     super.key,
@@ -271,87 +278,212 @@ class CaptionLookPresetCard extends StatelessWidget {
     final scheme = theme.colorScheme;
     final recipe = captionPresetRecipe(preset)!;
     final title = captionPresetTitle(l10n, preset);
-    final tags = captionPresetTagLine(l10n, preset);
+    final subtitle = captionPresetCompactSubtitle(l10n, preset);
+    final subtitleLines = subtitle.split("\n");
 
     return Material(
       color: selected
-          ? scheme.primaryContainer.withValues(alpha: 0.42)
-          : scheme.surfaceContainerHighest.withValues(alpha: 0.38),
-      borderRadius: BorderRadius.circular(18),
+          ? scheme.primaryContainer.withValues(alpha: 0.38)
+          : scheme.surfaceContainerHighest.withValues(alpha: 0.32),
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: selected
                   ? scheme.primary
-                  : scheme.outline.withValues(alpha: 0.28),
+                  : scheme.outline.withValues(alpha: 0.24),
               width: selected ? 2 : 1,
             ),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: Text(
                         title,
-                        style: theme.textTheme.titleSmall?.copyWith(
+                        style: theme.textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.w700,
+                          height: 1.15,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (selected)
-                      Icon(Icons.check_circle_rounded,
-                          color: scheme.primary, size: 22),
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(start: 4),
+                        child: Icon(
+                          Icons.check_circle_rounded,
+                          color: scheme.primary,
+                          size: 18,
+                        ),
+                      ),
                   ],
                 ),
-                if (tags.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    tags,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant.withValues(alpha: 0.88),
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: ColoredBox(
-                    color: Colors.black.withValues(alpha: 0.88),
-                    child: SizedBox(
-                      height: 56,
-                      child: EditCaptionsPreviewOverlay(
-                        l10n: l10n,
-                        stylePreset: recipe.style,
-                        fontSize: recipe.fontSize,
-                        fontFamily: recipe.fontFamily,
-                        position: recipe.position,
-                        color: recipe.color,
-                        wordHighlight: recipe.wordHighlight,
-                        normalTextColor: recipe.normalTextColor,
-                        activeTextColor: recipe.activeTextColor,
-                        boxColor: recipe.boxColor,
-                        boxShape: recipe.boxShape,
-                        offsetXAss: 0,
-                        offsetYAss: 0,
+                for (final line in subtitleLines)
+                  if (line.trim().isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text(
+                        line.trim(),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.9),
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-                ),
+                const SizedBox(height: 8),
+                CaptionPresetColorDots(recipe: recipe),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Small color dots for a preset recipe (normal / active / box).
+class CaptionPresetColorDots extends StatelessWidget {
+  const CaptionPresetColorDots({super.key, required this.recipe});
+
+  final CaptionPresetFields recipe;
+
+  @override
+  Widget build(BuildContext context) {
+    final normal = effectiveCaptionNormalTextColor(
+      color: recipe.color,
+      normalTextColor: recipe.normalTextColor,
+    );
+    final active = effectiveCaptionActiveTextColor(
+      color: recipe.color,
+      wordHighlight: recipe.wordHighlight,
+      normalTextColor: recipe.normalTextColor,
+      activeTextColor: recipe.activeTextColor,
+      boxColor: recipe.boxColor,
+    );
+
+    final dots = <Widget>[
+      _StyleColorDot(color: captionColorToFlutter(normal)),
+    ];
+
+    if (recipe.wordHighlight != QuickEditCaptionWordHighlight.none) {
+      dots.add(_StyleColorDot(color: captionColorToFlutter(active)));
+    }
+    if (recipe.wordHighlight == QuickEditCaptionWordHighlight.box) {
+      final box = effectiveCaptionBoxColor(
+        color: recipe.color,
+        wordHighlight: recipe.wordHighlight,
+        boxColor: recipe.boxColor,
+      );
+      dots.add(_StyleColorDot(color: captionColorToFlutter(box)));
+    }
+
+    return Row(
+      children: [
+        for (var i = 0; i < dots.length; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          dots[i],
+        ],
+      ],
+    );
+  }
+}
+
+class _StyleColorDot extends StatelessWidget {
+  const _StyleColorDot({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final needsBorder =
+        color == Colors.white || color.computeLuminance() > 0.92;
+    return Container(
+      width: 14,
+      height: 14,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        border: needsBorder
+            ? Border.all(
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.45),
+              )
+            : null,
+      ),
+    );
+  }
+}
+
+/// Presets tab: 2-column grid when wide enough, else compact single column.
+class CaptionLookPresetGrid extends StatelessWidget {
+  const CaptionLookPresetGrid({
+    super.key,
+    required this.l10n,
+    required this.effectivePreset,
+    required this.onPreset,
+  });
+
+  final AppLocalizations l10n;
+  final QuickEditCaptionPreset effectivePreset;
+  final ValueChanged<QuickEditCaptionPreset> onPreset;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useGrid = constraints.maxWidth >= kCaptionLookPresetGridMinWidth;
+        final presets = kCaptionLookEditorPresetsOrdered;
+
+        if (useGrid) {
+          return GridView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 1.42,
+            ),
+            itemCount: presets.length,
+            itemBuilder: (context, i) {
+              final p = presets[i];
+              return CaptionLookPresetCard(
+                l10n: l10n,
+                preset: p,
+                selected: effectivePreset == p,
+                onTap: () => onPreset(p),
+              );
+            },
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          itemCount: presets.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (context, i) {
+            final p = presets[i];
+            return CaptionLookPresetCard(
+              l10n: l10n,
+              preset: p,
+              selected: effectivePreset == p,
+              onTap: () => onPreset(p),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -441,7 +573,7 @@ class _BoxShapeCard extends StatelessWidget {
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
             child: Column(
               children: [
                 Container(
@@ -487,7 +619,7 @@ class CaptionLookEditorPreviewStrip extends StatelessWidget {
       child: ColoredBox(
         color: Colors.black.withValues(alpha: 0.9),
         child: SizedBox(
-          height: 72,
+          height: 60,
           child: EditCaptionsPreviewOverlay(
             l10n: l10n,
             stylePreset: snapshot.style,

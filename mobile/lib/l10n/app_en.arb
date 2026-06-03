@@ -542,6 +542,7 @@
   "editCaptionsV34HighlightModeOffHint": "Plain captions, no word highlight",
   "editCaptionsV34HighlightModeColorHint": "Highlights the active word with color",
   "editCaptionsV34HighlightModeBoxHint": "Highlights the active word with a box",
+  "editCaptionsV34PositionFineTuneHint": "Move captions slightly if they cover important content.",
   "errorCaptionsWordHighlightNotSupported": "This word highlight option is not supported.",
   "errorCaptionsFontFamilyNotSupported": "This caption font is not supported.",
   "errorCaptionsDraftUnavailable": "Could not generate captions draft.",

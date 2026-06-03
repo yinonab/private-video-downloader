@@ -2786,6 +2786,12 @@ abstract class AppLocalizations {
   /// **'Highlights the active word with a box'**
   String get editCaptionsV34HighlightModeBoxHint;
 
+  /// No description provided for @editCaptionsV34PositionFineTuneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Move captions slightly if they cover important content.'**
+  String get editCaptionsV34PositionFineTuneHint;
+
   /// No description provided for @errorCaptionsWordHighlightNotSupported.
   ///
   /// In en, this message translates to:

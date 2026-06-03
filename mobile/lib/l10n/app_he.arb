@@ -542,6 +542,7 @@
   "editCaptionsV34HighlightModeOffHint": "כתוביות רגילות, בלי הדגשת מילה",
   "editCaptionsV34HighlightModeColorHint": "מדגיש את המילה הפעילה בצבע",
   "editCaptionsV34HighlightModeBoxHint": "מדגיש את המילה הפעילה עם קופסה",
+  "editCaptionsV34PositionFineTuneHint": "הזז מעט את הכתוביות אם הן מסתירות חלק חשוב בסרטון.",
   "errorCaptionsWordHighlightNotSupported": "אפשרות הדגשת המילה הזו לא נתמכת.",
   "errorCaptionsFontFamilyNotSupported": "פונט הכתוביות הזה לא נתמך.",
   "errorCaptionsDraftUnavailable": "לא ניתן ליצור טיוטת כתוביות.",

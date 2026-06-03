@@ -1471,6 +1471,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Highlights the active word with a box';
 
   @override
+  String get editCaptionsV34PositionFineTuneHint =>
+      'Move captions slightly if they cover important content.';
+
+  @override
   String get errorCaptionsWordHighlightNotSupported =>
       'This word highlight option is not supported.';
 

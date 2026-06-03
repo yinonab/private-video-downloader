@@ -2,7 +2,6 @@ import "package:flutter/material.dart";
 
 import "../../core/edit/caption_look_summary.dart";
 import "../../core/models/quick_edit_models.dart";
-import "../../core/theme/linkclip_palette.dart";
 import "../../l10n/app_localizations.dart";
 import "widgets/caption_look/caption_look_fine_tune_section.dart";
 import "widgets/caption_look/caption_look_widgets.dart";
@@ -129,7 +128,6 @@ class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final accent = context.lcPalette.tiktokAccent;
 
     return Scaffold(
       appBar: AppBar(
@@ -164,7 +162,7 @@ class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: CaptionLookEditorPreviewStrip(l10n: l10n, snapshot: _snapshot),
           ),
           Expanded(
@@ -210,7 +208,6 @@ class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
                 ),
                 _PositionTab(
                   l10n: l10n,
-                  accent: accent,
                   position: _position,
                   offsetX: _offsetX,
                   offsetY: _offsetY,
@@ -246,19 +243,10 @@ class _PresetsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-      children: [
-        for (final p in kCaptionLookEditorPresetsOrdered) ...[
-          CaptionLookPresetCard(
-            l10n: l10n,
-            preset: p,
-            selected: effectivePreset == p,
-            onTap: () => onPreset(p),
-          ),
-          const SizedBox(height: 12),
-        ],
-      ],
+    return CaptionLookPresetGrid(
+      l10n: l10n,
+      effectivePreset: effectivePreset,
+      onPreset: onPreset,
     );
   }
 }
@@ -286,9 +274,10 @@ class _TextTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         CaptionLookSectionCard(
+          dense: true,
           title: l10n.editCaptionsV32FontLabel,
           child: Column(
             children: [
@@ -300,7 +289,7 @@ class _TextTab extends StatelessWidget {
                 QuickEditCaptionFontFamily.notoSansHebrew,
               ])
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: 6),
                   child: CaptionLookChoiceTile(
                     label: captionFontFamilyShortLabel(l10n, f),
                     selected: fontFamily == f,
@@ -309,13 +298,15 @@ class _TextTab extends StatelessWidget {
                       "Aa",
                       style: captionLookFontPreviewStyle(f, theme),
                     ),
+                    minHeight: 44,
                   ),
                 ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         CaptionLookSectionCard(
+          dense: true,
           title: l10n.editCaptionsTextSizeLabel,
           child: Wrap(
             spacing: 8,
@@ -337,8 +328,9 @@ class _TextTab extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         CaptionLookSectionCard(
+          dense: true,
           title: l10n.editCaptionsV34NormalTextColor,
           child: CaptionColorSwatchGrid(
             l10n: l10n,
@@ -443,9 +435,10 @@ class _HighlightTab extends StatelessWidget {
     );
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         CaptionLookSectionCard(
+          dense: true,
           title: l10n.editCaptionsV33WordHighlightLabel,
           child: Column(
             children: [
@@ -455,22 +448,23 @@ class _HighlightTab extends StatelessWidget {
                 QuickEditCaptionWordHighlight.box,
               ])
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: 6),
                   child: CaptionLookChoiceTile(
                     label: _highlightLabel(l10n, h),
                     subtitle: _highlightSubtitle(l10n, h),
                     selected: wordHighlight == h,
                     onTap: () => onWordHighlight(h),
                     leading: _HighlightModeIcon(mode: h),
-                    minHeight: 56,
+                    minHeight: 48,
                   ),
                 ),
             ],
           ),
         ),
         if (showHighlight) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           CaptionLookSectionCard(
+            dense: true,
             title: l10n.editCaptionsV34ActiveWordColor,
             child: CaptionColorSwatchGrid(
               l10n: l10n,
@@ -481,8 +475,9 @@ class _HighlightTab extends StatelessWidget {
           ),
         ],
         if (wordHighlight == QuickEditCaptionWordHighlight.box) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           CaptionLookSectionCard(
+            dense: true,
             title: l10n.editCaptionsV34BoxColor,
             child: CaptionColorSwatchGrid(
               l10n: l10n,
@@ -491,8 +486,9 @@ class _HighlightTab extends StatelessWidget {
               onSelected: onBoxColor,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           CaptionLookSectionCard(
+            dense: true,
             title: l10n.editCaptionsV34BoxShape,
             child: CaptionBoxShapeGrid(
               l10n: l10n,
@@ -502,17 +498,21 @@ class _HighlightTab extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 16),
-        Text(
-          l10n.editCaptionsV34HighlightDraftHint,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurfaceVariant
-                    .withValues(alpha: 0.88),
-                height: 1.4,
-              ),
-        ),
+        if (showHighlight) ...[
+          const SizedBox(height: 8),
+          Text(
+            l10n.editCaptionsV34HighlightDraftHint,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurfaceVariant
+                      .withValues(alpha: 0.85),
+                  height: 1.35,
+                ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ],
     );
   }
@@ -595,7 +595,6 @@ class _HighlightModeIcon extends StatelessWidget {
 class _PositionTab extends StatelessWidget {
   const _PositionTab({
     required this.l10n,
-    required this.accent,
     required this.position,
     required this.offsetX,
     required this.offsetY,
@@ -605,7 +604,6 @@ class _PositionTab extends StatelessWidget {
   });
 
   final AppLocalizations l10n;
-  final Color accent;
   final QuickEditCaptionPosition position;
   final int offsetX;
   final int offsetY;
@@ -616,33 +614,23 @@ class _PositionTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 48),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         CaptionLookSectionCard(
+          dense: true,
           title: l10n.editCaptionsPositionLabel,
-          child: Column(
-            children: [
-              CaptionLookChoiceTile(
-                label: l10n.editCaptionsPositionTop,
-                selected: position == QuickEditCaptionPosition.top,
-                onTap: () => onPosition(QuickEditCaptionPosition.top),
-                minHeight: 56,
-              ),
-              const SizedBox(height: 8),
-              CaptionLookChoiceTile(
-                label: l10n.editCaptionsPositionBottom,
-                selected: position == QuickEditCaptionPosition.bottom,
-                onTap: () => onPosition(QuickEditCaptionPosition.bottom),
-                minHeight: 56,
-              ),
-            ],
+          child: CaptionLookPositionSegmented(
+            l10n: l10n,
+            position: position,
+            onPosition: onPosition,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         CaptionLookSectionCard(
+          dense: true,
           title: l10n.editCaptionsFineTuneTitle,
+          subtitle: l10n.editCaptionsV34PositionFineTuneHint,
           child: CaptionLookFineTuneSection(
-            accent: accent,
             l10n: l10n,
             offsetX: offsetX,
             offsetY: offsetY,

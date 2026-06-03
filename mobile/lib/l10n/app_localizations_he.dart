@@ -1455,6 +1455,10 @@ class AppLocalizationsHe extends AppLocalizations {
       'מדגיש את המילה הפעילה עם קופסה';
 
   @override
+  String get editCaptionsV34PositionFineTuneHint =>
+      'הזז מעט את הכתוביות אם הן מסתירות חלק חשוב בסרטון.';
+
+  @override
   String get errorCaptionsWordHighlightNotSupported =>
       'אפשרות הדגשת המילה הזו לא נתמכת.';
 
