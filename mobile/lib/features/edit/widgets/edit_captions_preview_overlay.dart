@@ -6,12 +6,22 @@ import "package:google_fonts/google_fonts.dart";
 import "../../../core/models/quick_edit_models.dart";
 import "../../../l10n/app_localizations.dart";
 
+/// Layout mode for caption preview positioning clamps.
+enum CaptionPreviewLayout {
+  /// Default overlay (e.g. main editor).
+  standard,
+
+  /// Compact look-editor stage — tighter clamps, no built-in label chip.
+  stage,
+}
+
 /// Approximate captions on the editor video frame (upright; not rotated with preview).
 /// Rough ASS PlayRes parity via [kCaptionAssPlayResX] / [kCaptionAssPlayResY].
 class EditCaptionsPreviewOverlay extends StatelessWidget {
   const EditCaptionsPreviewOverlay({
     super.key,
     required this.l10n,
+    this.layout = CaptionPreviewLayout.standard,
     required this.stylePreset,
     required this.fontSize,
     required this.fontFamily,
@@ -27,6 +37,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
   });
 
   final AppLocalizations l10n;
+  final CaptionPreviewLayout layout;
   final QuickEditCaptionsStylePreset stylePreset;
   final QuickEditCaptionFontSize fontSize;
   final QuickEditCaptionFontFamily fontFamily;
@@ -245,6 +256,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
       ),
     );
 
+    final isStage = layout == CaptionPreviewLayout.stage;
+
     return LayoutBuilder(
       builder: (context, c) {
         final w = math.max(c.maxWidth, 1.0);
@@ -254,14 +267,19 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
         final dx = offsetXAss * sx;
         final dy = offsetYAss * sy;
         final bottom = position == QuickEditCaptionPosition.bottom;
-        final baseY = bottom ? (-h * 0.068) : (h * 0.068);
-        final fx = dx.clamp(-w * 0.36, w * 0.36).toDouble();
-        final fy = (baseY + dy)
-            .clamp(
-              bottom ? -h * 0.34 : -h * 0.05,
-              bottom ? h * 0.05 : h * 0.34,
-            )
-            .toDouble();
+        final baseY = bottom
+            ? (isStage ? -h * 0.04 : -h * 0.068)
+            : (isStage ? h * 0.04 : h * 0.068);
+        final fxMax = isStage ? 0.24 : 0.36;
+        final fx = dx.clamp(-w * fxMax, w * fxMax).toDouble();
+        final fyMin = bottom
+            ? (isStage ? -h * 0.18 : -h * 0.34)
+            : (isStage ? -h * 0.06 : -h * 0.05);
+        final fyMax = bottom
+            ? (isStage ? h * 0.06 : h * 0.05)
+            : (isStage ? h * 0.18 : h * 0.34);
+        final fy = (baseY + dy).clamp(fyMin, fyMax).toDouble();
+        final hPad = isStage ? 8.0 : 18.0;
 
         return Stack(
           fit: StackFit.expand,
@@ -273,16 +291,16 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
               child: Transform.translate(
                 offset: Offset(fx, fy),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  padding: EdgeInsets.symmetric(horizontal: hPad),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (!bottom) ...[
+                      if (!isStage && !bottom) ...[
                         previewLabel,
                         const SizedBox(height: 4),
                       ],
                       captionBody,
-                      if (bottom) ...[
+                      if (!isStage && bottom) ...[
                         const SizedBox(height: 4),
                         previewLabel,
                       ],

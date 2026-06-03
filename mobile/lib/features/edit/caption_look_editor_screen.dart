@@ -5,6 +5,7 @@ import "../../core/models/quick_edit_models.dart";
 import "../../l10n/app_localizations.dart";
 import "widgets/caption_look/caption_look_fine_tune_section.dart";
 import "widgets/caption_look/caption_look_widgets.dart";
+import "widgets/caption_look/caption_preview_card.dart";
 
 /// Full-screen caption look editor (V3.4D) — presets, text, highlight, position.
 class CaptionLookEditorScreen extends StatefulWidget {
@@ -161,10 +162,7 @@ class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: CaptionLookEditorPreviewStrip(l10n: l10n, snapshot: _snapshot),
-          ),
+          CaptionPreviewCard(l10n: l10n, snapshot: _snapshot),
           Expanded(
             child: TabBarView(
               controller: _tabs,
@@ -616,27 +614,25 @@ class _PositionTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        CaptionLookSectionCard(
-          dense: true,
-          title: l10n.editCaptionsPositionLabel,
-          child: CaptionLookPositionSegmented(
-            l10n: l10n,
-            position: position,
-            onPosition: onPosition,
-          ),
+        Text(
+          l10n.editCaptionsPositionLabel,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
         ),
-        const SizedBox(height: 12),
-        CaptionLookSectionCard(
-          dense: true,
-          title: l10n.editCaptionsFineTuneTitle,
-          subtitle: l10n.editCaptionsV34PositionFineTuneHint,
-          child: CaptionLookFineTuneSection(
-            l10n: l10n,
-            offsetX: offsetX,
-            offsetY: offsetY,
-            onReset: onReset,
-            onNudge: onNudge,
-          ),
+        const SizedBox(height: 10),
+        CaptionLookPositionSegmented(
+          l10n: l10n,
+          position: position,
+          onPosition: onPosition,
+        ),
+        const SizedBox(height: 16),
+        CaptionLookFineTuneCard(
+          l10n: l10n,
+          offsetX: offsetX,
+          offsetY: offsetY,
+          onReset: onReset,
+          onNudge: onNudge,
         ),
       ],
     );

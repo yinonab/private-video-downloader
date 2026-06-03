@@ -4,7 +4,6 @@ import "package:google_fonts/google_fonts.dart";
 import "../../../../core/edit/caption_look_summary.dart";
 import "../../../../core/models/quick_edit_models.dart";
 import "../../../../l10n/app_localizations.dart";
-import "../edit_captions_preview_overlay.dart";
 
 /// Minimum width for two-column preset grid.
 const double kCaptionLookPresetGridMinWidth = 340;
@@ -594,46 +593,6 @@ class _BoxShapeCard extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Compact static preview strip at top of look editor.
-class CaptionLookEditorPreviewStrip extends StatelessWidget {
-  const CaptionLookEditorPreviewStrip({
-    super.key,
-    required this.l10n,
-    required this.snapshot,
-  });
-
-  final AppLocalizations l10n;
-  final CaptionLookSnapshot snapshot;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: ColoredBox(
-        color: Colors.black.withValues(alpha: 0.9),
-        child: SizedBox(
-          height: 60,
-          child: EditCaptionsPreviewOverlay(
-            l10n: l10n,
-            stylePreset: snapshot.style,
-            fontSize: snapshot.fontSize,
-            fontFamily: snapshot.fontFamily,
-            position: snapshot.position,
-            color: snapshot.color,
-            wordHighlight: snapshot.wordHighlight,
-            normalTextColor: snapshot.normalTextColor,
-            activeTextColor: snapshot.activeTextColor,
-            boxColor: snapshot.boxColor,
-            boxShape: snapshot.boxShape,
-            offsetXAss: snapshot.offsetX,
-            offsetYAss: snapshot.offsetY,
           ),
         ),
       ),
