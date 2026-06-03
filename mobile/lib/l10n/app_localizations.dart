@@ -2702,6 +2702,90 @@ abstract class AppLocalizations {
   /// **'Pill'**
   String get editCaptionsV34BoxShapePill;
 
+  /// No description provided for @editCaptionsV34CustomizeLook.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize look'**
+  String get editCaptionsV34CustomizeLook;
+
+  /// No description provided for @editCaptionsV34LookEditorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Caption look'**
+  String get editCaptionsV34LookEditorTitle;
+
+  /// No description provided for @editCaptionsV34TabPresets.
+  ///
+  /// In en, this message translates to:
+  /// **'Presets'**
+  String get editCaptionsV34TabPresets;
+
+  /// No description provided for @editCaptionsV34TabText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get editCaptionsV34TabText;
+
+  /// No description provided for @editCaptionsV34TabHighlight.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight'**
+  String get editCaptionsV34TabHighlight;
+
+  /// No description provided for @editCaptionsV34TabPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Position'**
+  String get editCaptionsV34TabPosition;
+
+  /// No description provided for @editCaptionsV34Done.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get editCaptionsV34Done;
+
+  /// No description provided for @editCaptionsV34PresetPinkPop.
+  ///
+  /// In en, this message translates to:
+  /// **'Pink Pop'**
+  String get editCaptionsV34PresetPinkPop;
+
+  /// No description provided for @editCaptionsV34PresetYellowViral.
+  ///
+  /// In en, this message translates to:
+  /// **'Yellow Viral'**
+  String get editCaptionsV34PresetYellowViral;
+
+  /// No description provided for @editCaptionsV34PresetCleanFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean Focus'**
+  String get editCaptionsV34PresetCleanFocus;
+
+  /// No description provided for @editCaptionsV34HighlightDraftHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight follows the spoken words. Generate a draft for more accurate timing.'**
+  String get editCaptionsV34HighlightDraftHint;
+
+  /// No description provided for @editCaptionsV34HighlightModeOffHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Plain captions, no word highlight'**
+  String get editCaptionsV34HighlightModeOffHint;
+
+  /// No description provided for @editCaptionsV34HighlightModeColorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlights the active word with color'**
+  String get editCaptionsV34HighlightModeColorHint;
+
+  /// No description provided for @editCaptionsV34HighlightModeBoxHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlights the active word with a box'**
+  String get editCaptionsV34HighlightModeBoxHint;
+
   /// No description provided for @errorCaptionsWordHighlightNotSupported.
   ///
   /// In en, this message translates to:

@@ -16,7 +16,9 @@ import "../../core/l10n/context_l10n.dart";
 import "../../core/l10n/media_export_display_path.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
+import "../../core/edit/caption_look_summary.dart";
 import "../../core/models/quick_edit_models.dart";
+import "caption_look_editor_screen.dart";
 import "../../core/network/api_client.dart";
 import "../../core/theme/linkclip_palette.dart";
 import "../../core/media/backend_media_expired.dart";
@@ -380,37 +382,71 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     }
   }
 
-  void _resetCaptionOffsets() {
+  void _applyCaptionLookSnapshot(CaptionLookSnapshot snapshot) {
     setState(() {
-      _captionsOffsetX = 0;
-      _captionsOffsetY = 0;
+      _captionsStyle = snapshot.style;
+      _captionsFontSize = snapshot.fontSize;
+      _captionsFontFamily = snapshot.fontFamily;
+      _captionsPosition = snapshot.position;
+      _captionsColor = snapshot.color;
+      _captionsWordHighlight = snapshot.wordHighlight;
+      _captionsNormalTextColor = snapshot.normalTextColor;
+      _captionsActiveTextColor = snapshot.activeTextColor;
+      _captionsBoxColor = snapshot.boxColor;
+      _captionsBoxShape = snapshot.boxShape;
+      _captionsOffsetX = clampQuickEditCaptionOffsetX(snapshot.offsetX);
+      _captionsOffsetY = clampQuickEditCaptionOffsetY(snapshot.offsetY);
     });
   }
 
-  void _nudgeCaptionOffsetAss(int dx, int dy) {
-    setState(() {
-      _captionsOffsetX = clampQuickEditCaptionOffsetX(_captionsOffsetX + dx);
-      _captionsOffsetY = clampQuickEditCaptionOffsetY(_captionsOffsetY + dy);
-    });
+  Future<void> _openCaptionLookEditor() async {
+    final initial = captionLookSnapshotFrom(
+      style: _captionsStyle,
+      fontSize: _captionsFontSize,
+      fontFamily: _captionsFontFamily,
+      position: _captionsPosition,
+      color: _captionsColor,
+      wordHighlight: _captionsWordHighlight,
+      offsetX: _captionsOffsetX,
+      offsetY: _captionsOffsetY,
+      normalTextColor: _captionsNormalTextColor,
+      activeTextColor: _captionsActiveTextColor,
+      boxColor: _captionsBoxColor,
+      boxShape: _captionsBoxShape,
+    );
+    final result = await Navigator.of(context).push<CaptionLookSnapshot>(
+      MaterialPageRoute(
+        builder: (_) => CaptionLookEditorScreen(initial: initial),
+      ),
+    );
+    if (!mounted || result == null) return;
+    _applyCaptionLookSnapshot(result);
   }
 
-  void _applyCaptionBuiltInPreset(QuickEditCaptionPreset preset) {
-    if (preset == QuickEditCaptionPreset.custom) return;
-    final r = captionPresetRecipe(preset)!;
-    setState(() {
-      _captionsFontSize = r.fontSize;
-      _captionsFontFamily = r.fontFamily;
-      _captionsPosition = r.position;
-      _captionsColor = r.color;
-      _captionsStyle = r.style;
-      _captionsWordHighlight = r.wordHighlight;
-      _captionsNormalTextColor = r.normalTextColor;
-      _captionsActiveTextColor = r.activeTextColor;
-      _captionsBoxColor = r.boxColor;
-      _captionsBoxShape = r.boxShape;
-      _captionsOffsetX = clampQuickEditCaptionOffsetX(r.offsetX);
-      _captionsOffsetY = clampQuickEditCaptionOffsetY(r.offsetY);
-    });
+  String _captionLookSummaryLine(AppLocalizations l10n) {
+    return buildCaptionLookSummaryLine(
+      l10n,
+      effectivePreset: inferQuickEditCaptionPreset(
+        fontSize: _captionsFontSize,
+        fontFamily: _captionsFontFamily,
+        position: _captionsPosition,
+        color: _captionsColor,
+        style: _captionsStyle,
+        wordHighlight: _captionsWordHighlight,
+        offsetX: _captionsOffsetX,
+        offsetY: _captionsOffsetY,
+        normalTextColor: _captionsNormalTextColor,
+        activeTextColor: _captionsActiveTextColor,
+        boxColor: _captionsBoxColor,
+        boxShape: _captionsBoxShape,
+      ),
+      color: _captionsColor,
+      wordHighlight: _captionsWordHighlight,
+      fontFamily: _captionsFontFamily,
+      normalTextColor: _captionsNormalTextColor,
+      boxColor: _captionsBoxColor,
+      boxShape: _captionsBoxShape,
+    );
   }
 
   bool get _showDurationApproxHint {
@@ -1151,18 +1187,6 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                       scheme,
                       CaptionsEditorPanel(
                         autoCaptionsEnabled: _captionsAuto,
-                        stylePreset: _captionsStyle,
-                        fontSize: _captionsFontSize,
-                        fontFamily: _captionsFontFamily,
-                        position: _captionsPosition,
-                        color: _captionsColor,
-                        wordHighlight: _captionsWordHighlight,
-                        normalTextColor: _captionsNormalTextColor,
-                        activeTextColor: _captionsActiveTextColor,
-                        boxColor: _captionsBoxColor,
-                        boxShape: _captionsBoxShape,
-                        offsetX: _captionsOffsetX,
-                        offsetY: _captionsOffsetY,
                         effectiveCaptionPreset: inferQuickEditCaptionPreset(
                           fontSize: _captionsFontSize,
                           fontFamily: _captionsFontFamily,
@@ -1177,8 +1201,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                           boxColor: _captionsBoxColor,
                           boxShape: _captionsBoxShape,
                         ),
-                        onCaptionBuiltInPresetSelected:
-                            _applyCaptionBuiltInPreset,
+                        lookSummaryLine: _captionLookSummaryLine(l10n),
+                        onCustomizeLook: _openCaptionLookEditor,
                         onGenerateCaptionsDraft: _generateCaptionsDraft,
                         onRegenerateCaptionsDraftRequested:
                             _confirmAndRegenerateCaptionsDraft,
@@ -1192,39 +1216,14 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                             _captionsOffsetX = 0;
                             _captionsOffsetY = 0;
                             _captionsWordHighlight = QuickEditCaptionWordHighlight.none;
+                            _captionsNormalTextColor = null;
+                            _captionsActiveTextColor = null;
+                            _captionsBoxColor = null;
                             _captionsDraftSegments = null;
                             _captionsDraftRegenHint = false;
                             _captionsDraftGenerating = false;
                           }
                         }),
-                        onStyleChanged: (v) =>
-                            setState(() => _captionsStyle = v),
-                        onFontSizeChanged: (v) =>
-                            setState(() => _captionsFontSize = v),
-                        onFontFamilyChanged: (v) =>
-                            setState(() => _captionsFontFamily = v),
-                        onPositionChanged: (v) =>
-                            setState(() => _captionsPosition = v),
-                        onColorChanged: (v) =>
-                            setState(() => _captionsColor = v),
-                        onWordHighlightChanged: (v) => setState(() {
-                          _captionsWordHighlight = v;
-                          if (v == QuickEditCaptionWordHighlight.none) {
-                            _captionsNormalTextColor = null;
-                            _captionsActiveTextColor = null;
-                            _captionsBoxColor = null;
-                          }
-                        }),
-                        onNormalTextColorChanged: (v) =>
-                            setState(() => _captionsNormalTextColor = v),
-                        onActiveTextColorChanged: (v) =>
-                            setState(() => _captionsActiveTextColor = v),
-                        onBoxColorChanged: (v) =>
-                            setState(() => _captionsBoxColor = v),
-                        onBoxShapeChanged: (v) =>
-                            setState(() => _captionsBoxShape = v),
-                        onOffsetReset: _resetCaptionOffsets,
-                        onOffsetNudgeAss: _nudgeCaptionOffsetAss,
                       ),
                     ),
                     _composerPanelShell(

@@ -1409,6 +1409,52 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editCaptionsV34BoxShapePill => 'גלולה';
 
   @override
+  String get editCaptionsV34CustomizeLook => 'התאמת מראה';
+
+  @override
+  String get editCaptionsV34LookEditorTitle => 'מראה הכתוביות';
+
+  @override
+  String get editCaptionsV34TabPresets => 'תבניות';
+
+  @override
+  String get editCaptionsV34TabText => 'טקסט';
+
+  @override
+  String get editCaptionsV34TabHighlight => 'הדגשה';
+
+  @override
+  String get editCaptionsV34TabPosition => 'מיקום';
+
+  @override
+  String get editCaptionsV34Done => 'סיום';
+
+  @override
+  String get editCaptionsV34PresetPinkPop => 'פופ ורוד';
+
+  @override
+  String get editCaptionsV34PresetYellowViral => 'צהוב ויראלי';
+
+  @override
+  String get editCaptionsV34PresetCleanFocus => 'פוקוס נקי';
+
+  @override
+  String get editCaptionsV34HighlightDraftHint =>
+      'ההדגשה עוקבת אחרי המילים שנאמרות. לתזמון מדויק יותר, מומלץ ליצור טיוטה.';
+
+  @override
+  String get editCaptionsV34HighlightModeOffHint =>
+      'כתוביות רגילות, בלי הדגשת מילה';
+
+  @override
+  String get editCaptionsV34HighlightModeColorHint =>
+      'מדגיש את המילה הפעילה בצבע';
+
+  @override
+  String get editCaptionsV34HighlightModeBoxHint =>
+      'מדגיש את המילה הפעילה עם קופסה';
+
+  @override
   String get errorCaptionsWordHighlightNotSupported =>
       'אפשרות הדגשת המילה הזו לא נתמכת.';
 

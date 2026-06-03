@@ -1425,6 +1425,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCaptionsV34BoxShapePill => 'Pill';
 
   @override
+  String get editCaptionsV34CustomizeLook => 'Customize look';
+
+  @override
+  String get editCaptionsV34LookEditorTitle => 'Caption look';
+
+  @override
+  String get editCaptionsV34TabPresets => 'Presets';
+
+  @override
+  String get editCaptionsV34TabText => 'Text';
+
+  @override
+  String get editCaptionsV34TabHighlight => 'Highlight';
+
+  @override
+  String get editCaptionsV34TabPosition => 'Position';
+
+  @override
+  String get editCaptionsV34Done => 'Done';
+
+  @override
+  String get editCaptionsV34PresetPinkPop => 'Pink Pop';
+
+  @override
+  String get editCaptionsV34PresetYellowViral => 'Yellow Viral';
+
+  @override
+  String get editCaptionsV34PresetCleanFocus => 'Clean Focus';
+
+  @override
+  String get editCaptionsV34HighlightDraftHint =>
+      'Highlight follows the spoken words. Generate a draft for more accurate timing.';
+
+  @override
+  String get editCaptionsV34HighlightModeOffHint =>
+      'Plain captions, no word highlight';
+
+  @override
+  String get editCaptionsV34HighlightModeColorHint =>
+      'Highlights the active word with color';
+
+  @override
+  String get editCaptionsV34HighlightModeBoxHint =>
+      'Highlights the active word with a box';
+
+  @override
   String get errorCaptionsWordHighlightNotSupported =>
       'This word highlight option is not supported.';
 

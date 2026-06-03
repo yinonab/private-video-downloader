@@ -586,6 +586,40 @@ enum QuickEditCaptionPreset {
   topClean,
   creatorHighlight,
   newsHeadline,
+  pinkPop,
+  yellowViral,
+  cleanFocus,
+}
+
+/// Snapshot returned from [CaptionLookEditorScreen] (UI-only; same fields as edit state).
+final class CaptionLookSnapshot {
+  const CaptionLookSnapshot({
+    required this.style,
+    required this.fontSize,
+    required this.fontFamily,
+    required this.position,
+    required this.color,
+    required this.wordHighlight,
+    required this.offsetX,
+    required this.offsetY,
+    this.normalTextColor,
+    this.activeTextColor,
+    this.boxColor,
+    this.boxShape = QuickEditCaptionBoxShape.pill,
+  });
+
+  final QuickEditCaptionsStylePreset style;
+  final QuickEditCaptionFontSize fontSize;
+  final QuickEditCaptionFontFamily fontFamily;
+  final QuickEditCaptionPosition position;
+  final QuickEditCaptionColor color;
+  final QuickEditCaptionWordHighlight wordHighlight;
+  final int offsetX;
+  final int offsetY;
+  final QuickEditCaptionColor? normalTextColor;
+  final QuickEditCaptionColor? activeTextColor;
+  final QuickEditCaptionColor? boxColor;
+  final QuickEditCaptionBoxShape boxShape;
 }
 
 /// Field snapshot applied when user picks a built-in preset.
@@ -775,6 +809,49 @@ CaptionPresetFields? captionPresetRecipe(QuickEditCaptionPreset preset) {
         offsetX: 0,
         offsetY: -20,
       );
+    case QuickEditCaptionPreset.pinkPop:
+      return const CaptionPresetFields(
+        fontSize: QuickEditCaptionFontSize.xLarge,
+        fontFamily: QuickEditCaptionFontFamily.rubik,
+        position: QuickEditCaptionPosition.bottom,
+        color: QuickEditCaptionColor.white,
+        style: QuickEditCaptionsStylePreset.highlightBox,
+        wordHighlight: QuickEditCaptionWordHighlight.box,
+        normalTextColor: QuickEditCaptionColor.white,
+        activeTextColor: QuickEditCaptionColor.black,
+        boxColor: QuickEditCaptionColor.pink,
+        boxShape: QuickEditCaptionBoxShape.pill,
+        offsetX: 0,
+        offsetY: -20,
+      );
+    case QuickEditCaptionPreset.yellowViral:
+      return const CaptionPresetFields(
+        fontSize: QuickEditCaptionFontSize.xLarge,
+        fontFamily: QuickEditCaptionFontFamily.rubik,
+        position: QuickEditCaptionPosition.bottom,
+        color: QuickEditCaptionColor.white,
+        style: QuickEditCaptionsStylePreset.highlightBox,
+        wordHighlight: QuickEditCaptionWordHighlight.box,
+        normalTextColor: QuickEditCaptionColor.white,
+        activeTextColor: QuickEditCaptionColor.black,
+        boxColor: QuickEditCaptionColor.yellow,
+        boxShape: QuickEditCaptionBoxShape.rounded,
+        offsetX: 0,
+        offsetY: -20,
+      );
+    case QuickEditCaptionPreset.cleanFocus:
+      return const CaptionPresetFields(
+        fontSize: QuickEditCaptionFontSize.large,
+        fontFamily: QuickEditCaptionFontFamily.heebo,
+        position: QuickEditCaptionPosition.bottom,
+        color: QuickEditCaptionColor.white,
+        style: QuickEditCaptionsStylePreset.cleanPro,
+        wordHighlight: QuickEditCaptionWordHighlight.color,
+        normalTextColor: QuickEditCaptionColor.white,
+        activeTextColor: QuickEditCaptionColor.mint,
+        offsetX: 0,
+        offsetY: -20,
+      );
   }
 }
 
@@ -786,7 +863,72 @@ const List<QuickEditCaptionPreset> kQuickEditCaptionBuiltInPresetsOrdered = [
   QuickEditCaptionPreset.topClean,
   QuickEditCaptionPreset.creatorHighlight,
   QuickEditCaptionPreset.newsHeadline,
+  QuickEditCaptionPreset.pinkPop,
+  QuickEditCaptionPreset.yellowViral,
+  QuickEditCaptionPreset.cleanFocus,
 ];
+
+/// Presets shown as visual cards in the look editor (excludes [QuickEditCaptionPreset.custom]).
+const List<QuickEditCaptionPreset> kCaptionLookEditorPresetsOrdered =
+    kQuickEditCaptionBuiltInPresetsOrdered;
+
+void applyCaptionPresetFields(
+  CaptionPresetFields recipe, {
+  required void Function(QuickEditCaptionFontSize) setFontSize,
+  required void Function(QuickEditCaptionFontFamily) setFontFamily,
+  required void Function(QuickEditCaptionPosition) setPosition,
+  required void Function(QuickEditCaptionColor) setColor,
+  required void Function(QuickEditCaptionsStylePreset) setStyle,
+  required void Function(QuickEditCaptionWordHighlight) setWordHighlight,
+  required void Function(int) setOffsetX,
+  required void Function(int) setOffsetY,
+  required void Function(QuickEditCaptionColor?) setNormalTextColor,
+  required void Function(QuickEditCaptionColor?) setActiveTextColor,
+  required void Function(QuickEditCaptionColor?) setBoxColor,
+  required void Function(QuickEditCaptionBoxShape) setBoxShape,
+}) {
+  setFontSize(recipe.fontSize);
+  setFontFamily(recipe.fontFamily);
+  setPosition(recipe.position);
+  setColor(recipe.color);
+  setStyle(recipe.style);
+  setWordHighlight(recipe.wordHighlight);
+  setOffsetX(recipe.offsetX);
+  setOffsetY(recipe.offsetY);
+  setNormalTextColor(recipe.normalTextColor);
+  setActiveTextColor(recipe.activeTextColor);
+  setBoxColor(recipe.boxColor);
+  setBoxShape(recipe.boxShape);
+}
+
+CaptionLookSnapshot captionLookSnapshotFrom({
+  required QuickEditCaptionsStylePreset style,
+  required QuickEditCaptionFontSize fontSize,
+  required QuickEditCaptionFontFamily fontFamily,
+  required QuickEditCaptionPosition position,
+  required QuickEditCaptionColor color,
+  required QuickEditCaptionWordHighlight wordHighlight,
+  required int offsetX,
+  required int offsetY,
+  QuickEditCaptionColor? normalTextColor,
+  QuickEditCaptionColor? activeTextColor,
+  QuickEditCaptionColor? boxColor,
+  QuickEditCaptionBoxShape boxShape = QuickEditCaptionBoxShape.pill,
+}) =>
+    CaptionLookSnapshot(
+      style: style,
+      fontSize: fontSize,
+      fontFamily: fontFamily,
+      position: position,
+      color: color,
+      wordHighlight: wordHighlight,
+      offsetX: offsetX,
+      offsetY: offsetY,
+      normalTextColor: normalTextColor,
+      activeTextColor: activeTextColor,
+      boxColor: boxColor,
+      boxShape: boxShape,
+    );
 
 /// Effective normal text color for highlight burn (falls back to accent [color]).
 QuickEditCaptionColor effectiveCaptionNormalTextColor({
