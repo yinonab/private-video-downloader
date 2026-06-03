@@ -2,40 +2,69 @@ import "package:flutter/material.dart";
 
 import "../../../../core/models/quick_edit_models.dart";
 import "../../../../l10n/app_localizations.dart";
+import "caption_position_joystick.dart";
 
-/// Live X/Y coordinate readout above the position joystick.
-class CaptionXYReadout extends StatelessWidget {
-  const CaptionXYReadout({
+/// Live HUD readout for caption X/Y offsets.
+class JoystickHudReadout extends StatelessWidget {
+  const JoystickHudReadout({
     super.key,
     required this.l10n,
     required this.offsetX,
     required this.offsetY,
+    this.accentColor,
   });
 
   final AppLocalizations l10n;
   final int offsetX;
   final int offsetY;
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final accent = accentColor ?? scheme.primary;
+    final text = l10n.editCaptionsOffsetCompact(offsetX, offsetY);
+
     return Center(
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: scheme.outline.withValues(alpha: 0.2)),
+          border: Border.all(color: scheme.outline.withValues(alpha: 0.22)),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          child: Text(
-            l10n.editCaptionsOffsetCompact(offsetX, offsetY),
-            style: theme.textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LiveDot(color: accent),
+              const SizedBox(width: 8),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 160),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, anim) => FadeTransition(
+                  opacity: anim,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.15),
+                      end: Offset.zero,
+                    ).animate(anim),
+                    child: child,
+                  ),
+                ),
+                child: Text(
+                  text,
+                  key: ValueKey<String>(text),
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.25,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -43,59 +72,49 @@ class CaptionXYReadout extends StatelessWidget {
   }
 }
 
-/// Tactile gamepad-style joystick for caption position fine-tuning.
-class CaptionPositionJoystick extends StatelessWidget {
-  const CaptionPositionJoystick({
-    super.key,
-    required this.onNudge,
-  });
+class _LiveDot extends StatefulWidget {
+  const _LiveDot({required this.color});
 
-  final void Function(int dxAss, int dyAss) onNudge;
+  final Color color;
 
-  static const double _btnSize = 52;
-  static const double _hubSize = 28;
-  static const double _gap = 6;
+  @override
+  State<_LiveDot> createState() => _LiveDotState();
+}
+
+class _LiveDotState extends State<_LiveDot> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final step = kQuickEditCaptionsOffsetFineStep;
-
-    // Physical D-pad layout stays LTR so left/right match screen motion in RTL locales.
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _JoystickButton(
-              size: _btnSize,
-              icon: Icons.keyboard_arrow_up_rounded,
-              onPressed: () => onNudge(0, -step),
-            ),
-            const SizedBox(height: _gap),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _JoystickButton(
-                  size: _btnSize,
-                  icon: Icons.keyboard_arrow_left_rounded,
-                  onPressed: () => onNudge(-step, 0),
-                ),
-                const SizedBox(width: _gap),
-                const _JoystickHub(size: _hubSize),
-                const SizedBox(width: _gap),
-                _JoystickButton(
-                  size: _btnSize,
-                  icon: Icons.keyboard_arrow_right_rounded,
-                  onPressed: () => onNudge(step, 0),
-                ),
-              ],
-            ),
-            const SizedBox(height: _gap),
-            _JoystickButton(
-              size: _btnSize,
-              icon: Icons.keyboard_arrow_down_rounded,
-              onPressed: () => onNudge(0, step),
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.45, end: 1).animate(
+        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+      ),
+      child: Container(
+        width: 7,
+        height: 7,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: widget.color,
+          boxShadow: [
+            BoxShadow(
+              color: widget.color.withValues(alpha: 0.55),
+              blurRadius: 6,
             ),
           ],
         ),
@@ -104,89 +123,78 @@ class CaptionPositionJoystick extends StatelessWidget {
   }
 }
 
-class _JoystickHub extends StatelessWidget {
-  const _JoystickHub({required this.size});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: size,
-      height: size,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
-          border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
-        ),
-      ),
-    );
-  }
-}
-
-class _JoystickButton extends StatefulWidget {
-  const _JoystickButton({
-    required this.size,
-    required this.icon,
-    required this.onPressed,
+/// Secondary reset control with a brief rotate animation.
+class CaptionPositionResetButton extends StatefulWidget {
+  const CaptionPositionResetButton({
+    super.key,
+    required this.l10n,
+    required this.onReset,
   });
 
-  final double size;
-  final IconData icon;
-  final VoidCallback onPressed;
+  final AppLocalizations l10n;
+  final VoidCallback onReset;
 
   @override
-  State<_JoystickButton> createState() => _JoystickButtonState();
+  State<CaptionPositionResetButton> createState() => _CaptionPositionResetButtonState();
 }
 
-class _JoystickButtonState extends State<_JoystickButton> {
-  bool _pressed = false;
+class _CaptionPositionResetButtonState extends State<CaptionPositionResetButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _spin;
+
+  @override
+  void initState() {
+    super.initState();
+    _spin = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+  }
+
+  @override
+  void dispose() {
+    _spin.dispose();
+    super.dispose();
+  }
+
+  void _tap() {
+    _spin.forward(from: 0);
+    widget.onReset();
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return SizedBox(
-      width: widget.size,
-      height: widget.size,
-      child: Material(
-        elevation: _pressed ? 0 : (isDark ? 1 : 2),
-        shadowColor: Colors.black.withValues(alpha: 0.25),
-        color: _pressed
-            ? scheme.primaryContainer.withValues(alpha: 0.65)
-            : scheme.surfaceContainerHigh.withValues(alpha: isDark ? 0.72 : 0.95),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: _pressed
-                ? scheme.primary.withValues(alpha: 0.55)
-                : scheme.outline.withValues(alpha: 0.22),
-            width: _pressed ? 1.5 : 1,
+    return Center(
+      child: TextButton.icon(
+        onPressed: _tap,
+        icon: RotationTransition(
+          turns: Tween<double>(begin: 0, end: 1).animate(
+            CurvedAnimation(parent: _spin, curve: Curves.easeOutCubic),
+          ),
+          child: Icon(
+            Icons.restart_alt_rounded,
+            size: 18,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
           ),
         ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onHighlightChanged: (v) => setState(() => _pressed = v),
-          onTap: widget.onPressed,
-          child: Icon(
-            widget.icon,
-            size: 26,
-            color: scheme.onSurface.withValues(alpha: _pressed ? 0.95 : 0.78),
-          ),
+        label: Text(widget.l10n.editCaptionsResetPosition),
+        style: TextButton.styleFrom(
+          visualDensity: VisualDensity.compact,
+          foregroundColor: scheme.onSurfaceVariant.withValues(alpha: 0.9),
         ),
       ),
     );
   }
 }
 
-/// Fine-tune section: XY readout + joystick + reset (title in parent card).
+/// Fine-tune section: HUD + joystick + reset.
 class CaptionLookFineTuneSection extends StatelessWidget {
   const CaptionLookFineTuneSection({
     super.key,
     required this.l10n,
+    required this.accentColor,
     required this.offsetX,
     required this.offsetY,
     required this.onReset,
@@ -194,6 +202,7 @@ class CaptionLookFineTuneSection extends StatelessWidget {
   });
 
   final AppLocalizations l10n;
+  final Color accentColor;
   final int offsetX;
   final int offsetY;
   final VoidCallback onReset;
@@ -201,34 +210,22 @@ class CaptionLookFineTuneSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        CaptionXYReadout(
+        JoystickHudReadout(
           l10n: l10n,
           offsetX: offsetX,
           offsetY: offsetY,
+          accentColor: accentColor,
         ),
-        const SizedBox(height: 16),
-        CaptionPositionJoystick(onNudge: onNudge),
-        const SizedBox(height: 12),
-        Center(
-          child: TextButton.icon(
-            onPressed: onReset,
-            icon: Icon(
-              Icons.restart_alt_rounded,
-              size: 18,
-              color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
-            ),
-            label: Text(l10n.editCaptionsResetPosition),
-            style: TextButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              foregroundColor: scheme.onSurfaceVariant.withValues(alpha: 0.9),
-            ),
-          ),
+        const SizedBox(height: 18),
+        CaptionPositionJoystick(
+          accentColor: accentColor,
+          onNudge: onNudge,
         ),
+        const SizedBox(height: 10),
+        CaptionPositionResetButton(l10n: l10n, onReset: onReset),
       ],
     );
   }
@@ -348,6 +345,7 @@ class CaptionLookFineTuneCard extends StatelessWidget {
   const CaptionLookFineTuneCard({
     super.key,
     required this.l10n,
+    required this.accentColor,
     required this.offsetX,
     required this.offsetY,
     required this.onReset,
@@ -355,6 +353,7 @@ class CaptionLookFineTuneCard extends StatelessWidget {
   });
 
   final AppLocalizations l10n;
+  final Color accentColor;
   final int offsetX;
   final int offsetY;
   final VoidCallback onReset;
@@ -377,7 +376,7 @@ class CaptionLookFineTuneCard extends StatelessWidget {
           border: Border.all(color: scheme.outline.withValues(alpha: 0.2)),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -401,6 +400,7 @@ class CaptionLookFineTuneCard extends StatelessWidget {
               const SizedBox(height: 14),
               CaptionLookFineTuneSection(
                 l10n: l10n,
+                accentColor: accentColor,
                 offsetX: offsetX,
                 offsetY: offsetY,
                 onReset: onReset,

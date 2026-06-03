@@ -21,8 +21,9 @@ class CaptionLookEditorScreen extends StatefulWidget {
 }
 
 class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tabs;
+  int _tabIndex = 0;
   late QuickEditCaptionsStylePreset _style;
   late QuickEditCaptionFontSize _fontSize;
   late QuickEditCaptionFontFamily _fontFamily;
@@ -53,10 +54,18 @@ class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
     _boxColor = i.boxColor;
     _boxShape = i.boxShape;
     _tabs = TabController(length: 4, vsync: this);
+    _tabs.addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (_tabs.indexIsChanging) return;
+    if (_tabIndex == _tabs.index) return;
+    setState(() => _tabIndex = _tabs.index);
   }
 
   @override
   void dispose() {
+    _tabs.removeListener(_onTabChanged);
     _tabs.dispose();
     super.dispose();
   }
@@ -162,7 +171,12 @@ class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
       ),
       body: Column(
         children: [
-          CaptionPreviewCard(l10n: l10n, snapshot: _snapshot),
+          CaptionPreviewCard(
+            l10n: l10n,
+            snapshot: _snapshot,
+            showSafeGuides: _tabIndex == 3,
+            accentColor: scheme.primary,
+          ),
           Expanded(
             child: TabBarView(
               controller: _tabs,
@@ -206,6 +220,7 @@ class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
                 ),
                 _PositionTab(
                   l10n: l10n,
+                  accentColor: scheme.primary,
                   position: _position,
                   offsetX: _offsetX,
                   offsetY: _offsetY,
@@ -593,6 +608,7 @@ class _HighlightModeIcon extends StatelessWidget {
 class _PositionTab extends StatelessWidget {
   const _PositionTab({
     required this.l10n,
+    required this.accentColor,
     required this.position,
     required this.offsetX,
     required this.offsetY,
@@ -602,6 +618,7 @@ class _PositionTab extends StatelessWidget {
   });
 
   final AppLocalizations l10n;
+  final Color accentColor;
   final QuickEditCaptionPosition position;
   final int offsetX;
   final int offsetY;
@@ -629,6 +646,7 @@ class _PositionTab extends StatelessWidget {
         const SizedBox(height: 16),
         CaptionLookFineTuneCard(
           l10n: l10n,
+          accentColor: accentColor,
           offsetX: offsetX,
           offsetY: offsetY,
           onReset: onReset,

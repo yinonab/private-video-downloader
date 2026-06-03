@@ -34,10 +34,14 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
     this.boxShape = QuickEditCaptionBoxShape.pill,
     required this.offsetXAss,
     required this.offsetYAss,
+    this.animateMotion = false,
+    this.motionDuration = const Duration(milliseconds: 180),
   });
 
   final AppLocalizations l10n;
   final CaptionPreviewLayout layout;
+  final bool animateMotion;
+  final Duration motionDuration;
   final QuickEditCaptionsStylePreset stylePreset;
   final QuickEditCaptionFontSize fontSize;
   final QuickEditCaptionFontFamily fontFamily;
@@ -257,62 +261,167 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
     );
 
     final isStage = layout == CaptionPreviewLayout.stage;
+    final styleKey = ValueKey<Object>(
+      (
+        stylePreset,
+        fontSize,
+        fontFamily,
+        color,
+        wordHighlight,
+        normalTextColor,
+        activeTextColor,
+        boxColor,
+        boxShape,
+      ),
+    );
+
+    final captionColumn = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!isStage && position != QuickEditCaptionPosition.bottom) ...[
+          previewLabel,
+          const SizedBox(height: 4),
+        ],
+        isStage && animateMotion
+            ? AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: KeyedSubtree(key: styleKey, child: captionBody),
+              )
+            : captionBody,
+        if (!isStage && position == QuickEditCaptionPosition.bottom) ...[
+          const SizedBox(height: 4),
+          previewLabel,
+        ],
+      ],
+    );
 
     return LayoutBuilder(
       builder: (context, c) {
         final w = math.max(c.maxWidth, 1.0);
         final h = math.max(c.maxHeight, 1.0);
-        final sx = w / kCaptionAssPlayResX;
-        final sy = h / kCaptionAssPlayResY;
-        final dx = offsetXAss * sx;
-        final dy = offsetYAss * sy;
+        final translate = computeCaptionPreviewTranslate(
+          width: w,
+          height: h,
+          layout: layout,
+          position: position,
+          offsetXAss: offsetXAss,
+          offsetYAss: offsetYAss,
+        );
+        final hPad = isStage ? 10.0 : 18.0;
         final bottom = position == QuickEditCaptionPosition.bottom;
-        final baseY = bottom
-            ? (isStage ? -h * 0.04 : -h * 0.068)
-            : (isStage ? h * 0.04 : h * 0.068);
-        final fxMax = isStage ? 0.24 : 0.36;
-        final fx = dx.clamp(-w * fxMax, w * fxMax).toDouble();
-        final fyMin = bottom
-            ? (isStage ? -h * 0.18 : -h * 0.34)
-            : (isStage ? -h * 0.06 : -h * 0.05);
-        final fyMax = bottom
-            ? (isStage ? h * 0.06 : h * 0.05)
-            : (isStage ? h * 0.18 : h * 0.34);
-        final fy = (baseY + dy).clamp(fyMin, fyMax).toDouble();
-        final hPad = isStage ? 8.0 : 18.0;
+
+        final positioned = Padding(
+          padding: EdgeInsets.symmetric(horizontal: hPad),
+          child: captionColumn,
+        );
+
+        final aligned = Align(
+          alignment: bottom ? Alignment.bottomCenter : Alignment.topCenter,
+          child: isStage && animateMotion
+              ? _AnimatedCaptionTranslate(
+                  target: translate,
+                  duration: motionDuration,
+                  child: positioned,
+                )
+              : Transform.translate(offset: translate, child: positioned),
+        );
 
         return Stack(
           fit: StackFit.expand,
           clipBehavior: Clip.hardEdge,
-          children: [
-            Align(
-              alignment:
-                  bottom ? Alignment.bottomCenter : Alignment.topCenter,
-              child: Transform.translate(
-                offset: Offset(fx, fy),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: hPad),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (!isStage && !bottom) ...[
-                        previewLabel,
-                        const SizedBox(height: 4),
-                      ],
-                      captionBody,
-                      if (!isStage && bottom) ...[
-                        const SizedBox(height: 4),
-                        previewLabel,
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
+          children: [aligned],
         );
       },
     );
+  }
+}
+
+/// Preview-only caption offset (ASS parity scaled to widget size).
+Offset computeCaptionPreviewTranslate({
+  required double width,
+  required double height,
+  required CaptionPreviewLayout layout,
+  required QuickEditCaptionPosition position,
+  required int offsetXAss,
+  required int offsetYAss,
+}) {
+  final w = math.max(width, 1.0);
+  final h = math.max(height, 1.0);
+  final isStage = layout == CaptionPreviewLayout.stage;
+  final sx = w / kCaptionAssPlayResX;
+  final sy = h / kCaptionAssPlayResY;
+  final dx = offsetXAss * sx;
+  final dy = offsetYAss * sy;
+  final bottom = position == QuickEditCaptionPosition.bottom;
+  final baseY = bottom
+      ? (isStage ? -h * 0.03 : -h * 0.068)
+      : (isStage ? h * 0.03 : h * 0.068);
+  final fxMax = isStage ? 0.2 : 0.36;
+  final fx = dx.clamp(-w * fxMax, w * fxMax).toDouble();
+  final fyMin = bottom
+      ? (isStage ? -h * 0.14 : -h * 0.34)
+      : (isStage ? -h * 0.05 : -h * 0.05);
+  final fyMax = bottom
+      ? (isStage ? h * 0.05 : h * 0.05)
+      : (isStage ? h * 0.14 : h * 0.34);
+  final fy = (baseY + dy).clamp(fyMin, fyMax).toDouble();
+  return Offset(fx, fy);
+}
+
+class _AnimatedCaptionTranslate extends StatefulWidget {
+  const _AnimatedCaptionTranslate({
+    required this.target,
+    required this.duration,
+    required this.child,
+  });
+
+  final Offset target;
+  final Duration duration;
+  final Widget child;
+
+  @override
+  State<_AnimatedCaptionTranslate> createState() => _AnimatedCaptionTranslateState();
+}
+
+class _AnimatedCaptionTranslateState extends State<_AnimatedCaptionTranslate>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<Offset> _anim;
+  Offset _current = Offset.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: widget.duration);
+    _anim = AlwaysStoppedAnimation(widget.target);
+    _current = widget.target;
+    _ctrl.addListener(() {
+      setState(() => _current = _anim.value);
+    });
+  }
+
+  @override
+  void didUpdateWidget(_AnimatedCaptionTranslate old) {
+    super.didUpdateWidget(old);
+    if (old.target == widget.target && old.duration == widget.duration) return;
+    _anim = Tween<Offset>(begin: _current, end: widget.target).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic),
+    );
+    _ctrl.duration = widget.duration;
+    _ctrl.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.translate(offset: _current, child: widget.child);
   }
 }
 
