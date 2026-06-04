@@ -1459,6 +1459,35 @@ class AppLocalizationsHe extends AppLocalizations {
       'הזז מעט את הכתוביות אם הן מסתירות חלק חשוב בסרטון.';
 
   @override
+  String get editCaptionsV34PanelActiveStatus => 'כתוביות פעילות';
+
+  @override
+  String get editCaptionsV34PanelTurnOff => 'כבה כתוביות';
+
+  @override
+  String get editCaptionsV34PanelLookTitle => 'מראה הכתוביות';
+
+  @override
+  String get editCaptionsV34PanelDraftTitle => 'טיוטת כתוביות';
+
+  @override
+  String get editCaptionsV34PanelDraftHelper =>
+      'בדוק וערוך את הטקסט לפני יצירת הסרטון.';
+
+  @override
+  String get editCaptionsV34PanelDraftTimingHint => 'מומלץ לתזמון מדויק יותר.';
+
+  @override
+  String get editCaptionsV34PanelDraftReady => 'טיוטה מוכנה';
+
+  @override
+  String get editCaptionsV34PanelDraftReadyHelper =>
+      'בדוק וערוך את הכתוביות לפני יצירת הסרטון.';
+
+  @override
+  String get editCaptionsV34PanelEditCaptions => 'עריכת כתוביות';
+
+  @override
   String get errorCaptionsWordHighlightNotSupported =>
       'אפשרות הדגשת המילה הזו לא נתמכת.';
 

@@ -1475,6 +1475,36 @@ class AppLocalizationsEn extends AppLocalizations {
       'Move captions slightly if they cover important content.';
 
   @override
+  String get editCaptionsV34PanelActiveStatus => 'Captions on';
+
+  @override
+  String get editCaptionsV34PanelTurnOff => 'Turn off captions';
+
+  @override
+  String get editCaptionsV34PanelLookTitle => 'Caption look';
+
+  @override
+  String get editCaptionsV34PanelDraftTitle => 'Caption draft';
+
+  @override
+  String get editCaptionsV34PanelDraftHelper =>
+      'Review and edit the text before creating the video.';
+
+  @override
+  String get editCaptionsV34PanelDraftTimingHint =>
+      'Recommended for more accurate timing.';
+
+  @override
+  String get editCaptionsV34PanelDraftReady => 'Draft ready';
+
+  @override
+  String get editCaptionsV34PanelDraftReadyHelper =>
+      'Review and edit captions before creating the video.';
+
+  @override
+  String get editCaptionsV34PanelEditCaptions => 'Edit captions';
+
+  @override
   String get errorCaptionsWordHighlightNotSupported =>
       'This word highlight option is not supported.';
 

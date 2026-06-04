@@ -2792,6 +2792,60 @@ abstract class AppLocalizations {
   /// **'Move captions slightly if they cover important content.'**
   String get editCaptionsV34PositionFineTuneHint;
 
+  /// No description provided for @editCaptionsV34PanelActiveStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Captions on'**
+  String get editCaptionsV34PanelActiveStatus;
+
+  /// No description provided for @editCaptionsV34PanelTurnOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off captions'**
+  String get editCaptionsV34PanelTurnOff;
+
+  /// No description provided for @editCaptionsV34PanelLookTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Caption look'**
+  String get editCaptionsV34PanelLookTitle;
+
+  /// No description provided for @editCaptionsV34PanelDraftTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Caption draft'**
+  String get editCaptionsV34PanelDraftTitle;
+
+  /// No description provided for @editCaptionsV34PanelDraftHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Review and edit the text before creating the video.'**
+  String get editCaptionsV34PanelDraftHelper;
+
+  /// No description provided for @editCaptionsV34PanelDraftTimingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended for more accurate timing.'**
+  String get editCaptionsV34PanelDraftTimingHint;
+
+  /// No description provided for @editCaptionsV34PanelDraftReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft ready'**
+  String get editCaptionsV34PanelDraftReady;
+
+  /// No description provided for @editCaptionsV34PanelDraftReadyHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Review and edit captions before creating the video.'**
+  String get editCaptionsV34PanelDraftReadyHelper;
+
+  /// No description provided for @editCaptionsV34PanelEditCaptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit captions'**
+  String get editCaptionsV34PanelEditCaptions;
+
   /// No description provided for @errorCaptionsWordHighlightNotSupported.
   ///
   /// In en, this message translates to:

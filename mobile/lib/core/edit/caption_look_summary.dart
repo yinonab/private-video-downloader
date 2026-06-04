@@ -100,6 +100,43 @@ String buildCaptionLookSummaryLine(
   return "$presetName · $font";
 }
 
+/// Style-only detail line for the main Captions Look hero card (no preset name).
+String buildCaptionLookStyleDetailLine(
+  AppLocalizations l10n, {
+  required QuickEditCaptionColor color,
+  required QuickEditCaptionWordHighlight wordHighlight,
+  required QuickEditCaptionFontFamily fontFamily,
+  QuickEditCaptionColor? normalTextColor,
+  QuickEditCaptionColor? boxColor,
+  QuickEditCaptionBoxShape boxShape = QuickEditCaptionBoxShape.pill,
+}) {
+  final font = captionFontFamilyShortLabel(l10n, fontFamily);
+  final normal = effectiveCaptionNormalTextColor(
+    color: color,
+    normalTextColor: normalTextColor,
+  );
+
+  if (wordHighlight == QuickEditCaptionWordHighlight.box) {
+    final box = effectiveCaptionBoxColor(
+      color: color,
+      wordHighlight: wordHighlight,
+      boxColor: boxColor,
+    );
+    final shape = captionBoxShapeLabel(l10n, boxShape);
+    final boxName = captionColorLabel(l10n, box);
+    final textName = captionColorLabel(l10n, normal);
+    return "$shape $boxName · $textName · $font";
+  }
+
+  if (wordHighlight == QuickEditCaptionWordHighlight.color) {
+    final textName = captionColorLabel(l10n, normal);
+    return "$textName · $font";
+  }
+
+  final textName = captionColorLabel(l10n, normal);
+  return "$textName · $font";
+}
+
 String captionFontSizeShortLabel(
   AppLocalizations l10n,
   QuickEditCaptionFontSize size,

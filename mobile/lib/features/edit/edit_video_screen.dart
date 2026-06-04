@@ -423,23 +423,9 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     _applyCaptionLookSnapshot(result);
   }
 
-  String _captionLookSummaryLine(AppLocalizations l10n) {
-    return buildCaptionLookSummaryLine(
+  String _captionLookStyleDetailLine(AppLocalizations l10n) {
+    return buildCaptionLookStyleDetailLine(
       l10n,
-      effectivePreset: inferQuickEditCaptionPreset(
-        fontSize: _captionsFontSize,
-        fontFamily: _captionsFontFamily,
-        position: _captionsPosition,
-        color: _captionsColor,
-        style: _captionsStyle,
-        wordHighlight: _captionsWordHighlight,
-        offsetX: _captionsOffsetX,
-        offsetY: _captionsOffsetY,
-        normalTextColor: _captionsNormalTextColor,
-        activeTextColor: _captionsActiveTextColor,
-        boxColor: _captionsBoxColor,
-        boxShape: _captionsBoxShape,
-      ),
       color: _captionsColor,
       wordHighlight: _captionsWordHighlight,
       fontFamily: _captionsFontFamily,
@@ -1201,7 +1187,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                           boxColor: _captionsBoxColor,
                           boxShape: _captionsBoxShape,
                         ),
-                        lookSummaryLine: _captionLookSummaryLine(l10n),
+                        lookStyleDetailLine: _captionLookStyleDetailLine(l10n),
                         onCustomizeLook: _openCaptionLookEditor,
                         onGenerateCaptionsDraft: _generateCaptionsDraft,
                         onRegenerateCaptionsDraftRequested:
