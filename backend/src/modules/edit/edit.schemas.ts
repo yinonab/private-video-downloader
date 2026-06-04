@@ -2,10 +2,13 @@ import { z } from "zod";
 import { AppError, codes } from "../../types/errors";
 import { normalizeCaptionSegmentsForBurn } from "./captionSegments.util";
 import type {
+  AudioEditQuality,
+  AudioEditSpeedFactor,
   CaptionsBurnInV1Resolved,
   CaptionsStyleApi,
   CaptionsStyleResolved,
   EditFormatMode,
+  EditMediaKind,
   EditRotationDegrees,
   EditSpeedFactor,
   ResolvedEditPlan,
@@ -26,10 +29,19 @@ const UNSUPPORTED_CAPTIONS_COLOR_EN = "This captions color is not supported.";
 const UNSUPPORTED_CAPTIONS_WORD_HIGHLIGHT_EN = "This word highlight option is not supported.";
 const UNSUPPORTED_CAPTIONS_BOX_SHAPE_EN = "This caption box shape is not supported.";
 const CANON_EDIT_SPEED_FACTORS = [0.5, 1.25, 1.5, 2] as const satisfies readonly EditSpeedFactor[];
+const CANON_AUDIO_SPEED_FACTORS = [0.75, 1, 1.25, 1.5, 2] as const satisfies readonly AudioEditSpeedFactor[];
 
 function normalizeEditSpeedFactor(n: unknown): EditSpeedFactor | undefined {
   if (typeof n !== "number" || !Number.isFinite(n)) return undefined;
   for (const f of CANON_EDIT_SPEED_FACTORS) {
+    if (Math.abs(f - n) < 1e-6) return f;
+  }
+  return undefined;
+}
+
+function normalizeAudioEditSpeedFactor(n: unknown): AudioEditSpeedFactor | undefined {
+  if (typeof n !== "number" || !Number.isFinite(n)) return undefined;
+  for (const f of CANON_AUDIO_SPEED_FACTORS) {
     if (Math.abs(f - n) < 1e-6) return f;
   }
   return undefined;
@@ -68,6 +80,8 @@ const muteOpSchema = z.object({ type: z.literal("mute") }).strict();
 
 const speedFactorSchema = z.union([
   z.literal(0.5),
+  z.literal(0.75),
+  z.literal(1),
   z.literal(1.25),
   z.literal(1.5),
   z.literal(2),
@@ -84,6 +98,13 @@ const compressOpSchema = z
   .object({
     type: z.literal("compress"),
     preset: z.enum(["original", "social", "small"]),
+  })
+  .strict();
+
+const audioQualityOpSchema = z
+  .object({
+    type: z.literal("audioQuality"),
+    preset: z.enum(["standard", "high", "best"]),
   })
   .strict();
 
@@ -211,8 +232,59 @@ export const editOperationSchema = z.union([
   speedOpSchema,
   muteOpSchema,
   compressOpSchema,
+  audioQualityOpSchema,
   captionsOpSchema,
 ]);
+
+const VIDEO_ONLY_OP_TYPES = new Set([
+  "crop",
+  "format",
+  "rotate",
+  "mute",
+  "compress",
+  "captions",
+]);
+
+const AUDIO_ONLY_OP_TYPES = new Set(["audioQuality"]);
+
+/** Reject incompatible operations for the resolved source media kind. */
+export function validateEditOperationsForMediaKind(
+  ops: EditOperation[],
+  mediaKind: EditMediaKind
+): AppError | null {
+  for (const op of ops) {
+    const t = op.type;
+    if (mediaKind === "audio") {
+      if (VIDEO_ONLY_OP_TYPES.has(t)) {
+        return new AppError(
+          codes.EDIT_AUDIO_UNSUPPORTED_OPERATION,
+          "This operation is not supported for audio sources",
+          400,
+          `type=${t}`
+        );
+      }
+      if (t === "speed") {
+        const factor = (op as { factor?: unknown }).factor;
+        if (normalizeAudioEditSpeedFactor(factor) === undefined) {
+          return new AppError(codes.UNSUPPORTED_SPEED_FACTOR, UNSUPPORTED_SPEED_EN, 400);
+        }
+      }
+    } else if (AUDIO_ONLY_OP_TYPES.has(t)) {
+      return new AppError(
+        codes.EDIT_AUDIO_UNSUPPORTED_OPERATION,
+        "Audio quality is only supported for audio sources",
+        400,
+        `type=${t}`
+      );
+    } else if (t === "speed") {
+      const factor = (op as { factor?: unknown }).factor;
+      if (normalizeEditSpeedFactor(factor) === undefined) {
+        return new AppError(codes.UNSUPPORTED_SPEED_FACTOR, UNSUPPORTED_SPEED_EN, 400);
+      }
+    }
+  }
+  return null;
+}
 
 export const createEditJobSchema = z
   .object({
@@ -235,7 +307,12 @@ export function unsupportedSpeedFactorErrorFromUnknownBody(body: unknown): AppEr
     const o = raw as { type?: unknown; factor?: unknown };
     if (o.type !== "speed") continue;
     if (typeof o.factor !== "number" || !Number.isFinite(o.factor)) continue;
-    if (normalizeEditSpeedFactor(o.factor) !== undefined) continue;
+    if (
+      normalizeEditSpeedFactor(o.factor) !== undefined ||
+      normalizeAudioEditSpeedFactor(o.factor) !== undefined
+    ) {
+      continue;
+    }
     return new AppError(codes.UNSUPPORTED_SPEED_FACTOR, UNSUPPORTED_SPEED_EN, 400);
   }
   return null;
@@ -442,6 +519,8 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
   let formatModeApplied: EditFormatMode | undefined;
   let rotationDegrees: EditRotationDegrees | undefined;
   let speedFactor: EditSpeedFactor | undefined;
+  let audioSpeedFactor: AudioEditSpeedFactor | undefined;
+  let audioQuality: AudioEditQuality | undefined;
   let mute = false;
   let compressPreset: ResolvedEditPlan["compressPreset"] = "social";
   let captionsBurnInV1: CaptionsBurnInV1Resolved | undefined;
@@ -461,8 +540,15 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
       case "rotate":
         rotationDegrees = op.degrees;
         break;
-      case "speed":
-        speedFactor = op.factor;
+      case "speed": {
+        const vf = normalizeEditSpeedFactor(op.factor);
+        const af = normalizeAudioEditSpeedFactor(op.factor);
+        if (vf !== undefined) speedFactor = vf;
+        else if (af !== undefined) audioSpeedFactor = af;
+        break;
+      }
+      case "audioQuality":
+        audioQuality = op.preset;
         break;
       case "mute":
         mute = true;
@@ -520,6 +606,12 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
     mute,
     compressPreset,
   };
+  if (audioSpeedFactor !== undefined) {
+    out.audioSpeedFactor = audioSpeedFactor;
+  }
+  if (audioQuality !== undefined) {
+    out.audioQuality = audioQuality;
+  }
   if (rotationDegrees !== undefined) {
     out.rotationDegrees = rotationDegrees;
   }

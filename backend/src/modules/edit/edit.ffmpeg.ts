@@ -1,4 +1,10 @@
-import type { EditRotationDegrees, ResolvedEditPlan } from "./edit.types";
+import type { AudioEditQuality, EditRotationDegrees, ResolvedEditPlan } from "./edit.types";
+
+const AUDIO_BITRATE: Record<AudioEditQuality, string> = {
+  standard: "128k",
+  high: "192k",
+  best: "320k",
+};
 
 export type EditProbeMeta = {
   durationSec: number;
@@ -209,6 +215,46 @@ export function buildEditFfmpegArgs(opts: {
   }
 
   args.push("-movflags", "+faststart", outputPath);
+
+  return { args, segmentDurationSec };
+}
+
+/**
+ * Audio-only MP3 export: trim (`-ss`/`-to`) → optional `atempo` → libmp3lame.
+ */
+export function buildEditAudioFfmpegArgs(opts: {
+  inputPath: string;
+  outputPath: string;
+  durationSec: number;
+  plan: ResolvedEditPlan;
+}): BuiltEditFfmpeg {
+  const { inputPath, outputPath, durationSec, plan } = opts;
+  const dur = durationSec > 0 ? durationSec : 0;
+  const trimStart = plan.trim?.startSec ?? 0;
+  let trimEnd = plan.trim?.endSec ?? dur;
+  if (dur > 0) {
+    trimEnd = Math.min(trimEnd, dur);
+  }
+  const trimStartClamped = Math.max(0, Math.min(trimStart, trimEnd - 0.05));
+  const trimEndClamped = Math.max(trimStartClamped + 0.05, trimEnd);
+  const trimmedSec = trimEndClamped - trimStartClamped;
+
+  const spd = plan.audioSpeedFactor;
+  const quality = plan.audioQuality ?? "high";
+  const bitrate = AUDIO_BITRATE[quality];
+
+  const segmentDurationSec =
+    spd != null && spd > 0 ? trimmedSec / spd : trimmedSec;
+
+  const args: string[] = ["-hide_banner", "-nostats", "-y"];
+  if (plan.trim != null) {
+    args.push("-ss", trimStartClamped.toFixed(3), "-to", trimEndClamped.toFixed(3));
+  }
+  args.push("-i", inputPath, "-vn");
+  if (spd != null && Math.abs(spd - 1) > 1e-6) {
+    args.push("-filter:a", `atempo=${spd}`);
+  }
+  args.push("-codec:a", "libmp3lame", "-b:a", bitrate, outputPath);
 
   return { args, segmentDurationSec };
 }

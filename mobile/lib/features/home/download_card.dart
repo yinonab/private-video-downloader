@@ -10,6 +10,7 @@ import "package:lucide_icons_flutter/lucide_icons.dart";
 import "../../core/l10n/context_l10n.dart";
 import "../../core/l10n/download_job_ui_state.dart";
 import "../../core/models/download_models.dart";
+import "../../core/models/quick_edit_models.dart";
 import "../../core/theme/linkclip_palette.dart";
 import "../../core/widgets/branded_progress.dart";
 import "../../core/widgets/linkclip_chips.dart";
@@ -92,6 +93,7 @@ class DownloadCard extends StatelessWidget {
     final done = item.statusParsed.label == DownloadUiStatusLabel.done;
     final failedOrCanceled = item.status == "failed" || item.status == "canceled";
     final isTikTokJob = (item.requestedFormat ?? "").trim().toLowerCase() == "tiktok_ready";
+    final isAudioOnly = downloadItemIsAudioOnly(item);
 
     final primary = _primaryAction(
       l10n,
@@ -101,6 +103,9 @@ class DownloadCard extends StatelessWidget {
       onOpenStatus: onOpenStatus,
       onOpenLocal: onOpenLocal,
       localFileExists: localFileExists,
+      isAudioOnly: isAudioOnly,
+      showQuickEdit: showQuickEdit,
+      onQuickEdit: onQuickEdit,
     );
 
     final primaryIsOpenLocal = done && localFileExists && onOpenLocal != null;
@@ -180,6 +185,7 @@ class DownloadCard extends StatelessWidget {
                     failedOrCanceled: failedOrCanceled,
                     done: done,
                     primaryIsOpenLocal: primaryIsOpenLocal,
+                    isAudioOnly: isAudioOnly,
                   ),
                 ),
               ],
@@ -209,6 +215,7 @@ class DownloadCard extends StatelessWidget {
                       failedOrCanceled: failedOrCanceled,
                       done: done,
                       hideOpenInSheet: primaryIsOpenLocal,
+                      isAudioOnly: isAudioOnly,
                     ),
                   );
                 },
@@ -238,6 +245,16 @@ class DownloadCard extends StatelessWidget {
                           LinkClipStatusChip(label: statusLabel, semantic: item.statusParsed.label),
                         ],
                       ),
+                      if (done && isAudioOnly) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          l10n.downloadCardMp3Badge,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: scheme.primary.withValues(alpha: 0.85),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                       if (done && isTikTokJob) ...[
                         const SizedBox(height: 5),
                         Text(
@@ -305,6 +322,7 @@ class DownloadCard extends StatelessWidget {
       onDelete: onDelete,
       onShareLocal: onShareLocal,
       onQuickEdit: onQuickEdit,
+      isAudioOnly: isAudioOnly,
     );
     if (swipeActions.isNotEmpty) {
       layered = Slidable(
@@ -344,6 +362,7 @@ class DownloadCard extends StatelessWidget {
     required VoidCallback onDelete,
     required VoidCallback? onShareLocal,
     required VoidCallback? onQuickEdit,
+    required bool isAudioOnly,
   }) {
     final swipeNeutralBg = dark ? const Color(0xFF1B2433) : scheme.surfaceContainerHighest.withValues(alpha: 0.96);
     final swipeNeutralIcon = dark ? const Color(0xFFA7B2C2) : scheme.onSurfaceVariant.withValues(alpha: 0.85);
@@ -435,8 +454,9 @@ class DownloadCard extends StatelessWidget {
       if (showQuickEdit && onQuickEdit != null) {
         list.add(iconSwipe(
           outerContext: context,
-          tooltipMessage: l10n.downloadCardEdit,
-          icon: LucideIcons.scissors,
+          tooltipMessage:
+              isAudioOnly ? l10n.downloadCardEditAudio : l10n.downloadCardEditVideo,
+          icon: isAudioOnly ? LucideIcons.audioLines : LucideIcons.scissors,
           invoke: onQuickEdit,
           bgColor: swipeNeutralBg,
           iconColor: swipeAccentIcon,
@@ -481,6 +501,9 @@ class DownloadCard extends StatelessWidget {
     required VoidCallback onOpenStatus,
     required VoidCallback? onOpenLocal,
     required bool localFileExists,
+    required bool isAudioOnly,
+    required bool showQuickEdit,
+    required VoidCallback? onQuickEdit,
   }) {
     if (failedOrCanceled && onRetry != null) {
       return (
@@ -494,6 +517,13 @@ class DownloadCard extends StatelessWidget {
         label: l10n.downloadSaveToDevice,
         icon: LucideIcons.smartphone,
         onTap: onOpenStatus,
+      );
+    }
+    if (done && isAudioOnly && showQuickEdit && onQuickEdit != null) {
+      return (
+        label: l10n.downloadCardEditAudio,
+        icon: LucideIcons.audioLines,
+        onTap: onQuickEdit,
       );
     }
     if (done && localFileExists && onOpenLocal != null) {
@@ -512,6 +542,7 @@ class DownloadCard extends StatelessWidget {
     required bool failedOrCanceled,
     required bool done,
     required bool primaryIsOpenLocal,
+    required bool isAudioOnly,
   }) {
     final out = <PopupMenuEntry<String>>[
       PopupMenuItem(value: "status", child: Text(l10n.downloadCardStatusDetails)),
@@ -521,7 +552,10 @@ class DownloadCard extends StatelessWidget {
       if (done && localFileExists && onShareLocal != null)
         PopupMenuItem(value: "share", child: Text(l10n.downloadShare)),
       if (done && showQuickEdit && onQuickEdit != null)
-        PopupMenuItem(value: "edit", child: Text(l10n.downloadCardEdit)),
+        PopupMenuItem(
+          value: "edit",
+          child: Text(isAudioOnly ? l10n.downloadCardEditAudio : l10n.downloadCardEditVideo),
+        ),
       if (failedOrCanceled && onRetry != null) PopupMenuItem(value: "retry", child: Text(l10n.downloadCardRetry)),
       const PopupMenuDivider(),
       PopupMenuItem(
@@ -537,6 +571,7 @@ class DownloadCard extends StatelessWidget {
     required bool failedOrCanceled,
     required bool done,
     required bool hideOpenInSheet,
+    required bool isAudioOnly,
   }) {
     return [
       _SheetTile(icon: LucideIcons.info, label: l10n.downloadCardStatusDetails, onTap: () => onOpenStatus()),
@@ -547,7 +582,11 @@ class DownloadCard extends StatelessWidget {
       if (done && localFileExists && onShareLocal != null)
         _SheetTile(icon: LucideIcons.share2, label: l10n.downloadShare, onTap: () => onShareLocal!()),
       if (done && showQuickEdit && onQuickEdit != null)
-        _SheetTile(icon: LucideIcons.scissors, label: l10n.downloadCardEdit, onTap: () => onQuickEdit!()),
+        _SheetTile(
+          icon: isAudioOnly ? LucideIcons.audioLines : LucideIcons.scissors,
+          label: isAudioOnly ? l10n.downloadCardEditAudio : l10n.downloadCardEditVideo,
+          onTap: () => onQuickEdit!(),
+        ),
       if (failedOrCanceled && onRetry != null)
         _SheetTile(icon: LucideIcons.rotateCw, label: l10n.downloadCardRetry, onTap: () => onRetry!()),
       const Divider(height: 1),
@@ -632,6 +671,9 @@ class DownloadCard extends StatelessWidget {
   }
 
   Widget _thumb(BuildContext context) {
+    if (downloadItemIsAudioOnly(item)) {
+      return _ph(context, audio: true);
+    }
     final thumb = item.thumbnail;
     if (thumb != null && thumb.isNotEmpty) {
       return ClipRRect(
@@ -653,10 +695,14 @@ class DownloadCard extends StatelessWidget {
     return _ph(context);
   }
 
-  Widget _ph(BuildContext context, {bool loading = false}) {
+  Widget _ph(BuildContext context, {bool loading = false, bool audio = false}) {
     final scheme = Theme.of(context).colorScheme;
-    final icon =
-        loading ? _LucideSpinner(iconData: LucideIcons.loader, color: scheme.primary.withValues(alpha: 0.7)) : Icon(LucideIcons.video, color: scheme.onSurfaceVariant.withValues(alpha: 0.6));
+    final icon = loading
+        ? _LucideSpinner(iconData: LucideIcons.loader, color: scheme.primary.withValues(alpha: 0.7))
+        : Icon(
+            audio ? LucideIcons.audioLines : LucideIcons.video,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+          );
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: SizedBox(

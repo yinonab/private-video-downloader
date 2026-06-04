@@ -1,5 +1,12 @@
-/** Constant playback speed factor for the edited output (`1x` omitted from API). */
+/** Constant playback speed factor for video edits (`1x` omitted from API). */
 export type EditSpeedFactor = 0.5 | 1.25 | 1.5 | 2;
+
+/** Constant playback speed factor for audio-only edits (`1x` may be sent explicitly). */
+export type AudioEditSpeedFactor = 0.75 | 1 | 1.25 | 1.5 | 2;
+
+export type AudioEditQuality = "standard" | "high" | "best";
+
+export type EditMediaKind = "video" | "audio";
 
 /** How non-original aspect ratio maps into the frame (ignored when aspect is original). Legacy `crop` ops imply `fill`. */
 export type EditFormatMode = "fill" | "fit_blur";
@@ -102,8 +109,12 @@ export type ResolvedEditPlan = {
   trim?: { startSec: number; endSec: number };
   aspectRatio: "original" | "9:16" | "1:1" | "16:9" | "4:5";
   formatMode?: EditFormatMode;
-  /** When set; constant speed applies to entire output timeline. Omit for normal (1×) playback. */
+  /** Video timeline speed. Omit for normal (1×) playback. */
   speedFactor?: EditSpeedFactor;
+  /** Audio-only timeline speed (includes 1× when client sends explicit factor). */
+  audioSpeedFactor?: AudioEditSpeedFactor;
+  /** MP3 export bitrate preset for audio-only pipeline. Defaults to `high` when omitted. */
+  audioQuality?: AudioEditQuality;
   /** Clockwise rotation of pixel data (not metadata). Omit when angular offset is 0° (no op). */
   rotationDegrees?: EditRotationDegrees;
   mute: boolean;

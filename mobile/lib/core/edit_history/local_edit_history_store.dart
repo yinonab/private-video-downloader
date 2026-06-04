@@ -104,6 +104,7 @@ final class LocalEditHistoryStore extends ChangeNotifier {
     String? originalSourceTitle,
     String? sourceDisplayFilename,
     String? platform,
+    String? outputMediaKind,
   }) async {
     final id = editJobId.trim();
     final path = localFilePath.trim();
@@ -147,6 +148,8 @@ final class LocalEditHistoryStore extends ChangeNotifier {
       platform: platform,
       thumbnailPath: thumbKeep,
       publishedToPublicDownloads: published,
+      outputMediaKind: outputMediaKind ??
+          (path.toLowerCase().endsWith(".mp3") ? "audio" : "video"),
     );
 
     if (existingIdx >= 0) {

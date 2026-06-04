@@ -782,11 +782,19 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
                               unawaited(_shareLocal());
                             },
                           ),
-                          if (downloadDetailEligibleForQuickEdit(d)) ...[
+                          if (downloadDetailEligibleForVideoEdit(d) ||
+                              downloadDetailEligibleForAudioEdit(d)) ...[
                             const SizedBox(height: 10),
                             AppOutlinedButton(
-                              label: l10n.downloadCardEdit,
-                              icon: Icon(LucideIcons.scissors, color: scheme.primary),
+                              label: downloadDetailIsAudioOnly(d)
+                                  ? l10n.downloadCardEditAudio
+                                  : l10n.downloadCardEdit,
+                              icon: Icon(
+                                downloadDetailIsAudioOnly(d)
+                                    ? LucideIcons.audioLines
+                                    : LucideIcons.scissors,
+                                color: scheme.primary,
+                              ),
                               onPressed: () async {
                                 await launchQuickEditForJob(
                                   context,

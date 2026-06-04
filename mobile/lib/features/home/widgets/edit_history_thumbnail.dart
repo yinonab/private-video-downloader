@@ -50,6 +50,13 @@ class _EditHistoryThumbnailState extends State<EditHistoryThumbnail> {
   }
 
   Future<void> _kick() async {
+    if (widget.item.isAudioOutput) {
+      setState(() {
+        _busy = false;
+        _path = null;
+      });
+      return;
+    }
     if (!widget.fileExists) {
       setState(() {
         _busy = false;
@@ -140,6 +147,7 @@ class _EditHistoryThumbnailState extends State<EditHistoryThumbnail> {
   }
 
   Widget _fallback(ColorScheme scheme) {
-    return Icon(LucideIcons.film, color: scheme.primary, size: widget.size * 0.44);
+    final icon = widget.item.isAudioOutput ? LucideIcons.audioLines : LucideIcons.film;
+    return Icon(icon, color: scheme.primary, size: widget.size * 0.44);
   }
 }

@@ -15,20 +15,21 @@ import {
   unsupportedRotationErrorFromUnknownBody,
   unsupportedSpeedFactorErrorFromUnknownBody,
   resolveEditOperations,
+  validateEditOperationsForMediaKind,
   type EditOperation,
 } from "./edit.schemas";
-import type { EditQueuePayload } from "./edit.types";
+import type { EditMediaKind, EditQueuePayload } from "./edit.types";
 import { z } from "zod";
 
-type VideoPick = {
+type MediaPick = {
   asset: FileAsset;
   absPath: string;
   stat: fs.Stats;
 };
 
-async function pickDoneVideoFile(files: FileAsset[]): Promise<VideoPick | null> {
+async function pickDoneVideoFile(files: FileAsset[]): Promise<MediaPick | null> {
   const videos = files.filter((f) => f.type === "video");
-  const picks: VideoPick[] = [];
+  const picks: MediaPick[] = [];
 
   for (const asset of videos) {
     let absPath: string;
@@ -53,12 +54,64 @@ async function pickDoneVideoFile(files: FileAsset[]): Promise<VideoPick | null> 
   return picks[0]!;
 }
 
+async function pickDoneAudioFile(files: FileAsset[]): Promise<MediaPick | null> {
+  const audios = files.filter((f) => f.type === "audio");
+  const picks: MediaPick[] = [];
+
+  for (const asset of audios) {
+    let absPath: string;
+    try {
+      absPath = resolveAbsoluteFromStorageKey(asset.storageKey);
+    } catch {
+      continue;
+    }
+    let st: fs.Stats;
+    try {
+      st = await fsp.stat(absPath);
+    } catch {
+      continue;
+    }
+    if (!st.isFile() || st.size <= 0) continue;
+    picks.push({ asset, absPath, stat: st });
+  }
+
+  if (!picks.length) return null;
+
+  picks.sort((a, b) => Number(b.stat.size - a.stat.size));
+  return picks[0]!;
+}
+
+/** Classify completed download job as video or audio edit source. */
+export async function classifyDownloadEditMediaKind(opts: {
+  prisma: PrismaClient;
+  deviceId: string;
+  sourceDownloadJobId: string;
+}): Promise<EditMediaKind> {
+  const job = await opts.prisma.downloadJob.findFirst({
+    where: { id: opts.sourceDownloadJobId, deviceId: opts.deviceId },
+    include: { files: true },
+  });
+  if (!job) {
+    throw new AppError(codes.JOB_NOT_FOUND, "Source download job not found", 404);
+  }
+  if (job.status !== "done") {
+    throw new AppError(codes.EDIT_INVALID_SOURCE, "Source download is not completed", 400);
+  }
+  if (await pickDoneVideoFile(job.files)) return "video";
+  if (await pickDoneAudioFile(job.files)) return "audio";
+  throw new AppError(
+    codes.EDIT_AUDIO_INVALID_SOURCE,
+    "No completed audio or video file on disk for this download",
+    400
+  );
+}
+
 export async function assertDownloadVideoSourceReady(opts: {
   prisma: PrismaClient;
   deviceId: string;
   sourceDownloadJobId: string;
   log?: { editJobId?: string };
-}): Promise<VideoPick> {
+}): Promise<MediaPick> {
   const job = await opts.prisma.downloadJob.findFirst({
     where: { id: opts.sourceDownloadJobId, deviceId: opts.deviceId },
     include: { files: true },
@@ -94,9 +147,52 @@ export async function assertDownloadVideoSourceReady(opts: {
   return picked;
 }
 
+export async function assertDownloadAudioSourceReady(opts: {
+  prisma: PrismaClient;
+  deviceId: string;
+  sourceDownloadJobId: string;
+  log?: { editJobId?: string };
+}): Promise<MediaPick> {
+  const job = await opts.prisma.downloadJob.findFirst({
+    where: { id: opts.sourceDownloadJobId, deviceId: opts.deviceId },
+    include: { files: true },
+  });
+  if (!job) {
+    throw new AppError(codes.JOB_NOT_FOUND, "Source download job not found", 404);
+  }
+  if (job.status !== "done") {
+    throw new AppError(codes.EDIT_INVALID_SOURCE, "Source download is not completed", 400);
+  }
+
+  const picked = await pickDoneAudioFile(job.files);
+  if (!picked) {
+    throw new AppError(
+      codes.EDIT_AUDIO_INVALID_SOURCE,
+      "No completed audio file on disk for this download",
+      400,
+      "Requires a non-empty audio FileAsset"
+    );
+  }
+
+  logger.info(
+    {
+      sourceDownloadJobId: opts.sourceDownloadJobId,
+      deviceId: opts.deviceId,
+      editJobId: opts.log?.editJobId,
+      pickedStorageKey: picked.asset.storageKey,
+      pickedSizeBytes: picked.stat.size,
+      mediaKind: "audio",
+    },
+    "edit audio source validated"
+  );
+
+  return picked;
+}
+
 export type ResolvedEditSource = {
   absPath: string;
   sourceKind: "download" | "upload";
+  mediaKind: EditMediaKind;
   durationSeconds?: number;
   width?: number;
   height?: number;
@@ -124,13 +220,29 @@ export async function resolveEditSource(opts: {
   }
 
   if (hasDl) {
-    const picked = await assertDownloadVideoSourceReady({
-      prisma,
-      deviceId,
-      sourceDownloadJobId: dlId!,
-      log,
+    const job = await prisma.downloadJob.findFirst({
+      where: { id: dlId!, deviceId },
+      include: { files: true },
     });
-    return { absPath: picked.absPath, sourceKind: "download" };
+    if (!job) {
+      throw new AppError(codes.JOB_NOT_FOUND, "Source download job not found", 404);
+    }
+    if (job.status !== "done") {
+      throw new AppError(codes.EDIT_INVALID_SOURCE, "Source download is not completed", 400);
+    }
+    const videoPick = await pickDoneVideoFile(job.files);
+    if (videoPick) {
+      return { absPath: videoPick.absPath, sourceKind: "download", mediaKind: "video" };
+    }
+    const audioPick = await pickDoneAudioFile(job.files);
+    if (audioPick) {
+      return { absPath: audioPick.absPath, sourceKind: "download", mediaKind: "audio" };
+    }
+    throw new AppError(
+      codes.EDIT_AUDIO_INVALID_SOURCE,
+      "No completed audio or video file on disk for this download",
+      400
+    );
   }
 
   const uploadPick = await assertUploadVideoSourceReady({
@@ -143,6 +255,7 @@ export async function resolveEditSource(opts: {
   return {
     absPath: uploadPick.absPath,
     sourceKind: "upload",
+    mediaKind: "video",
     durationSeconds: uploadPick.durationSeconds ?? undefined,
     width: uploadPick.width ?? undefined,
     height: uploadPick.height ?? undefined,
@@ -254,13 +367,28 @@ export async function createEditJob(opts: {
     );
   }
 
+  let mediaKind: EditMediaKind;
   if (hasDl) {
-    await assertDownloadVideoSourceReady({
+    mediaKind = await classifyDownloadEditMediaKind({
       prisma: opts.prisma,
       deviceId: opts.deviceId,
       sourceDownloadJobId: d.sourceDownloadJobId!,
     });
+    if (mediaKind === "video") {
+      await assertDownloadVideoSourceReady({
+        prisma: opts.prisma,
+        deviceId: opts.deviceId,
+        sourceDownloadJobId: d.sourceDownloadJobId!,
+      });
+    } else {
+      await assertDownloadAudioSourceReady({
+        prisma: opts.prisma,
+        deviceId: opts.deviceId,
+        sourceDownloadJobId: d.sourceDownloadJobId!,
+      });
+    }
   } else {
+    mediaKind = "video";
     await assertUploadVideoSourceReady({
       prisma: opts.prisma,
       deviceId: opts.deviceId,
@@ -268,7 +396,22 @@ export async function createEditJob(opts: {
     });
   }
 
+  const opKindErr = validateEditOperationsForMediaKind(d.operations, mediaKind);
+  if (opKindErr != null) throw opKindErr;
+
   const resolvedPlan = resolveEditOperations(d.operations);
+
+  if (mediaKind === "audio" && resolvedPlan.trim != null) {
+    const span = resolvedPlan.trim.endSec - resolvedPlan.trim.startSec;
+    if (span < 1.0) {
+      throw new AppError(
+        codes.EDIT_AUDIO_INVALID_TRIM,
+        "Audio trim must span at least 1 second",
+        400
+      );
+    }
+  }
+
   const cap = resolvedPlan.captionsBurnInV1;
   if (cap != null && cap.mode === "auto" && config.openaiApiKey.length === 0) {
     throw new AppError(
@@ -304,6 +447,7 @@ export async function createEditJob(opts: {
     {
       editJobId: row.id,
       deviceId: opts.deviceId,
+      mediaKind,
       ...(hasDl ? { sourceDownloadJobId: d.sourceDownloadJobId } : {}),
       ...(hasUp ? { sourceUploadId: d.sourceUploadId } : {}),
     },
@@ -412,6 +556,10 @@ export async function retryEditJob(opts: {
   return { editJobId: row.id, status: "queued" };
 }
 
-export function expectedEditOutputStorageKey(deviceId: string, editJobId: string): string {
-  return path.posix.join("devices", deviceId, "edits", `${editJobId}.mp4`);
+export function expectedEditOutputStorageKey(
+  deviceId: string,
+  editJobId: string,
+  ext: "mp4" | "mp3" = "mp4"
+): string {
+  return path.posix.join("devices", deviceId, "edits", `${editJobId}.${ext}`);
 }

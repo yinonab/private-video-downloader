@@ -1505,6 +1505,110 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCaptionsV34PanelEditCaptions => 'Edit captions';
 
   @override
+  String get editCaptionsV34OffInviteSubtitle =>
+      'Turn speech into styled captions for your video.';
+
+  @override
+  String get editCaptionsV34EnableCaptions => 'Enable captions';
+
+  @override
+  String get editCaptionsV34BenefitDraft => 'Editable draft';
+
+  @override
+  String get editCaptionsV34BenefitStyles => 'Caption styles';
+
+  @override
+  String get editCaptionsV34BenefitHighlight => 'Word highlight';
+
+  @override
+  String get editCaptionsV34SamplePreviewLabel => 'Sample captions';
+
+  @override
+  String get editAudioScreenTitle => 'Edit audio';
+
+  @override
+  String get editAudioFileExplanation =>
+      'This is an audio file, so some video edits are unavailable.';
+
+  @override
+  String get editAudioVideoEditsUnavailable =>
+      'Video editing is not available for MP3 files.';
+
+  @override
+  String get editAudioAvailableActions => 'Available actions';
+
+  @override
+  String get editAudioSaveFileFirst =>
+      'Save the file to your device to open or share it.';
+
+  @override
+  String get editAudioLimitationsNote =>
+      'Audio files support trim, speed, and quality export.';
+
+  @override
+  String get downloadCardEditAudio => 'Edit audio';
+
+  @override
+  String get downloadCardEditVideo => 'Edit video';
+
+  @override
+  String get downloadCardMp3Badge => 'MP3';
+
+  @override
+  String get audioEditPreviewTitle => 'Audio preview';
+
+  @override
+  String get audioEditTrimTitle => 'Trim audio';
+
+  @override
+  String audioEditTrimRange(String range) {
+    return 'Range: $range';
+  }
+
+  @override
+  String get audioEditTrimStart => 'Start';
+
+  @override
+  String get audioEditTrimEnd => 'End';
+
+  @override
+  String get audioEditResetTrim => 'Reset trim';
+
+  @override
+  String get audioEditQualityTitle => 'Audio quality';
+
+  @override
+  String get audioEditQualityStandard => 'Standard';
+
+  @override
+  String get audioEditQualityHigh => 'High';
+
+  @override
+  String get audioEditQualityBest => 'Best';
+
+  @override
+  String get audioEditCreate => 'Create audio edit';
+
+  @override
+  String get audioEditNoChangesYet => 'No audio changes yet';
+
+  @override
+  String get audioEditChooseOneChange =>
+      'Choose at least one change to create an edit';
+
+  @override
+  String get audioEditReadyTitle => 'Ready to save';
+
+  @override
+  String get audioEditFailed => 'Audio editing failed';
+
+  @override
+  String get editsAudioBadge => 'Audio edit';
+
+  @override
+  String get editsMp3Badge => 'MP3';
+
+  @override
   String get errorCaptionsWordHighlightNotSupported =>
       'This word highlight option is not supported.';
 

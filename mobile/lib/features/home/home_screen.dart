@@ -22,6 +22,7 @@ import "../../l10n/app_localizations.dart";
 import "../../services/saved_media_actions.dart";
 import "../analyze/analyze_screen.dart";
 import "../download_status/download_status_screen.dart";
+import "../edit/launch_audio_edit.dart";
 import "../edit/quick_edit_launch.dart";
 import "../edit/local_video_edit_launcher.dart";
 import "../settings/settings_screen.dart";
@@ -378,20 +379,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 future: AppScope.read(context).session.localPathForJob(job.id),
                 builder: (context, snap) {
                   final exists = snap.hasData && (snap.data?.isNotEmpty ?? false);
-                  final eligible = downloadItemEligibleForQuickEdit(job);
+                  final videoEdit = downloadItemEligibleForVideoEdit(job);
+                  final audioEdit = downloadItemEligibleForAudioEdit(job);
+                  final showEdit = videoEdit || audioEdit;
                   return DownloadCard(
                     item: job,
                     listAnimationIndex: i,
                     localFileExists: exists,
-                    showQuickEdit: eligible,
-                    onQuickEdit: eligible
+                    showQuickEdit: showEdit,
+                    onQuickEdit: showEdit
                         ? () async {
-                            await launchQuickEditForJob(
-                              context,
-                              jobId: job.id,
-                              serverRetentionReferenceUtc: job.createdAt,
-                              prefetchListItem: job,
-                            );
+                            if (audioEdit) {
+                              await launchAudioEditForJob(
+                                context,
+                                jobId: job.id,
+                              );
+                            } else {
+                              await launchQuickEditForJob(
+                                context,
+                                jobId: job.id,
+                                serverRetentionReferenceUtc: job.createdAt,
+                                prefetchListItem: job,
+                              );
+                            }
                             await _load();
                           }
                         : null,

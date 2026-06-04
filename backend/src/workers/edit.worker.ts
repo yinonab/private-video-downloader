@@ -6,7 +6,12 @@ import Redis from "ioredis";
 import type { PrismaClient } from "@prisma/client";
 import { config } from "../config";
 import { EDIT_QUEUE_NAME } from "../plugins/queues";
-import { buildEditFinalEncodeAfterCaptionsArgs, buildEditFfmpegArgs, ffmpegProgressRatio } from "../modules/edit/edit.ffmpeg";
+import {
+  buildEditAudioFfmpegArgs,
+  buildEditFinalEncodeAfterCaptionsArgs,
+  buildEditFfmpegArgs,
+  ffmpegProgressRatio,
+} from "../modules/edit/edit.ffmpeg";
 import {
   expectedEditOutputStorageKey,
   parseStoredOperations,
@@ -109,11 +114,12 @@ export function createEditWorker(prisma: PrismaClient): Worker {
     EDIT_QUEUE_NAME,
     async (bullJob) => {
       const { editJobId, deviceId } = bullJob.data as EditQueuePayload;
-      const tmpOut = path.join(getEditsDir(deviceId), `${editJobId}.part.mp4`);
-      const finalOut = path.join(getEditsDir(deviceId), `${editJobId}.mp4`);
+      let outputExt: "mp4" | "mp3" = "mp4";
+      const tmpOut = () => path.join(getEditsDir(deviceId), `${editJobId}.part.${outputExt}`);
+      const finalOut = () => path.join(getEditsDir(deviceId), `${editJobId}.${outputExt}`);
 
       const cleanupTmp = async (): Promise<void> => {
-        await fs.unlink(tmpOut).catch(() => undefined);
+        await fs.unlink(tmpOut()).catch(() => undefined);
       };
 
       const editsRoot = getEditsDir(deviceId);
@@ -147,6 +153,7 @@ export function createEditWorker(prisma: PrismaClient): Worker {
           deviceId,
           log: { editJobId },
         });
+        outputExt = source.mediaKind === "audio" ? "mp3" : "mp4";
 
         await prisma.editJob.update({
           where: { id: editJobId },
@@ -163,13 +170,26 @@ export function createEditWorker(prisma: PrismaClient): Worker {
         }
 
         const durationSec = probe.durationMs > 0 ? probe.durationMs / 1000 : 0;
-        if (!probe.video || durationSec <= 0) {
+        const isAudioOnly = !probe.video && probe.audio != null;
+        const isVideo = probe.video != null;
+
+        if (!isAudioOnly && !isVideo) {
+          await cleanupTmp();
+          await markEditFailed(
+            prisma,
+            editJobId,
+            codes.EDIT_AUDIO_INVALID_SOURCE,
+            "Source has no usable audio or video stream"
+          );
+          return;
+        }
+        if (durationSec <= 0) {
           await cleanupTmp();
           await markEditFailed(
             prisma,
             editJobId,
             codes.EDIT_INVALID_SOURCE,
-            "Source has no usable video stream or duration"
+            "Source duration unavailable"
           );
           return;
         }
@@ -189,14 +209,144 @@ export function createEditWorker(prisma: PrismaClient): Worker {
           await markEditFailed(
             prisma,
             editJobId,
-            codes.EDIT_INVALID_SOURCE,
-            "Trim start is beyond video duration"
+            isAudioOnly ? codes.EDIT_AUDIO_INVALID_TRIM : codes.EDIT_INVALID_SOURCE,
+            "Trim start is beyond source duration"
+          );
+          return;
+        }
+        if (isAudioOnly && plan.trim != null && plan.trim.endSec - plan.trim.startSec < 1.0) {
+          await cleanupTmp();
+          await markEditFailed(
+            prisma,
+            editJobId,
+            codes.EDIT_AUDIO_INVALID_TRIM,
+            "Audio trim must span at least 1 second"
           );
           return;
         }
 
         await ensureDeviceDirs(deviceId);
-        await fs.unlink(tmpOut).catch(() => undefined);
+        await fs.unlink(tmpOut()).catch(() => undefined);
+
+        if (isAudioOnly) {
+          await prisma.editJob.update({
+            where: { id: editJobId },
+            data: { stage: "processing", progressPercent: 10 },
+          });
+
+          const builtAudio = buildEditAudioFfmpegArgs({
+            inputPath: source.absPath,
+            outputPath: tmpOut(),
+            durationSec,
+            plan,
+          });
+
+          logger.info(
+            {
+              editJobId,
+              deviceId,
+              mediaKind: "audio",
+              sourceKind: source.sourceKind,
+              ...(row.sourceDownloadJobId ? { sourceDownloadJobId: row.sourceDownloadJobId } : {}),
+              durationSec: Math.round(durationSec * 10) / 10,
+              ...(plan.trim
+                ? {
+                    trimStartSec: plan.trim.startSec,
+                    trimEndSec: plan.trim.endSec,
+                  }
+                : {}),
+              ...(plan.audioSpeedFactor != null ? { speed: plan.audioSpeedFactor } : {}),
+              quality: plan.audioQuality ?? "high",
+              bitrate:
+                plan.audioQuality === "standard"
+                  ? "128k"
+                  : plan.audioQuality === "best"
+                    ? "320k"
+                    : "192k",
+            },
+            "ffmpeg audio edit started"
+          );
+
+          let stderrAcc = "";
+          let lastDbProgressAt = 0;
+          let lastPct = 10;
+
+          const exitAudio = await runFfmpeg(builtAudio.args, (full) => {
+            stderrAcc = full;
+            const t = ffmpegProgressRatio(full);
+            if (t == null || builtAudio.segmentDurationSec <= 0) return;
+            const ratio = Math.min(1, Math.max(0, t / builtAudio.segmentDurationSec));
+            const pct = Math.min(99, Math.round(10 + ratio * 89));
+            const now = Date.now();
+            if (now - lastDbProgressAt < 2000 && pct <= lastPct) return;
+            lastDbProgressAt = now;
+            lastPct = pct;
+            void prisma.editJob
+              .update({
+                where: { id: editJobId },
+                data: { progressPercent: pct },
+              })
+              .catch(() => undefined);
+          });
+
+          if (exitAudio !== 0) {
+            await cleanupTmp();
+            await markEditFailed(
+              prisma,
+              editJobId,
+              codes.EDIT_AUDIO_EXPORT_FAILED,
+              `ffmpeg audio export exited with code ${exitAudio}`,
+              { stderrTail: stderrAcc }
+            );
+            return;
+          }
+
+          let st;
+          try {
+            st = await fs.stat(tmpOut());
+          } catch {
+            await cleanupTmp();
+            await markEditFailed(prisma, editJobId, codes.EDIT_AUDIO_EXPORT_FAILED, "Output missing after ffmpeg");
+            return;
+          }
+
+          if (!st.isFile() || st.size <= 0) {
+            await cleanupTmp();
+            await markEditFailed(prisma, editJobId, codes.EDIT_AUDIO_EXPORT_FAILED, "Empty output after ffmpeg");
+            return;
+          }
+
+          logger.info(
+            { editJobId, deviceId, mediaKind: "audio", outputBytes: st.size },
+            "ffmpeg audio edit completed"
+          );
+
+          await prisma.editJob.update({
+            where: { id: editJobId },
+            data: { stage: "finalizing", progressPercent: 99 },
+          });
+
+          await fs.unlink(finalOut()).catch(() => undefined);
+          await fs.rename(tmpOut(), finalOut());
+
+          const storageKey = expectedEditOutputStorageKey(deviceId, editJobId, "mp3");
+          await prisma.editJob.update({
+            where: { id: editJobId },
+            data: {
+              status: "done",
+              stage: "done",
+              progressPercent: 100,
+              outputStorageKey: storageKey,
+              outputFilename: `${editJobId}.mp3`,
+              outputMimeType: "audio/mpeg",
+              outputSizeBytes: BigInt(st.size),
+              errorCode: null,
+              errorMessage: null,
+              completedAt: new Date(),
+            },
+          });
+          return;
+        }
 
         const captionsV1 = plan.captionsBurnInV1 != null;
 
@@ -208,7 +358,7 @@ export function createEditWorker(prisma: PrismaClient): Worker {
         /** Single-pass timeline OR intermediate MP4 aligned to Whisper timeline (trim→rotate→format→speed→AAC). */
         let builtIntermediate = buildEditFfmpegArgs({
           inputPath: source.absPath,
-          outputPath: captionsV1 ? captionMidAbs : tmpOut,
+          outputPath: captionsV1 ? captionMidAbs : tmpOut(),
           probe: { durationSec, hasAudio: probe.audio != null },
           plan,
           keepAudioDespiteMute: captionsV1 && probe.audio != null,
@@ -500,7 +650,7 @@ export function createEditWorker(prisma: PrismaClient): Worker {
           /** Final compress + mute on mux + optional subtitles burn (`subtitles`/libass filter). */
           const builtFinal = buildEditFinalEncodeAfterCaptionsArgs({
             intermediatePath: captionMidAbs,
-            outputPath: tmpOut,
+            outputPath: tmpOut(),
             plan,
             captionBurn,
             intermediateHasAudio: muxHasTimelineAudio,
@@ -541,7 +691,7 @@ export function createEditWorker(prisma: PrismaClient): Worker {
 
         let st;
         try {
-          st = await fs.stat(tmpOut);
+          st = await fs.stat(tmpOut());
         } catch {
           await unlinkCaptionArtifacts();
           await cleanupTmp();
@@ -566,12 +716,12 @@ export function createEditWorker(prisma: PrismaClient): Worker {
           data: { stage: "finalizing", progressPercent: 99 },
         });
 
-        await fs.unlink(finalOut).catch(() => undefined);
-        await fs.rename(tmpOut, finalOut);
+        await fs.unlink(finalOut()).catch(() => undefined);
+        await fs.rename(tmpOut(), finalOut());
 
         await unlinkCaptionArtifacts().catch(() => undefined);
 
-        const storageKey = expectedEditOutputStorageKey(deviceId, editJobId);
+        const storageKey = expectedEditOutputStorageKey(deviceId, editJobId, "mp4");
         const completedAt = new Date();
 
         await prisma.editJob.update({

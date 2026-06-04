@@ -1488,6 +1488,109 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editCaptionsV34PanelEditCaptions => 'עריכת כתוביות';
 
   @override
+  String get editCaptionsV34OffInviteSubtitle =>
+      'הפוך את הדיבור בסרטון לכתוביות מעוצבות.';
+
+  @override
+  String get editCaptionsV34EnableCaptions => 'הפעל כתוביות';
+
+  @override
+  String get editCaptionsV34BenefitDraft => 'טיוטה לעריכה';
+
+  @override
+  String get editCaptionsV34BenefitStyles => 'עיצוב כתוביות';
+
+  @override
+  String get editCaptionsV34BenefitHighlight => 'הדגשת מילה';
+
+  @override
+  String get editCaptionsV34SamplePreviewLabel => 'כתוביות לדוגמה';
+
+  @override
+  String get editAudioScreenTitle => 'עריכת אודיו';
+
+  @override
+  String get editAudioFileExplanation =>
+      'זהו קובץ אודיו, לכן חלק מעריכות הווידאו אינן זמינות.';
+
+  @override
+  String get editAudioVideoEditsUnavailable =>
+      'עריכת וידאו אינה זמינה לקובצי MP3.';
+
+  @override
+  String get editAudioAvailableActions => 'פעולות זמינות';
+
+  @override
+  String get editAudioSaveFileFirst =>
+      'שמור את הקובץ במכשיר כדי לפתוח או לשתף.';
+
+  @override
+  String get editAudioLimitationsNote =>
+      'קובצי אודיו תומכים בחיתוך, שינוי מהירות וייצוא איכות.';
+
+  @override
+  String get downloadCardEditAudio => 'ערוך אודיו';
+
+  @override
+  String get downloadCardEditVideo => 'ערוך סרטון';
+
+  @override
+  String get downloadCardMp3Badge => 'MP3';
+
+  @override
+  String get audioEditPreviewTitle => 'תצוגת אודיו';
+
+  @override
+  String get audioEditTrimTitle => 'חיתוך אודיו';
+
+  @override
+  String audioEditTrimRange(String range) {
+    return 'טווח: $range';
+  }
+
+  @override
+  String get audioEditTrimStart => 'התחלה';
+
+  @override
+  String get audioEditTrimEnd => 'סיום';
+
+  @override
+  String get audioEditResetTrim => 'איפוס חיתוך';
+
+  @override
+  String get audioEditQualityTitle => 'איכות אודיו';
+
+  @override
+  String get audioEditQualityStandard => 'רגילה';
+
+  @override
+  String get audioEditQualityHigh => 'גבוהה';
+
+  @override
+  String get audioEditQualityBest => 'מיטבית';
+
+  @override
+  String get audioEditCreate => 'צור עריכת אודיו';
+
+  @override
+  String get audioEditNoChangesYet => 'עדיין אין שינוי באודיו';
+
+  @override
+  String get audioEditChooseOneChange => 'בחר לפחות שינוי אחד כדי ליצור עריכה';
+
+  @override
+  String get audioEditReadyTitle => 'עריכת אודיו מוכנה';
+
+  @override
+  String get audioEditFailed => 'עריכת האודיו נכשלה';
+
+  @override
+  String get editsAudioBadge => 'עריכת אודיו';
+
+  @override
+  String get editsMp3Badge => 'MP3';
+
+  @override
   String get errorCaptionsWordHighlightNotSupported =>
       'אפשרות הדגשת המילה הזו לא נתמכת.';
 

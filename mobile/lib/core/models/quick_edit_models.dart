@@ -1,15 +1,25 @@
 import "download_models.dart";
 
-/// Quick Edit from download **detail** (status screen) — same rules as [downloadItemEligibleForQuickEdit].
-bool downloadDetailEligibleForQuickEdit(DownloadDetailResponse d) {
+bool _downloadFormatIsAudio(String? requestedFormat, String? mimeType) {
+  final fmt = (requestedFormat ?? "").trim().toLowerCase();
+  if (fmt == "audio_mp3" || fmt == "audio") return true;
+  final mime = mimeType?.toLowerCase().trim() ?? "";
+  return mime.startsWith("audio/");
+}
+
+/// Done download with audio-only media (e.g. MP3).
+bool downloadItemIsAudioOnly(DownloadItem item) {
+  if (item.status != "done") return false;
+  if (item.file?.hasFileHint != true) return false;
+  return _downloadFormatIsAudio(item.requestedFormat, item.file?.mimeType);
+}
+
+bool downloadDetailIsAudioOnly(DownloadDetailResponse d) {
   if (d.status != "done") return false;
   if (d.file?.hasFileHint != true) return false;
-  final fmt = (d.requestedFormat ?? "").trim().toLowerCase();
-  if (fmt == "audio_mp3") return false;
-  final mime = d.file?.mimeType?.toLowerCase().trim() ?? "";
-  if (mime.startsWith("audio/")) return false;
-  return true;
+  return _downloadFormatIsAudio(d.requestedFormat, d.file?.mimeType);
 }
+
 // --- API payloads (match backend/src/modules/edit/edit.schemas.ts) ---
 
 final class CreateEditJobRequest {
@@ -1077,15 +1087,143 @@ QuickEditCaptionPreset inferQuickEditCaptionPreset({
   return QuickEditCaptionPreset.custom;
 }
 
-/// Whether the list screen row may offer Quick Edit (server-side source exists).
-bool downloadItemEligibleForQuickEdit(DownloadItem item) {
+/// Whether the list screen row may offer video Quick Edit.
+bool downloadItemEligibleForVideoEdit(DownloadItem item) {
   if (item.status != "done") return false;
   if (item.file?.hasFileHint != true) return false;
-  final fmt = (item.requestedFormat ?? "").trim().toLowerCase();
-  if (fmt == "audio_mp3") return false;
-  final mime = item.file?.mimeType?.toLowerCase().trim() ?? "";
-  if (mime.startsWith("audio/")) return false;
+  if (downloadItemIsAudioOnly(item)) return false;
   return true;
+}
+
+/// @deprecated Use [downloadItemEligibleForVideoEdit].
+bool downloadItemEligibleForQuickEdit(DownloadItem item) =>
+    downloadItemEligibleForVideoEdit(item);
+
+/// Done MP3/audio download eligible for server audio edit.
+bool downloadItemEligibleForAudioEdit(DownloadItem item) {
+  if (item.status != "done") return false;
+  if (item.file?.hasFileHint != true) return false;
+  return downloadItemIsAudioOnly(item);
+}
+
+/// @deprecated Use [downloadItemEligibleForAudioEdit].
+bool downloadItemEligibleForAudioActions(DownloadItem item) =>
+    downloadItemEligibleForAudioEdit(item);
+
+bool downloadDetailEligibleForVideoEdit(DownloadDetailResponse d) {
+  if (d.status != "done") return false;
+  if (d.file?.hasFileHint != true) return false;
+  if (downloadDetailIsAudioOnly(d)) return false;
+  return true;
+}
+
+/// @deprecated Use [downloadDetailEligibleForVideoEdit].
+bool downloadDetailEligibleForQuickEdit(DownloadDetailResponse d) =>
+    downloadDetailEligibleForVideoEdit(d);
+
+bool downloadDetailEligibleForAudioEdit(DownloadDetailResponse d) {
+  if (d.status != "done") return false;
+  if (d.file?.hasFileHint != true) return false;
+  return downloadDetailIsAudioOnly(d);
+}
+
+/// @deprecated Use [downloadDetailEligibleForAudioEdit].
+bool downloadDetailEligibleForAudioActions(DownloadDetailResponse d) =>
+    downloadDetailEligibleForAudioEdit(d);
+
+/// Audio export quality for `audioQuality` operation.
+enum AudioEditQuality {
+  standard,
+  high,
+  best;
+
+  String get apiPreset => switch (this) {
+        AudioEditQuality.standard => "standard",
+        AudioEditQuality.high => "high",
+        AudioEditQuality.best => "best",
+      };
+}
+
+/// Constant speed factors for audio-only edits.
+enum AudioEditSpeedFactor {
+  x075(0.75),
+  x1(1.0),
+  x125(1.25),
+  x15(1.5),
+  x2(2.0);
+
+  const AudioEditSpeedFactor(this.factor);
+  final double factor;
+
+  double? get apiFactor => factor == 1.0 ? null : factor;
+}
+
+const double kAudioEditMinTrimSpanSec = 1.0;
+const double kAudioEditTrimNudgeSec = 0.5;
+const AudioEditQuality kAudioEditDefaultQuality = AudioEditQuality.high;
+
+bool audioEditHasChanges({
+  required double durationSec,
+  required double trimStartSec,
+  required double trimEndSec,
+  required AudioEditSpeedFactor speed,
+  required AudioEditQuality quality,
+}) {
+  const eps = 0.05;
+  final dur = durationSec <= 0 ? 1.0 : durationSec;
+  final trimChanged = trimStartSec > eps || trimEndSec < dur - eps;
+  final speedChanged = speed != AudioEditSpeedFactor.x1;
+  final qualityChanged = quality != kAudioEditDefaultQuality;
+  return trimChanged || speedChanged || qualityChanged;
+}
+
+/// Builds POST `/edits` operations for audio-only sources.
+List<Map<String, dynamic>> buildAudioEditOperations({
+  required double durationSec,
+  required double trimStartSec,
+  required double trimEndSec,
+  required AudioEditSpeedFactor speed,
+  required AudioEditQuality quality,
+}) {
+  final dur = durationSec <= 0 ? 1.0 : durationSec;
+  const eps = 0.05;
+  final ops = <Map<String, dynamic>>[];
+
+  if (trimStartSec > eps || trimEndSec < dur - eps) {
+    final start = trimStartSec.clamp(0.0, dur - eps);
+    var end = trimEndSec.clamp(start + kAudioEditMinTrimSpanSec, dur);
+    ops.add({
+      "type": "trim",
+      "startSec": start,
+      "endSec": end,
+    });
+  }
+
+  final sp = speed.apiFactor;
+  if (sp != null) {
+    ops.add({
+      "type": "speed",
+      "factor": sp,
+    });
+  }
+
+  if (quality != kAudioEditDefaultQuality) {
+    ops.add({
+      "type": "audioQuality",
+      "preset": quality.apiPreset,
+    });
+  }
+
+  return ops;
+}
+
+String formatAudioEditTimeSec(double sec) {
+  final s = sec.clamp(0.0, 86400.0);
+  final whole = s.floor();
+  final frac = ((s - whole) * 10).round();
+  final mm = whole ~/ 60;
+  final ss = whole % 60;
+  return "${mm.toString().padLeft(2, "0")}:${ss.toString().padLeft(2, "0")}.${frac % 10}";
 }
 
 /// Captions fine-position step and API clamp (ASS PlayRes units — see backend `assSubtitles.service.ts`).

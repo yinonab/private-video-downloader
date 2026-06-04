@@ -293,6 +293,10 @@ class _EditHistoryCard extends StatelessWidget {
     final displayTitle = resolveEditHistoryDisplayTitle(l10n, item);
 
     final chips = <Widget>[];
+    if (item.isAudioOutput) {
+      chips.add(_chip(theme, scheme, l10n.editsMp3Badge));
+      chips.add(_chip(theme, scheme, l10n.editsAudioBadge));
+    }
     final src = _sourceLabel(l10n, item);
     if (src.isNotEmpty) {
       chips.add(_chip(theme, scheme, src));

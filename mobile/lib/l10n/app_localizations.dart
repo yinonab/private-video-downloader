@@ -2846,6 +2846,198 @@ abstract class AppLocalizations {
   /// **'Edit captions'**
   String get editCaptionsV34PanelEditCaptions;
 
+  /// No description provided for @editCaptionsV34OffInviteSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn speech into styled captions for your video.'**
+  String get editCaptionsV34OffInviteSubtitle;
+
+  /// No description provided for @editCaptionsV34EnableCaptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable captions'**
+  String get editCaptionsV34EnableCaptions;
+
+  /// No description provided for @editCaptionsV34BenefitDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Editable draft'**
+  String get editCaptionsV34BenefitDraft;
+
+  /// No description provided for @editCaptionsV34BenefitStyles.
+  ///
+  /// In en, this message translates to:
+  /// **'Caption styles'**
+  String get editCaptionsV34BenefitStyles;
+
+  /// No description provided for @editCaptionsV34BenefitHighlight.
+  ///
+  /// In en, this message translates to:
+  /// **'Word highlight'**
+  String get editCaptionsV34BenefitHighlight;
+
+  /// No description provided for @editCaptionsV34SamplePreviewLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample captions'**
+  String get editCaptionsV34SamplePreviewLabel;
+
+  /// No description provided for @editAudioScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit audio'**
+  String get editAudioScreenTitle;
+
+  /// No description provided for @editAudioFileExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'This is an audio file, so some video edits are unavailable.'**
+  String get editAudioFileExplanation;
+
+  /// No description provided for @editAudioVideoEditsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Video editing is not available for MP3 files.'**
+  String get editAudioVideoEditsUnavailable;
+
+  /// No description provided for @editAudioAvailableActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Available actions'**
+  String get editAudioAvailableActions;
+
+  /// No description provided for @editAudioSaveFileFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Save the file to your device to open or share it.'**
+  String get editAudioSaveFileFirst;
+
+  /// No description provided for @editAudioLimitationsNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio files support trim, speed, and quality export.'**
+  String get editAudioLimitationsNote;
+
+  /// No description provided for @downloadCardEditAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit audio'**
+  String get downloadCardEditAudio;
+
+  /// No description provided for @downloadCardEditVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit video'**
+  String get downloadCardEditVideo;
+
+  /// No description provided for @downloadCardMp3Badge.
+  ///
+  /// In en, this message translates to:
+  /// **'MP3'**
+  String get downloadCardMp3Badge;
+
+  /// No description provided for @audioEditPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio preview'**
+  String get audioEditPreviewTitle;
+
+  /// No description provided for @audioEditTrimTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trim audio'**
+  String get audioEditTrimTitle;
+
+  /// No description provided for @audioEditTrimRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Range: {range}'**
+  String audioEditTrimRange(String range);
+
+  /// No description provided for @audioEditTrimStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get audioEditTrimStart;
+
+  /// No description provided for @audioEditTrimEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get audioEditTrimEnd;
+
+  /// No description provided for @audioEditResetTrim.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset trim'**
+  String get audioEditResetTrim;
+
+  /// No description provided for @audioEditQualityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio quality'**
+  String get audioEditQualityTitle;
+
+  /// No description provided for @audioEditQualityStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get audioEditQualityStandard;
+
+  /// No description provided for @audioEditQualityHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get audioEditQualityHigh;
+
+  /// No description provided for @audioEditQualityBest.
+  ///
+  /// In en, this message translates to:
+  /// **'Best'**
+  String get audioEditQualityBest;
+
+  /// No description provided for @audioEditCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create audio edit'**
+  String get audioEditCreate;
+
+  /// No description provided for @audioEditNoChangesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No audio changes yet'**
+  String get audioEditNoChangesYet;
+
+  /// No description provided for @audioEditChooseOneChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose at least one change to create an edit'**
+  String get audioEditChooseOneChange;
+
+  /// No description provided for @audioEditReadyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to save'**
+  String get audioEditReadyTitle;
+
+  /// No description provided for @audioEditFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio editing failed'**
+  String get audioEditFailed;
+
+  /// No description provided for @editsAudioBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio edit'**
+  String get editsAudioBadge;
+
+  /// No description provided for @editsMp3Badge.
+  ///
+  /// In en, this message translates to:
+  /// **'MP3'**
+  String get editsMp3Badge;
+
   /// No description provided for @errorCaptionsWordHighlightNotSupported.
   ///
   /// In en, this message translates to:

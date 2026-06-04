@@ -1188,6 +1188,13 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                           boxShape: _captionsBoxShape,
                         ),
                         lookStyleDetailLine: _captionLookStyleDetailLine(l10n),
+                        lookColor: _captionsColor,
+                        lookWordHighlight: _captionsWordHighlight,
+                        lookFontFamily: _captionsFontFamily,
+                        lookNormalTextColor: _captionsNormalTextColor,
+                        lookActiveTextColor: _captionsActiveTextColor,
+                        lookBoxColor: _captionsBoxColor,
+                        lookBoxShape: _captionsBoxShape,
                         onCustomizeLook: _openCaptionLookEditor,
                         onGenerateCaptionsDraft: _generateCaptionsDraft,
                         onRegenerateCaptionsDraftRequested:

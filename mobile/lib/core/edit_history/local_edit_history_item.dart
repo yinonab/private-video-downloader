@@ -17,6 +17,7 @@ final class LocalEditHistoryItem {
     this.platform,
     this.thumbnailPath,
     this.publishedToPublicDownloads = false,
+    this.outputMediaKind,
   });
 
   factory LocalEditHistoryItem.fromJson(Map<String, dynamic> m) {
@@ -38,6 +39,7 @@ final class LocalEditHistoryItem {
       platform: m["platform"]?.toString(),
       thumbnailPath: m["thumbnailPath"]?.toString(),
       publishedToPublicDownloads: m["publishedToPublicDownloads"] == true,
+      outputMediaKind: m["outputMediaKind"]?.toString(),
     );
   }
 
@@ -69,6 +71,14 @@ final class LocalEditHistoryItem {
   /// User ran Save to public Downloads from the edit done screen.
   final bool publishedToPublicDownloads;
 
+  /// `"audio"` for MP3 edits; `"video"` or null for MP4.
+  final String? outputMediaKind;
+
+  bool get isAudioOutput =>
+      outputMediaKind == "audio" ||
+      localFilePath.toLowerCase().endsWith(".mp3") ||
+      title.toLowerCase().endsWith(".mp3");
+
   Map<String, dynamic> toJson() => {
         "editJobId": editJobId,
         "localFilePath": localFilePath,
@@ -85,6 +95,7 @@ final class LocalEditHistoryItem {
         if (platform != null) "platform": platform,
         if (thumbnailPath != null) "thumbnailPath": thumbnailPath,
         "publishedToPublicDownloads": publishedToPublicDownloads,
+        if (outputMediaKind != null) "outputMediaKind": outputMediaKind,
       };
 
   static int? _parseInt(dynamic v) {
