@@ -309,7 +309,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
           offsetXAss: offsetXAss,
           offsetYAss: offsetYAss,
         );
-        final hPad = isStage ? 10.0 : 18.0;
+        final hPad = isStage ? 12.0 : 18.0;
         final bottom = position == QuickEditCaptionPosition.bottom;
 
         final positioned = Padding(
@@ -356,16 +356,16 @@ Offset computeCaptionPreviewTranslate({
   final dy = offsetYAss * sy;
   final bottom = position == QuickEditCaptionPosition.bottom;
   final baseY = bottom
-      ? (isStage ? -h * 0.03 : -h * 0.068)
-      : (isStage ? h * 0.03 : h * 0.068);
-  final fxMax = isStage ? 0.2 : 0.36;
+      ? (isStage ? -h * 0.02 : -h * 0.068)
+      : (isStage ? h * 0.02 : h * 0.068);
+  final fxMax = isStage ? 0.16 : 0.36;
   final fx = dx.clamp(-w * fxMax, w * fxMax).toDouble();
   final fyMin = bottom
-      ? (isStage ? -h * 0.14 : -h * 0.34)
-      : (isStage ? -h * 0.05 : -h * 0.05);
+      ? (isStage ? -h * 0.11 : -h * 0.34)
+      : (isStage ? -h * 0.04 : -h * 0.05);
   final fyMax = bottom
-      ? (isStage ? h * 0.05 : h * 0.05)
-      : (isStage ? h * 0.14 : h * 0.34);
+      ? (isStage ? h * 0.04 : h * 0.05)
+      : (isStage ? h * 0.11 : h * 0.34);
   final fy = (baseY + dy).clamp(fyMin, fyMax).toDouble();
   return Offset(fx, fy);
 }

@@ -1,12 +1,13 @@
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 
 import "../../../../core/models/quick_edit_models.dart";
 import "../../../../l10n/app_localizations.dart";
-import "caption_position_joystick.dart";
+import "caption_position_dpad.dart";
 
 /// Live HUD readout for caption X/Y offsets.
-class JoystickHudReadout extends StatelessWidget {
-  const JoystickHudReadout({
+class CaptionXYReadout extends StatelessWidget {
+  const CaptionXYReadout({
     super.key,
     required this.l10n,
     required this.offsetX,
@@ -159,6 +160,7 @@ class _CaptionPositionResetButtonState extends State<CaptionPositionResetButton>
 
   void _tap() {
     _spin.forward(from: 0);
+    HapticFeedback.lightImpact();
     widget.onReset();
   }
 
@@ -189,7 +191,7 @@ class _CaptionPositionResetButtonState extends State<CaptionPositionResetButton>
   }
 }
 
-/// Fine-tune section: HUD + joystick + reset.
+/// Fine-tune section: HUD + D-pad + reset.
 class CaptionLookFineTuneSection extends StatelessWidget {
   const CaptionLookFineTuneSection({
     super.key,
@@ -213,14 +215,14 @@ class CaptionLookFineTuneSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        JoystickHudReadout(
+        CaptionXYReadout(
           l10n: l10n,
           offsetX: offsetX,
           offsetY: offsetY,
           accentColor: accentColor,
         ),
         const SizedBox(height: 18),
-        CaptionPositionJoystick(
+        CaptionPositionDPad(
           accentColor: accentColor,
           onNudge: onNudge,
         ),

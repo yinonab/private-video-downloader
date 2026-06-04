@@ -19,7 +19,7 @@ class CaptionPreviewCard extends StatefulWidget {
   final bool showSafeGuides;
   final Color? accentColor;
 
-  static const double stageHeight = 112;
+  static const double stageHeight = 120;
 
   @override
   State<CaptionPreviewCard> createState() => _CaptionPreviewCardState();
@@ -117,12 +117,12 @@ class _CaptionPreviewCardState extends State<CaptionPreviewCard>
                 if (widget.showSafeGuides)
                   CustomPaint(painter: _StageSafeGuidePainter()),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
                   child: EditCaptionsPreviewOverlay(
                     l10n: widget.l10n,
                     layout: CaptionPreviewLayout.stage,
                     animateMotion: true,
-                    motionDuration: const Duration(milliseconds: 200),
+                    motionDuration: const Duration(milliseconds: 180),
                     stylePreset: s.style,
                     fontSize: s.fontSize,
                     fontFamily: s.fontFamily,
@@ -189,10 +189,10 @@ class _StageSafeGuidePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.08)
+      ..color = Colors.white.withValues(alpha: 0.06)
       ..strokeWidth = 1;
-    final insetH = size.width * 0.12;
-    final insetV = size.height * 0.18;
+    final insetH = size.width * 0.16;
+    final insetV = size.height * 0.22;
     final r = Rect.fromLTRB(
       insetH,
       insetV,
