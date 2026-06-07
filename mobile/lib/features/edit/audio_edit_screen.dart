@@ -554,7 +554,12 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
                   endSec: _endSec,
                   startHandleActive: _activeTrimHandle == AudioTimelineTrimHandle.start,
                   endHandleActive: _activeTrimHandle == AudioTimelineTrimHandle.end,
-                  onChanged: (s, e) => _onTrimChanged(s, e),
+                  onTrimHandleActive: (h) {
+                    if (_activeTrimHandle != h) {
+                      setState(() => _activeTrimHandle = h);
+                    }
+                  },
+                  onChanged: _onTrimChanged,
                   onReset: _resetTrim,
                 ),
               ),
@@ -691,6 +696,7 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
             ),
             const SizedBox(height: 10),
             AudioPreviewTimeline(
+              mode: AudioTimelineMode.preview,
               l10n: l10n,
               durationSec: dur,
               startSec: _startSec,

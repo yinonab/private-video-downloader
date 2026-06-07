@@ -8,38 +8,44 @@ import "../../../l10n/app_localizations.dart";
 
 enum AudioTimelineTrimHandle { start, end }
 
-/// Primary LTR audio trim timeline: draggable S/E handles, scrub playhead, tap-to-seek.
+enum AudioTimelineMode { preview, trim }
+
+/// Shared LTR audio range bar — preview (scrub + playhead) or trim-only (S/E drag).
 class AudioPreviewTimeline extends StatefulWidget {
   const AudioPreviewTimeline({
     super.key,
+    required this.mode,
     required this.l10n,
     required this.durationSec,
     required this.startSec,
     required this.endSec,
-    required this.positionSec,
     required this.onTrimChanged,
-    required this.onSeek,
-    required this.onScrubStart,
-    required this.onScrubEnd,
-    required this.onTapStartMarker,
-    required this.onTapEndMarker,
+    this.positionSec = 0,
+    this.onSeek,
+    this.onScrubStart,
+    this.onScrubEnd,
+    this.onTapStartMarker,
+    this.onTapEndMarker,
     this.onTrimHandleActive,
     this.enabled = true,
   });
 
+  final AudioTimelineMode mode;
   final AppLocalizations l10n;
   final double durationSec;
   final double startSec;
   final double endSec;
   final double positionSec;
   final void Function(double startSec, double endSec) onTrimChanged;
-  final ValueChanged<double> onSeek;
-  final VoidCallback onScrubStart;
-  final VoidCallback onScrubEnd;
-  final VoidCallback onTapStartMarker;
-  final VoidCallback onTapEndMarker;
+  final ValueChanged<double>? onSeek;
+  final VoidCallback? onScrubStart;
+  final VoidCallback? onScrubEnd;
+  final VoidCallback? onTapStartMarker;
+  final VoidCallback? onTapEndMarker;
   final ValueChanged<AudioTimelineTrimHandle?>? onTrimHandleActive;
   final bool enabled;
+
+  bool get _isPreview => mode == AudioTimelineMode.preview;
 
   @override
   State<AudioPreviewTimeline> createState() => _AudioPreviewTimelineState();
@@ -53,8 +59,6 @@ class _AudioPreviewTimelineState extends State<AudioPreviewTimeline> {
   static const double _handleHit = 44;
   static const double _playheadVisual = 14;
   static const double _dragSlop = 10;
-  static const double _trackTopNormal = 38;
-  static const double _trackTopStacked = 50;
 
   _Interaction _mode = _Interaction.none;
   double? _pointerDownX;
@@ -62,6 +66,12 @@ class _AudioPreviewTimelineState extends State<AudioPreviewTimeline> {
   int _lastHapticSecond = -1;
   double? _scrubPreviewSec;
   bool _didDrag = false;
+  ScrollHoldController? _scrollHold;
+
+  bool get _compact => !widget._isPreview;
+
+  double get _trackTopNormal => _compact ? 28.0 : 38.0;
+  double get _trackTopStacked => _compact ? 40.0 : 50.0;
 
   double get _dur => widget.durationSec <= 0 ? 1.0 : widget.durationSec;
 
@@ -70,8 +80,27 @@ class _AudioPreviewTimelineState extends State<AudioPreviewTimeline> {
   double _secFromX(double x, double width) =>
       (x / width).clamp(0.0, 1.0) * _dur;
 
+  @override
+  void dispose() {
+    _endScrollHold();
+    super.dispose();
+  }
+
   void _setActiveHandle(AudioTimelineTrimHandle? handle) {
     widget.onTrimHandleActive?.call(handle);
+  }
+
+  void _beginScrollHold() {
+    _endScrollHold();
+    final scrollable = Scrollable.maybeOf(context);
+    if (scrollable != null) {
+      _scrollHold = scrollable.position.hold(() {});
+    }
+  }
+
+  void _endScrollHold() {
+    _scrollHold?.cancel();
+    _scrollHold = null;
   }
 
   bool _hitHandle(double dx, double dy, double centerX, double centerY) {
@@ -107,6 +136,7 @@ class _AudioPreviewTimelineState extends State<AudioPreviewTimeline> {
     _didDrag = false;
 
     if (_hitHandle(dx, dy, startX, startY)) {
+      _beginScrollHold();
       setState(() {
         _mode = _Interaction.dragStart;
         _tooltipSec = widget.startSec;
@@ -116,6 +146,7 @@ class _AudioPreviewTimelineState extends State<AudioPreviewTimeline> {
       return;
     }
     if (_hitHandle(dx, dy, endX, endY)) {
+      _beginScrollHold();
       setState(() {
         _mode = _Interaction.dragEnd;
         _tooltipSec = widget.endSec;
@@ -125,21 +156,25 @@ class _AudioPreviewTimelineState extends State<AudioPreviewTimeline> {
       return;
     }
 
+    if (!widget._isPreview) return;
+
     setState(() {
       _mode = _Interaction.scrub;
       _scrubPreviewSec = _secFromX(dx, width);
     });
-    widget.onScrubStart();
-    widget.onSeek(_scrubPreviewSec!);
+    widget.onScrubStart?.call();
+    widget.onSeek?.call(_scrubPreviewSec!);
   }
 
   void _onPointerMove(PointerMoveEvent e, BoxConstraints constraints) {
     if (!widget.enabled || _mode == _Interaction.none) return;
     final width = constraints.maxWidth;
     final dx = e.localPosition.dx;
+
     if (_pointerDownX != null && (dx - _pointerDownX!).abs() > _dragSlop) {
       _didDrag = true;
     }
+
     final sec = _secFromX(dx, width);
 
     switch (_mode) {
@@ -163,7 +198,7 @@ class _AudioPreviewTimelineState extends State<AudioPreviewTimeline> {
         setState(() => _tooltipSec = pair.$2);
       case _Interaction.scrub:
         setState(() => _scrubPreviewSec = sec);
-        widget.onSeek(sec);
+        widget.onSeek?.call(sec);
       case _Interaction.none:
         break;
     }
@@ -172,20 +207,22 @@ class _AudioPreviewTimelineState extends State<AudioPreviewTimeline> {
   void _onPointerEnd() {
     if (_mode == _Interaction.none) return;
 
-    if (_mode == _Interaction.dragStart && !_didDrag) {
-      widget.onTapStartMarker();
-    } else if (_mode == _Interaction.dragEnd && !_didDrag) {
-      widget.onTapEndMarker();
-    } else if (_mode == _Interaction.dragStart) {
-      widget.onSeek(widget.startSec);
-    } else if (_mode == _Interaction.dragEnd) {
-      widget.onSeek(widget.endSec);
+    if (widget._isPreview) {
+      if (_mode == _Interaction.dragStart && !_didDrag) {
+        widget.onTapStartMarker?.call();
+      } else if (_mode == _Interaction.dragEnd && !_didDrag) {
+        widget.onTapEndMarker?.call();
+      } else if (_mode == _Interaction.dragStart) {
+        widget.onSeek?.call(widget.startSec);
+      } else if (_mode == _Interaction.dragEnd) {
+        widget.onSeek?.call(widget.endSec);
+      }
+      if (_mode == _Interaction.scrub) {
+        widget.onScrubEnd?.call();
+      }
     }
 
-    if (_mode == _Interaction.scrub) {
-      widget.onScrubEnd();
-    }
-
+    _endScrollHold();
     _setActiveHandle(null);
     setState(() {
       _mode = _Interaction.none;
@@ -212,7 +249,9 @@ class _AudioPreviewTimelineState extends State<AudioPreviewTimeline> {
           final playX = _frac(displayPos) * width;
           final stack = (endX - startX).abs() < _handleHit * 1.05;
           final trackTop = stack ? _trackTopStacked : _trackTopNormal;
-          final totalHeight = stack ? 92.0 : 72.0;
+          final totalHeight = _compact
+              ? (stack ? 76.0 : 56.0)
+              : (stack ? 92.0 : 72.0);
           final startY = stack ? 8.0 : trackTop - _handleVisual / 2 + _trackHeight / 2;
           final endY = stack ? 8.0 + _handleVisual + 4 : startY;
           final draggingStart = _mode == _Interaction.dragStart;
@@ -243,32 +282,34 @@ class _AudioPreviewTimelineState extends State<AudioPreviewTimeline> {
                       ),
                     ),
                   ),
-                  Positioned(
-                    left: (playX - _playheadVisual / 2).clamp(0.0, width - _playheadVisual),
-                    top: trackTop + _trackHeight / 2 - _playheadVisual / 2,
-                    child: Semantics(
-                      label: widget.l10n.audioEditPlayheadSemantics,
-                      child: IgnorePointer(
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 80),
-                          width: _playheadVisual,
-                          height: _playheadVisual,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: scheme.onSurface,
-                            border: Border.all(color: scheme.surface, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: scheme.shadow.withValues(alpha: 0.2),
-                                blurRadius: 3,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
+                  if (widget._isPreview)
+                    Positioned(
+                      left: (playX - _playheadVisual / 2)
+                          .clamp(0.0, width - _playheadVisual),
+                      top: trackTop + _trackHeight / 2 - _playheadVisual / 2,
+                      child: Semantics(
+                        label: widget.l10n.audioEditPlayheadSemantics,
+                        child: IgnorePointer(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 80),
+                            width: _playheadVisual,
+                            height: _playheadVisual,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: scheme.onSurface,
+                              border: Border.all(color: scheme.surface, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: scheme.shadow.withValues(alpha: 0.2),
+                                  blurRadius: 3,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
                   _TrimHandle(
                     label: "S",
                     semanticsLabel: widget.l10n.audioEditTrimStartMarkerSemantics,
@@ -282,7 +323,9 @@ class _AudioPreviewTimelineState extends State<AudioPreviewTimeline> {
                   _TrimHandle(
                     label: "E",
                     semanticsLabel: widget.l10n.audioEditTrimEndMarkerSemantics,
-                    semanticsHint: widget.l10n.audioEditPreviewEndingSemantics,
+                    semanticsHint: widget._isPreview
+                        ? widget.l10n.audioEditPreviewEndingSemantics
+                        : null,
                     centerX: endX,
                     centerY: endY,
                     visualSize: _handleVisual,

@@ -6,6 +6,7 @@ import "package:lucide_icons_flutter/lucide_icons.dart";
 import "../../../core/l10n/context_l10n.dart";
 import "../../../core/models/quick_edit_models.dart";
 import "repeat_nudge_icon_button.dart";
+import "audio_preview_timeline.dart";
 import "trim_mm_ss_input.dart";
 
 enum _TrimThumb { start, end }
@@ -71,6 +72,7 @@ class AudioTrimEditor extends StatefulWidget {
     required this.onReset,
     this.startHandleActive = false,
     this.endHandleActive = false,
+    this.onTrimHandleActive,
   });
 
   final double durationSec;
@@ -80,6 +82,7 @@ class AudioTrimEditor extends StatefulWidget {
   final VoidCallback onReset;
   final bool startHandleActive;
   final bool endHandleActive;
+  final ValueChanged<AudioTimelineTrimHandle?>? onTrimHandleActive;
 
   @override
   State<AudioTrimEditor> createState() => _AudioTrimEditorState();
@@ -333,6 +336,17 @@ class _AudioTrimEditorState extends State<AudioTrimEditor> {
               textAlign: TextAlign.center,
             ),
           ),
+        ),
+        const SizedBox(height: 12),
+        AudioPreviewTimeline(
+          mode: AudioTimelineMode.trim,
+          l10n: l10n,
+          durationSec: widget.durationSec,
+          startSec: rv.start,
+          endSec: rv.end,
+          enabled: widget.durationSec > 0,
+          onTrimChanged: widget.onChanged,
+          onTrimHandleActive: widget.onTrimHandleActive,
         ),
         const SizedBox(height: 12),
         Row(
