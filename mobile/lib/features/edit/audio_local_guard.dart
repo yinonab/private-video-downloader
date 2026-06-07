@@ -1,0 +1,158 @@
+import "package:flutter/material.dart";
+
+import "../../core/app_scope.dart";
+import "../../core/l10n/api_error_localizations.dart";
+import "../../core/l10n/context_l10n.dart";
+import "../../core/models/api_error.dart";
+import "../../core/models/download_models.dart";
+import "../../services/saved_media_actions.dart";
+import "audio_edit_screen.dart";
+
+/// Whether the download job has a readable local file (internal app storage).
+Future<bool> isDownloadJobSavedLocally(BuildContext context, String jobId) async {
+  return validateSavedDownload(AppScope.read(context).session, jobId);
+}
+
+Future<bool> _saveDownloadToDevice(
+  BuildContext context, {
+  required String jobId,
+  DownloadDetailResponse? prefetchedDetail,
+}) async {
+  final scope = AppScope.read(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final l10n = context.l10n;
+  try {
+    final detail = prefetchedDetail ?? await scope.api.downloadDetail(jobId);
+    if (detail.status != "done") {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.audioEditRequiresSaveBody)));
+      return false;
+    }
+    await scope.files.downloadJobMedia(jobId: jobId, detail: detail);
+    final ok = await validateSavedDownload(scope.session, jobId);
+    if (!ok) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.savedCannotOpenFile)));
+    }
+    return ok;
+  } catch (e) {
+    final msg = e is ApiError ? localizedApiErrorMessage(l10n, e) : "$e";
+    messenger.showSnackBar(SnackBar(content: Text(msg)));
+    return false;
+  }
+}
+
+/// Blocking dialog when local source is missing. Returns true when file is local after flow.
+Future<bool> ensureLocalDownloadForAudioActions(
+  BuildContext context, {
+  required String jobId,
+  DownloadDetailResponse? prefetchedDetail,
+  DownloadItem? prefetchedItem,
+}) async {
+  final scope = AppScope.read(context);
+  if (await validateSavedDownload(scope.session, jobId)) return true;
+  if (!context.mounted) return false;
+
+  final l10n = context.l10n;
+  final save = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l10n.audioEditRequiresSaveTitle),
+      content: Text(l10n.audioEditRequiresSaveBody),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: Text(l10n.audioEditRequiresSaveCancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: Text(l10n.audioEditRequiresSaveNow),
+        ),
+      ],
+    ),
+  );
+  if (save != true || !context.mounted) return false;
+
+  DownloadDetailResponse? detail = prefetchedDetail;
+  if (detail == null && prefetchedItem != null) {
+    try {
+      detail = await scope.api.downloadDetail(jobId);
+    } catch (_) {
+      detail = null;
+    }
+  }
+
+  if (!context.mounted) return false;
+  return _saveDownloadToDevice(context, jobId: jobId, prefetchedDetail: detail);
+}
+
+/// Opens [AudioEditScreen] only when the source MP3 exists locally.
+Future<void> launchAudioEditForJob(
+  BuildContext context, {
+  required String jobId,
+  DownloadDetailResponse? prefetchedDetail,
+  DownloadItem? prefetchedItem,
+}) async {
+  if (!context.mounted) return;
+  final ok = await ensureLocalDownloadForAudioActions(
+    context,
+    jobId: jobId,
+    prefetchedDetail: prefetchedDetail,
+    prefetchedItem: prefetchedItem,
+  );
+  if (!ok || !context.mounted) return;
+  await Navigator.push<void>(
+    context,
+    MaterialPageRoute<void>(
+      builder: (_) => AudioEditScreen(jobId: jobId),
+    ),
+  );
+}
+
+Future<void> openAudioDownloadIfLocal(
+  BuildContext context, {
+  required String jobId,
+  required bool isAudioOnly,
+  DownloadDetailResponse? prefetchedDetail,
+}) async {
+  if (!isAudioOnly) {
+    await openSavedDownload(context: context, session: AppScope.read(context).session, jobId: jobId);
+    return;
+  }
+  final ok = await ensureLocalDownloadForAudioActions(
+    context,
+    jobId: jobId,
+    prefetchedDetail: prefetchedDetail,
+  );
+  if (!ok || !context.mounted) return;
+  await openSavedDownload(context: context, session: AppScope.read(context).session, jobId: jobId);
+}
+
+Future<void> shareAudioDownloadIfLocal(
+  BuildContext context, {
+  required String jobId,
+  required bool isAudioOnly,
+  String? title,
+  DownloadDetailResponse? prefetchedDetail,
+}) async {
+  final scope = AppScope.read(context);
+  if (!isAudioOnly) {
+    await shareSavedDownload(
+      context: context,
+      session: scope.session,
+      jobId: jobId,
+      title: title,
+    );
+    return;
+  }
+  final ok = await ensureLocalDownloadForAudioActions(
+    context,
+    jobId: jobId,
+    prefetchedDetail: prefetchedDetail,
+  );
+  if (!ok || !context.mounted) return;
+  await shareSavedDownload(
+    context: context,
+    session: scope.session,
+    jobId: jobId,
+    title: title,
+  );
+}

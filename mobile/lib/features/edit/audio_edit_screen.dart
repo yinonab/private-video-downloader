@@ -10,15 +10,17 @@ import "package:share_plus/share_plus.dart";
 import "package:video_player/video_player.dart";
 
 import "../../core/app_scope.dart";
+import "../../core/config/media_export_constants.dart";
 import "../../core/l10n/api_error_localizations.dart";
 import "../../core/l10n/context_l10n.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
 import "../../core/models/quick_edit_models.dart";
-import "../../core/widgets/keep_app_open_hint.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
 import "../../l10n/app_localizations.dart";
-import "launch_audio_download.dart";
+import "widgets/audio_trim_editor.dart";
+import "widgets/edit_done_body.dart";
+import "widgets/edit_working_panel.dart";
 
 enum _FlowPhase { composing, working, done, failed }
 
@@ -35,10 +37,8 @@ class AudioEditScreen extends StatefulWidget {
 class _AudioEditScreenState extends State<AudioEditScreen> {
   DownloadDetailResponse? _detail;
   String? _localPath;
-  bool _loading = true;
 
   VideoPlayerController? _player;
-  bool _previewError = false;
 
   double _durationSec = 60;
   double _startSec = 0;
@@ -55,6 +55,7 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
   bool _pollBusy = false;
   String? _outputPath;
   bool _downloadingFile = false;
+  bool _loading = true;
 
   @override
   void initState() {
@@ -81,33 +82,34 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
       final scope = AppScope.read(context);
       final detail = await scope.api.downloadDetail(widget.jobId);
       final path = await scope.session.localPathForJob(widget.jobId);
+      final lp = path?.trim();
+      if (lp == null || lp.isEmpty || !await File(lp).exists()) {
+        if (mounted) Navigator.maybePop(context);
+        return;
+      }
       if (!mounted) return;
       setState(() {
         _detail = detail;
-        _localPath = path;
+        _localPath = lp;
         _startSec = 0;
         _endSec = _durationSec;
         _loading = false;
       });
-      await _initPreview(path);
+      await _initPreview(lp);
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _loading = false;
         _lastError = e;
+        _phase = _FlowPhase.failed;
       });
     }
   }
 
-  Future<void> _initPreview(String? localPath) async {
+  Future<void> _initPreview(String localPath) async {
     await _disposePlayer();
-    final lp = localPath?.trim();
-    if (lp == null || lp.isEmpty || !await File(lp).exists()) {
-      if (mounted) setState(() => _previewError = true);
-      return;
-    }
     try {
-      final c = VideoPlayerController.file(File(lp));
+      final c = VideoPlayerController.file(File(localPath));
       await c.initialize();
       c.addListener(_onPlayerTick);
       if (!mounted) {
@@ -117,7 +119,6 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
       final dur = c.value.duration.inMilliseconds / 1000.0;
       setState(() {
         _player = c;
-        _previewError = false;
         if (dur > 0.5) {
           _durationSec = dur;
           _endSec = dur;
@@ -125,7 +126,9 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
         _positionSec = 0;
       });
     } catch (_) {
-      if (mounted) setState(() => _previewError = true);
+      if (mounted) {
+        setState(() => _lastError = "preview_failed");
+      }
     }
   }
 
@@ -147,6 +150,12 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
     }
   }
 
+  bool get _trimApplied {
+    const eps = 0.05;
+    final dur = _durationSec <= 0 ? 1.0 : _durationSec;
+    return _startSec > eps || _endSec < dur - eps;
+  }
+
   bool get _hasChanges => audioEditHasChanges(
         durationSec: _durationSec,
         trimStartSec: _startSec,
@@ -159,18 +168,6 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
     setState(() {
       _startSec = 0;
       _endSec = _durationSec;
-    });
-  }
-
-  void _nudgeTrimStart(double delta) {
-    setState(() {
-      _startSec = (_startSec + delta).clamp(0.0, _endSec - kAudioEditMinTrimSpanSec);
-    });
-  }
-
-  void _nudgeTrimEnd(double delta) {
-    setState(() {
-      _endSec = (_endSec + delta).clamp(_startSec + kAudioEditMinTrimSpanSec, _durationSec);
     });
   }
 
@@ -203,18 +200,13 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
       speed: _speed,
       quality: _quality,
     );
-    if (ops.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.audioEditChooseOneChange)),
-      );
-      return;
-    }
     setState(() {
       _phase = _FlowPhase.working;
       _editJobId = null;
       _latestJob = null;
       _lastError = null;
       _outputPath = null;
+      _downloadingFile = false;
     });
     try {
       final created = await AppScope.read(context).api.createEditJob(
@@ -230,12 +222,6 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
       _startPolling();
     } catch (e) {
       if (!mounted) return;
-      if (e is ApiError &&
-          (e.code == "EDIT_INVALID_SOURCE" || e.code == "EDIT_AUDIO_INVALID_SOURCE")) {
-        await launchAudioDownloadForJob(context, jobId: widget.jobId);
-        if (mounted) Navigator.maybePop(context);
-        return;
-      }
       setState(() {
         _phase = _FlowPhase.failed;
         _lastError = e;
@@ -279,6 +265,14 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
     }
   }
 
+  Future<bool> _verifyOutputFile(String path) async {
+    final f = File(path);
+    if (!await f.exists()) return false;
+    final len = await f.length();
+    if (len <= 0) return false;
+    return path.toLowerCase().endsWith(".mp3");
+  }
+
   Future<void> _finalizeDownload(EditJobDetailResponse d) async {
     final id = _editJobId;
     if (!mounted || id == null) return;
@@ -288,17 +282,26 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
             editJobId: id,
             suggestedBasename: d.outputFilename,
           );
+      if (!await _verifyOutputFile(path)) {
+        throw ApiError(code: "EDIT_OUTPUT_UNAVAILABLE", message: "invalid_output");
+      }
       if (!mounted) return;
+      final span = _endSec - _startSec;
+      final outDur = (_speed.factor > 0 ? span / _speed.factor : span).round();
       await AppScope.read(context).editHistory.recordCompletedEdit(
         editJobId: id,
         localFilePath: path,
         sourceKind: "download",
         title: p.basename(path),
         completedAtIso: d.completedAt,
-        durationSeconds: _selectedDurationSec.round(),
+        sizeBytes: d.outputSizeBytes ?? await File(path).length(),
+        durationSeconds: outDur,
         originalSourceTitle: _detail?.title,
         platform: _detail?.platform,
         outputMediaKind: "audio",
+        audioTrimApplied: _trimApplied,
+        audioSpeedFactor: _speed.factor,
+        audioQualityPreset: _quality.apiPreset,
       );
       if (!mounted) return;
       setState(() {
@@ -316,10 +319,82 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
     }
   }
 
-  double get _selectedDurationSec {
-    final span = _endSec - _startSec;
-    final spd = _speed.factor;
-    return spd > 0 ? span / spd : span;
+  String _friendlySavedPath(AppLocalizations l10n) {
+    return "\u200e$kLinkClipMediaStoreFolderName > ${l10n.editsFolderName}\u200e";
+  }
+
+  Future<void> _openOutput() async {
+    final path = _outputPath?.trim();
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    if (path == null || !await _verifyOutputFile(path)) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.savedCannotOpenFile)));
+      return;
+    }
+    try {
+      final r = await OpenFilex.open(path);
+      if (!mounted) return;
+      if (r.type != ResultType.done) {
+        messenger.showSnackBar(SnackBar(content: Text(l10n.savedCannotOpenFile)));
+      }
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(l10n.savedCannotOpenFile)));
+    }
+  }
+
+  Future<void> _shareOutput() async {
+    final path = _outputPath?.trim();
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    if (path == null || !await _verifyOutputFile(path)) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.savedCannotShareFile)));
+      return;
+    }
+    final name = p.basename(path);
+    try {
+      final xf = XFile(path, mimeType: "audio/mpeg", name: name);
+      final result = await Share.shareXFiles([xf]);
+      if (!mounted) return;
+      if (result.status == ShareResultStatus.unavailable) {
+        messenger.showSnackBar(SnackBar(content: Text(l10n.savedShareFailedHint)));
+      }
+    } on PlatformException {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(l10n.savedShareFailedHint)));
+    }
+  }
+
+  Future<void> _saveToDownloadsFolder() async {
+    if (!mounted) return;
+    final path = _outputPath?.trim();
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final files = AppScope.read(context).files;
+    final editHistory = AppScope.read(context).editHistory;
+    final displayPath = _friendlySavedPath(l10n);
+    if (path == null || !await _verifyOutputFile(path)) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(l10n.editSaveFailed)));
+      return;
+    }
+    final ok = await files.publishMp4ToAndroidDownloads(
+          internalAbsolutePath: path,
+          shareDisplayName: p.basename(path),
+        );
+    if (!mounted) return;
+    final jid = _editJobId?.trim();
+    if (ok && jid != null && jid.isNotEmpty) {
+      await editHistory.markPublishedToPublicDownloads(jid);
+    }
+    final still = await File(path).exists();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          ok || still ? l10n.audioEditSavedLocationLine(displayPath) : l10n.editSaveFailed,
+        ),
+      ),
+    );
   }
 
   @override
@@ -345,9 +420,9 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : _phase == _FlowPhase.working
-                ? _workingBody(l10n, theme, scheme)
+                ? _workingBody(l10n)
                 : _phase == _FlowPhase.done
-                    ? _doneBody(l10n, theme, scheme)
+                    ? _doneBody(l10n)
                     : _phase == _FlowPhase.failed
                         ? _failedBody(l10n, theme, scheme)
                         : _composeBody(l10n, theme, scheme),
@@ -362,8 +437,6 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
       if (lp != null && lp.isNotEmpty) rawTitle = p.basename(lp);
     }
     final title = rawTitle.isEmpty ? l10n.untitledVideo : rawTitle;
-    final range =
-        "${formatAudioEditTimeSec(_startSec)}–${formatAudioEditTimeSec(_endSec)}";
 
     return Column(
       children: [
@@ -387,28 +460,15 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
               const SizedBox(height: 12),
               _sectionCard(
                 scheme,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(l10n.audioEditTrimTitle, style: theme.textTheme.titleSmall),
-                    const SizedBox(height: 6),
-                    Text(
-                      l10n.audioEditTrimRange(range),
-                      style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(height: 12),
-                    _trimRow(l10n, theme, scheme, l10n.audioEditTrimStart, _nudgeTrimStart),
-                    const SizedBox(height: 8),
-                    _trimRow(l10n, theme, scheme, l10n.audioEditTrimEnd, _nudgeTrimEnd),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: TextButton(
-                        onPressed: _resetTrim,
-                        child: Text(l10n.audioEditResetTrim),
-                      ),
-                    ),
-                  ],
+                child: AudioTrimEditor(
+                  durationSec: _durationSec,
+                  startSec: _startSec,
+                  endSec: _endSec,
+                  onChanged: (s, e) => setState(() {
+                    _startSec = s;
+                    _endSec = e;
+                  }),
+                  onReset: _resetTrim,
                 ),
               ),
               const SizedBox(height: 12),
@@ -514,58 +574,20 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
           children: [
             Icon(LucideIcons.audioLines, size: 40, color: scheme.primary.withValues(alpha: 0.85)),
             const SizedBox(height: 12),
-            if (_previewError)
-              Text(
-                l10n.editAudioSaveFileFirst,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall?.copyWith(color: scheme.error),
-              )
-            else ...[
-              IconButton.filled(
-                onPressed: c != null && c.value.isInitialized ? _togglePlay : null,
-                icon: Icon(c?.value.isPlaying == true ? LucideIcons.pause : LucideIcons.play),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "${formatAudioEditTimeSec(_positionSec)} / ${formatAudioEditTimeSec(dur)}",
-                style: theme.textTheme.labelLarge,
-              ),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(value: progress),
-            ],
+            IconButton.filled(
+              onPressed: c != null && c.value.isInitialized ? _togglePlay : null,
+              icon: Icon(c?.value.isPlaying == true ? LucideIcons.pause : LucideIcons.play),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "${formatAudioEditTimeSec(_positionSec)} / ${formatAudioEditTimeSec(dur)}",
+              style: theme.textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(value: progress),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _trimRow(
-    AppLocalizations l10n,
-    ThemeData theme,
-    ColorScheme scheme,
-    String label,
-    void Function(double) nudge,
-  ) {
-    return Row(
-      children: [
-        Expanded(child: Text(label, style: theme.textTheme.labelLarge)),
-        IconButton(
-          tooltip: "-${kAudioEditTrimNudgeSec}s",
-          onPressed: () {
-            HapticFeedback.selectionClick();
-            nudge(-kAudioEditTrimNudgeSec);
-          },
-          icon: const Icon(LucideIcons.minus),
-        ),
-        IconButton(
-          tooltip: "+${kAudioEditTrimNudgeSec}s",
-          onPressed: () {
-            HapticFeedback.selectionClick();
-            nudge(kAudioEditTrimNudgeSec);
-          },
-          icon: const Icon(LucideIcons.plus),
-        ),
-      ],
     );
   }
 
@@ -580,61 +602,38 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
     );
   }
 
-  Widget _workingBody(AppLocalizations l10n, ThemeData theme, ColorScheme scheme) {
-    final pct = _latestJob?.progressPercent ?? 0;
+  Widget _workingBody(AppLocalizations l10n) {
+    final pct = _latestJob?.progressPercent;
     if (_downloadingFile) {
-      return const Center(child: CircularProgressIndicator());
+      return EditWorkingPanel(
+        headline: l10n.editProcessingDownloading,
+        subtitle: l10n.editProcessingSubtitle,
+        progressPercent: null,
+        showKeepOpenHint: true,
+        leadingIcon: LucideIcons.audioLines,
+      );
     }
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text(l10n.editProcessingTitle, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(l10n.progressPercent(pct)),
-            const SizedBox(height: 16),
-            KeepAppOpenHint(l10n.keepAppOpenUntilDownloadFinished),
-          ],
-        ),
-      ),
+    return EditWorkingPanel(
+      headline: l10n.audioEditCreatingTitle,
+      subtitle: l10n.audioEditCreatingKeepOpen,
+      progressPercent: pct,
+      leadingIcon: LucideIcons.audioLines,
     );
   }
 
-  Widget _doneBody(AppLocalizations l10n, ThemeData theme, ColorScheme scheme) {
-    final path = _outputPath;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(LucideIcons.circleCheck, size: 48, color: scheme.primary),
-            const SizedBox(height: 12),
-            Text(l10n.audioEditReadyTitle, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 20),
-            if (path != null) ...[
-              FilledButton(
-                onPressed: () => OpenFilex.open(path),
-                child: Text(l10n.downloadOpen),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton(
-                onPressed: () => Share.shareXFiles([XFile(path)]),
-                child: Text(l10n.downloadShare),
-              ),
-            ],
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(l10n.editDoneButton),
-            ),
-          ],
-        ),
-      ),
+  Widget _doneBody(AppLocalizations l10n) {
+    final savedPath = _friendlySavedPath(l10n);
+    return EditDoneBody(
+      title: l10n.audioEditReadyTitle,
+      subtitle: "${l10n.audioEditReadySubtitle}\n\n${l10n.audioEditSavedLocationLine(savedPath)}",
+      onOpen: _openOutput,
+      onShare: _shareOutput,
+      onSave: _saveToDownloadsFolder,
+      openLabel: l10n.editExportOpen,
+      shareLabel: l10n.editExportShare,
+      saveLabel: l10n.editExportSave,
+      doneLabel: l10n.editDoneButton,
+      successIcon: LucideIcons.circleCheck,
     );
   }
 
@@ -645,25 +644,30 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
         : (_latestJob?.errorMessage?.trim().isNotEmpty == true
             ? _latestJob!.errorMessage!
             : l10n.audioEditFailed);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(LucideIcons.circleAlert, size: 48, color: scheme.error),
-            const SizedBox(height: 12),
-            Text(msg, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: () => setState(() {
-                _phase = _FlowPhase.composing;
-                _lastError = null;
-              }),
-              child: Text(l10n.editTryAgain),
-            ),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Spacer(),
+          Icon(LucideIcons.triangleAlert, size: 64, color: scheme.error),
+          const SizedBox(height: 20),
+          Text(
+            l10n.editFailedTitle,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 12),
+          Text(msg, textAlign: TextAlign.center),
+          const Spacer(),
+          FilledButton(
+            onPressed: () => setState(() {
+              _phase = _FlowPhase.composing;
+              _lastError = null;
+            }),
+            child: Text(l10n.editTryAgain),
+          ),
+        ],
       ),
     );
   }

@@ -17,11 +17,20 @@ Future<void> launchQuickEditForJob(
 }) async {
   if (!context.mounted) return;
   if (prefetchDetail != null && downloadDetailIsAudioOnly(prefetchDetail)) {
-    await launchAudioEditForJob(context, jobId: jobId);
+    await launchAudioEditForJob(
+      context,
+      jobId: jobId,
+      prefetchedDetail: prefetchDetail,
+      prefetchedItem: prefetchListItem,
+    );
     return;
   }
   if (prefetchListItem != null && downloadItemIsAudioOnly(prefetchListItem)) {
-    await launchAudioEditForJob(context, jobId: jobId);
+    await launchAudioEditForJob(
+      context,
+      jobId: jobId,
+      prefetchedItem: prefetchListItem,
+    );
     return;
   }
   if (quickEditServerSourceLikelyExpired(serverRetentionReferenceUtc)) {

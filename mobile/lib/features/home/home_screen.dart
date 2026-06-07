@@ -162,7 +162,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
   }
 
-  Future<void> _openLocal(String jobId) async {
+  Future<void> _openLocal(String jobId, {required bool isAudioOnly}) async {
+    if (isAudioOnly) {
+      await openAudioDownloadIfLocal(context, jobId: jobId, isAudioOnly: true);
+      return;
+    }
     await openSavedDownload(
       context: context,
       session: AppScope.read(context).session,
@@ -170,7 +174,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Future<void> _shareLocal(String jobId, String title) async {
+  Future<void> _shareLocal(String jobId, String title, {required bool isAudioOnly}) async {
+    if (isAudioOnly) {
+      await shareAudioDownloadIfLocal(
+        context,
+        jobId: jobId,
+        isAudioOnly: true,
+        title: title,
+      );
+      return;
+    }
     await shareSavedDownload(
       context: context,
       session: AppScope.read(context).session,
@@ -393,6 +406,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               await launchAudioEditForJob(
                                 context,
                                 jobId: job.id,
+                                prefetchedItem: job,
                               );
                             } else {
                               await launchQuickEditForJob(
@@ -414,8 +428,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     },
                     onRetry: (job.status == "failed" || job.status == "canceled") ? () => _retry(job) : null,
                     onDelete: () => _confirmDelete(job),
-                    onOpenLocal: exists ? () => _openLocal(job.id) : null,
-                    onShareLocal: exists ? () => _shareLocal(job.id, job.title) : null,
+                    onOpenLocal: exists
+                        ? () => _openLocal(job.id, isAudioOnly: downloadItemIsAudioOnly(job))
+                        : null,
+                    onShareLocal: exists
+                        ? () => _shareLocal(
+                              job.id,
+                              job.title,
+                              isAudioOnly: downloadItemIsAudioOnly(job),
+                            )
+                        : null,
                   );
                 },
               ),

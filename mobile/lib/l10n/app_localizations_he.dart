@@ -1585,6 +1585,49 @@ class AppLocalizationsHe extends AppLocalizations {
   String get audioEditFailed => 'עריכת האודיו נכשלה';
 
   @override
+  String get audioEditRequiresSaveTitle => 'שמור קודם את הקובץ';
+
+  @override
+  String get audioEditRequiresSaveBody =>
+      'כדי לערוך אודיו, צריך קודם לשמור את הקובץ במכשיר.';
+
+  @override
+  String get audioEditRequiresSaveNow => 'שמור עכשיו';
+
+  @override
+  String get audioEditRequiresSaveCancel => 'ביטול';
+
+  @override
+  String get audioEditCreatingTitle => 'יוצר את עריכת האודיו...';
+
+  @override
+  String get audioEditCreatingKeepOpen =>
+      'מומלץ להשאיר את האפליקציה פתוחה עד סיום הפעולה.';
+
+  @override
+  String get audioEditReadySubtitle => 'הקובץ הערוך מוכן ונשמר במכשיר.';
+
+  @override
+  String get audioEditSavedOnDevice => 'הקובץ נשמר במכשיר';
+
+  @override
+  String audioEditSavedLocationLine(String path) {
+    return 'הקובץ נשמר בתיקייה:\n$path';
+  }
+
+  @override
+  String get audioEditMoveStartHint => 'הזז את נקודת ההתחלה';
+
+  @override
+  String get audioEditMoveEndHint => 'הזז את נקודת הסיום';
+
+  @override
+  String get editsFolderName => 'עריכות';
+
+  @override
+  String get editsSummaryTrimmed => 'חיתוך';
+
+  @override
   String get editsAudioBadge => 'עריכת אודיו';
 
   @override

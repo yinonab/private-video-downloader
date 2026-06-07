@@ -587,6 +587,24 @@
   "audioEditChooseOneChange": "בחר לפחות שינוי אחד כדי ליצור עריכה",
   "audioEditReadyTitle": "עריכת אודיו מוכנה",
   "audioEditFailed": "עריכת האודיו נכשלה",
+  "audioEditRequiresSaveTitle": "שמור קודם את הקובץ",
+  "audioEditRequiresSaveBody": "כדי לערוך אודיו, צריך קודם לשמור את הקובץ במכשיר.",
+  "audioEditRequiresSaveNow": "שמור עכשיו",
+  "audioEditRequiresSaveCancel": "ביטול",
+  "audioEditCreatingTitle": "יוצר את עריכת האודיו...",
+  "audioEditCreatingKeepOpen": "מומלץ להשאיר את האפליקציה פתוחה עד סיום הפעולה.",
+  "audioEditReadySubtitle": "הקובץ הערוך מוכן ונשמר במכשיר.",
+  "audioEditSavedOnDevice": "הקובץ נשמר במכשיר",
+  "audioEditSavedLocationLine": "הקובץ נשמר בתיקייה:\n{path}",
+  "@audioEditSavedLocationLine": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
+  "audioEditMoveStartHint": "הזז את נקודת ההתחלה",
+  "audioEditMoveEndHint": "הזז את נקודת הסיום",
+  "editsFolderName": "עריכות",
+  "editsSummaryTrimmed": "חיתוך",
   "editsAudioBadge": "עריכת אודיו",
   "editsMp3Badge": "MP3",
   "errorCaptionsWordHighlightNotSupported": "אפשרות הדגשת המילה הזו לא נתמכת.",

@@ -3026,6 +3026,84 @@ abstract class AppLocalizations {
   /// **'Audio editing failed'**
   String get audioEditFailed;
 
+  /// No description provided for @audioEditRequiresSaveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save file first'**
+  String get audioEditRequiresSaveTitle;
+
+  /// No description provided for @audioEditRequiresSaveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'To edit audio, save the file to your device first.'**
+  String get audioEditRequiresSaveBody;
+
+  /// No description provided for @audioEditRequiresSaveNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Save now'**
+  String get audioEditRequiresSaveNow;
+
+  /// No description provided for @audioEditRequiresSaveCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get audioEditRequiresSaveCancel;
+
+  /// No description provided for @audioEditCreatingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating audio edit...'**
+  String get audioEditCreatingTitle;
+
+  /// No description provided for @audioEditCreatingKeepOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the app open until the edit is complete.'**
+  String get audioEditCreatingKeepOpen;
+
+  /// No description provided for @audioEditReadySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your edited audio is ready and saved on your device.'**
+  String get audioEditReadySubtitle;
+
+  /// No description provided for @audioEditSavedOnDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'The file was saved on your device'**
+  String get audioEditSavedOnDevice;
+
+  /// No description provided for @audioEditSavedLocationLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to:\n{path}'**
+  String audioEditSavedLocationLine(String path);
+
+  /// No description provided for @audioEditMoveStartHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Move start point'**
+  String get audioEditMoveStartHint;
+
+  /// No description provided for @audioEditMoveEndHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Move end point'**
+  String get audioEditMoveEndHint;
+
+  /// No description provided for @editsFolderName.
+  ///
+  /// In en, this message translates to:
+  /// **'Edits'**
+  String get editsFolderName;
+
+  /// No description provided for @editsSummaryTrimmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Trimmed'**
+  String get editsSummaryTrimmed;
+
   /// No description provided for @editsAudioBadge.
   ///
   /// In en, this message translates to:

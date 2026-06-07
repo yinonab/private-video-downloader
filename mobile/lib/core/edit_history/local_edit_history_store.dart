@@ -105,6 +105,9 @@ final class LocalEditHistoryStore extends ChangeNotifier {
     String? sourceDisplayFilename,
     String? platform,
     String? outputMediaKind,
+    bool? audioTrimApplied,
+    double? audioSpeedFactor,
+    String? audioQualityPreset,
   }) async {
     final id = editJobId.trim();
     final path = localFilePath.trim();
@@ -150,6 +153,9 @@ final class LocalEditHistoryStore extends ChangeNotifier {
       publishedToPublicDownloads: published,
       outputMediaKind: outputMediaKind ??
           (path.toLowerCase().endsWith(".mp3") ? "audio" : "video"),
+      audioTrimApplied: audioTrimApplied,
+      audioSpeedFactor: audioSpeedFactor,
+      audioQualityPreset: audioQualityPreset,
     );
 
     if (existingIdx >= 0) {

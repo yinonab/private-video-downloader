@@ -16,6 +16,8 @@ import "../../core/edit_history/local_edit_history_store.dart";
 import "../../core/edit_history/local_edit_history_time_filter.dart";
 import "../../core/edit_history/local_edit_history_title.dart";
 import "../../core/l10n/context_l10n.dart";
+import "../../core/edit_history/audio_edit_summary.dart";
+import "../../core/media/media_mime.dart";
 import "../../core/l10n/media_export_display_path.dart";
 import "../../core/theme/linkclip_palette.dart";
 import "../../l10n/app_localizations.dart";
@@ -295,11 +297,15 @@ class _EditHistoryCard extends StatelessWidget {
     final chips = <Widget>[];
     if (item.isAudioOutput) {
       chips.add(_chip(theme, scheme, l10n.editsMp3Badge));
-      chips.add(_chip(theme, scheme, l10n.editsAudioBadge));
-    }
-    final src = _sourceLabel(l10n, item);
-    if (src.isNotEmpty) {
-      chips.add(_chip(theme, scheme, src));
+      final summary = audioEditSummaryLine(l10n, item);
+      if (summary != null && summary.isNotEmpty) {
+        chips.add(_chip(theme, scheme, summary));
+      }
+    } else {
+      final src = _sourceLabel(l10n, item);
+      if (src.isNotEmpty) {
+        chips.add(_chip(theme, scheme, src));
+      }
     }
     final sz = _HomeEditsTabState._fmtBytes(row.resolvedSizeBytes ?? item.sizeBytes);
     if (sz.isNotEmpty) chips.add(_chip(theme, scheme, sz));
@@ -497,8 +503,9 @@ class _EditHistoryCard extends StatelessWidget {
       return;
     }
     final name = p.basename(path);
+    final mime = mimeTypeForMediaPath(path);
     try {
-      final xf = XFile(path, mimeType: "video/mp4", name: name);
+      final xf = XFile(path, mimeType: mime, name: name);
       final result = await Share.shareXFiles([xf]);
       if (!context.mounted) return;
       if (result.status == ShareResultStatus.unavailable) {

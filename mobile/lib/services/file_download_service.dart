@@ -353,8 +353,19 @@ final class FileDownloadService {
       base = "edit_$editJobId.mp4";
     }
     base = FileUtils.sanitizeFileName(base);
-    if (!base.toLowerCase().endsWith(".mp4")) {
-      base = FileUtils.sanitizeFileName("${p.basenameWithoutExtension(base)}.mp4");
+    final lower = base.toLowerCase();
+    final String ext;
+    if (lower.endsWith(".mp3")) {
+      ext = ".mp3";
+    } else if (lower.endsWith(".mp4")) {
+      ext = ".mp4";
+    } else if (lower.endsWith(".m4a")) {
+      ext = ".m4a";
+    } else {
+      ext = ".mp4";
+    }
+    if (!lower.endsWith(ext)) {
+      base = FileUtils.sanitizeFileName("${p.basenameWithoutExtension(base)}$ext");
     }
 
     final docs = await getApplicationDocumentsDirectory();

@@ -1603,6 +1603,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get audioEditFailed => 'Audio editing failed';
 
   @override
+  String get audioEditRequiresSaveTitle => 'Save file first';
+
+  @override
+  String get audioEditRequiresSaveBody =>
+      'To edit audio, save the file to your device first.';
+
+  @override
+  String get audioEditRequiresSaveNow => 'Save now';
+
+  @override
+  String get audioEditRequiresSaveCancel => 'Cancel';
+
+  @override
+  String get audioEditCreatingTitle => 'Creating audio edit...';
+
+  @override
+  String get audioEditCreatingKeepOpen =>
+      'Keep the app open until the edit is complete.';
+
+  @override
+  String get audioEditReadySubtitle =>
+      'Your edited audio is ready and saved on your device.';
+
+  @override
+  String get audioEditSavedOnDevice => 'The file was saved on your device';
+
+  @override
+  String audioEditSavedLocationLine(String path) {
+    return 'Saved to:\n$path';
+  }
+
+  @override
+  String get audioEditMoveStartHint => 'Move start point';
+
+  @override
+  String get audioEditMoveEndHint => 'Move end point';
+
+  @override
+  String get editsFolderName => 'Edits';
+
+  @override
+  String get editsSummaryTrimmed => 'Trimmed';
+
+  @override
   String get editsAudioBadge => 'Audio edit';
 
   @override

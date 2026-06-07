@@ -18,6 +18,9 @@ final class LocalEditHistoryItem {
     this.thumbnailPath,
     this.publishedToPublicDownloads = false,
     this.outputMediaKind,
+    this.audioTrimApplied,
+    this.audioSpeedFactor,
+    this.audioQualityPreset,
   });
 
   factory LocalEditHistoryItem.fromJson(Map<String, dynamic> m) {
@@ -40,7 +43,16 @@ final class LocalEditHistoryItem {
       thumbnailPath: m["thumbnailPath"]?.toString(),
       publishedToPublicDownloads: m["publishedToPublicDownloads"] == true,
       outputMediaKind: m["outputMediaKind"]?.toString(),
+      audioTrimApplied: m["audioTrimApplied"] == true,
+      audioSpeedFactor: _parseDouble(m["audioSpeedFactor"]),
+      audioQualityPreset: m["audioQualityPreset"]?.toString(),
     );
+  }
+
+  static double? _parseDouble(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString());
   }
 
   final String editJobId;
@@ -74,6 +86,10 @@ final class LocalEditHistoryItem {
   /// `"audio"` for MP3 edits; `"video"` or null for MP4.
   final String? outputMediaKind;
 
+  final bool? audioTrimApplied;
+  final double? audioSpeedFactor;
+  final String? audioQualityPreset;
+
   bool get isAudioOutput =>
       outputMediaKind == "audio" ||
       localFilePath.toLowerCase().endsWith(".mp3") ||
@@ -96,6 +112,9 @@ final class LocalEditHistoryItem {
         if (thumbnailPath != null) "thumbnailPath": thumbnailPath,
         "publishedToPublicDownloads": publishedToPublicDownloads,
         if (outputMediaKind != null) "outputMediaKind": outputMediaKind,
+        if (audioTrimApplied == true) "audioTrimApplied": true,
+        if (audioSpeedFactor != null) "audioSpeedFactor": audioSpeedFactor,
+        if (audioQualityPreset != null) "audioQualityPreset": audioQualityPreset,
       };
 
   static int? _parseInt(dynamic v) {

@@ -587,6 +587,24 @@
   "audioEditChooseOneChange": "Choose at least one change to create an edit",
   "audioEditReadyTitle": "Ready to save",
   "audioEditFailed": "Audio editing failed",
+  "audioEditRequiresSaveTitle": "Save file first",
+  "audioEditRequiresSaveBody": "To edit audio, save the file to your device first.",
+  "audioEditRequiresSaveNow": "Save now",
+  "audioEditRequiresSaveCancel": "Cancel",
+  "audioEditCreatingTitle": "Creating audio edit...",
+  "audioEditCreatingKeepOpen": "Keep the app open until the edit is complete.",
+  "audioEditReadySubtitle": "Your edited audio is ready and saved on your device.",
+  "audioEditSavedOnDevice": "The file was saved on your device",
+  "audioEditSavedLocationLine": "Saved to:\n{path}",
+  "@audioEditSavedLocationLine": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
+  "audioEditMoveStartHint": "Move start point",
+  "audioEditMoveEndHint": "Move end point",
+  "editsFolderName": "Edits",
+  "editsSummaryTrimmed": "Trimmed",
   "editsAudioBadge": "Audio edit",
   "editsMp3Badge": "MP3",
   "errorCaptionsWordHighlightNotSupported": "This word highlight option is not supported.",
