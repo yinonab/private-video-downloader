@@ -3098,6 +3098,36 @@ abstract class AppLocalizations {
   /// **'Move end point'**
   String get audioEditMoveEndHint;
 
+  /// No description provided for @audioEditPlaySelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Play selection'**
+  String get audioEditPlaySelection;
+
+  /// No description provided for @audioEditTrimStartMarkerSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Start trim point'**
+  String get audioEditTrimStartMarkerSemantics;
+
+  /// No description provided for @audioEditTrimEndMarkerSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'End trim point'**
+  String get audioEditTrimEndMarkerSemantics;
+
+  /// No description provided for @audioEditPlaySelectionSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Play selected segment'**
+  String get audioEditPlaySelectionSemantics;
+
+  /// No description provided for @audioEditPreviewEndingSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview ending'**
+  String get audioEditPreviewEndingSemantics;
+
   /// No description provided for @editsFolderName.
   ///
   /// In en, this message translates to:

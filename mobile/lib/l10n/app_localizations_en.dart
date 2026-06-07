@@ -1644,6 +1644,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get audioEditMoveEndHint => 'Move end point';
 
   @override
+  String get audioEditPlaySelection => 'Play selection';
+
+  @override
+  String get audioEditTrimStartMarkerSemantics => 'Start trim point';
+
+  @override
+  String get audioEditTrimEndMarkerSemantics => 'End trim point';
+
+  @override
+  String get audioEditPlaySelectionSemantics => 'Play selected segment';
+
+  @override
+  String get audioEditPreviewEndingSemantics => 'Preview ending';
+
+  @override
   String get editsFolderName => 'Edits';
 
   @override

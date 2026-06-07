@@ -1625,6 +1625,21 @@ class AppLocalizationsHe extends AppLocalizations {
   String get audioEditMoveEndHint => 'הזז את נקודת הסיום';
 
   @override
+  String get audioEditPlaySelection => 'נגן מקטע';
+
+  @override
+  String get audioEditTrimStartMarkerSemantics => 'נקודת התחלה';
+
+  @override
+  String get audioEditTrimEndMarkerSemantics => 'נקודת סיום';
+
+  @override
+  String get audioEditPlaySelectionSemantics => 'נגן את המקטע שנבחר';
+
+  @override
+  String get audioEditPreviewEndingSemantics => 'בדוק את הסיום';
+
+  @override
   String get editsFolderName => 'עריכות';
 
   @override

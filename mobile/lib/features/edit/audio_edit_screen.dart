@@ -18,6 +18,7 @@ import "../../core/models/download_models.dart";
 import "../../core/models/quick_edit_models.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
 import "../../l10n/app_localizations.dart";
+import "widgets/audio_preview_timeline.dart";
 import "widgets/audio_trim_editor.dart";
 import "widgets/edit_done_body.dart";
 import "widgets/edit_working_panel.dart";
@@ -56,6 +57,7 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
   String? _outputPath;
   bool _downloadingFile = false;
   bool _loading = true;
+  bool _stopAtTrimEnd = false;
 
   @override
   void initState() {
@@ -132,6 +134,14 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
     }
   }
 
+  double get _effectiveDuration {
+    final c = _player;
+    final playerDur = c != null && c.value.isInitialized
+        ? c.value.duration.inMilliseconds / 1000.0
+        : 0.0;
+    return _durationSec > 0 ? _durationSec : (playerDur > 0 ? playerDur : 1.0);
+  }
+
   void _onPlayerTick() {
     final c = _player;
     if (c == null || !c.value.isInitialized || !mounted) return;
@@ -144,9 +154,9 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
         if (_endSec > dur) _endSec = dur;
       }
     });
-    if (pos >= _endSec - 0.05 && c.value.isPlaying) {
+    if (_stopAtTrimEnd && pos >= _endSec - 0.05 && c.value.isPlaying) {
+      _stopAtTrimEnd = false;
       unawaited(c.pause());
-      unawaited(c.seekTo(Duration(milliseconds: (_startSec * 1000).round())));
     }
   }
 
@@ -171,15 +181,59 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
     });
   }
 
+  Future<void> _seekPlayerTo(double sec, {bool pause = false}) async {
+    final c = _player;
+    if (c == null || !c.value.isInitialized) return;
+    final t = sec.clamp(0.0, _effectiveDuration);
+    await c.seekTo(Duration(milliseconds: (t * 1000).round()));
+    if (pause) await c.pause();
+    if (mounted) setState(() => _positionSec = t);
+  }
+
+  Future<void> _playFrom(double sec, {required bool stopAtTrimEnd}) async {
+    final c = _player;
+    if (c == null || !c.value.isInitialized) return;
+    _stopAtTrimEnd = stopAtTrimEnd;
+    await _seekPlayerTo(sec);
+    await c.play();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _tapStartMarker() async {
+    final c = _player;
+    if (c == null || !c.value.isInitialized) return;
+    _stopAtTrimEnd = true;
+    await _seekPlayerTo(_startSec);
+    await c.play();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _tapEndMarker() async {
+    final previewFrom = (_endSec - 2.0).clamp(_startSec, _endSec);
+    await _playFrom(previewFrom, stopAtTrimEnd: true);
+  }
+
+  Future<void> _playSelection() async {
+    await _playFrom(_startSec, stopAtTrimEnd: true);
+  }
+
+  Future<void> _onTimelineSeek(double sec) async {
+    _stopAtTrimEnd = false;
+    await _seekPlayerTo(sec);
+  }
+
   Future<void> _togglePlay() async {
     final c = _player;
     if (c == null || !c.value.isInitialized) return;
     if (c.value.isPlaying) {
+      _stopAtTrimEnd = false;
       await c.pause();
     } else {
       if (_positionSec < _startSec || _positionSec >= _endSec - 0.05) {
-        await c.seekTo(Duration(milliseconds: (_startSec * 1000).round()));
+        await _playFrom(_startSec, stopAtTrimEnd: true);
+        return;
       }
+      _stopAtTrimEnd = true;
       await c.play();
     }
     if (mounted) setState(() {});
@@ -563,12 +617,9 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
 
   Widget _previewBlock(AppLocalizations l10n, ThemeData theme, ColorScheme scheme) {
     final c = _player;
-    final playerDur = c != null && c.value.isInitialized
-        ? c.value.duration.inMilliseconds / 1000.0
-        : 0.0;
-    final dur = _durationSec > 0 ? _durationSec : (playerDur > 0 ? playerDur : 1.0);
-    final progress = dur > 0 ? (_positionSec / dur).clamp(0.0, 1.0) : 0.0;
+    final dur = _effectiveDuration;
     final timeLine = "${formatAudioEditTimeSec(_positionSec)} / ${formatAudioEditTimeSec(dur)}";
+    final playerReady = c != null && c.value.isInitialized;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -576,41 +627,63 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
-              LucideIcons.audioLines,
-              size: 28,
-              color: scheme.primary.withValues(alpha: 0.82),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      IconButton.filled(
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                        onPressed: c != null && c.value.isInitialized ? _togglePlay : null,
-                        icon: Icon(
-                          c?.value.isPlaying == true ? LucideIcons.pause : LucideIcons.play,
-                          size: 20,
-                        ),
-                      ),
-                      const Spacer(),
-                      Directionality(
-                        textDirection: TextDirection.ltr,
-                        child: Text(timeLine, style: theme.textTheme.labelMedium),
-                      ),
-                    ],
+            Row(
+              children: [
+                IconButton.filled(
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  onPressed: playerReady ? _togglePlay : null,
+                  icon: Icon(
+                    c?.value.isPlaying == true ? LucideIcons.pause : LucideIcons.play,
+                    size: 20,
                   ),
-                  const SizedBox(height: 6),
-                  LinearProgressIndicator(value: progress, minHeight: 4),
-                ],
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  LucideIcons.audioLines,
+                  size: 20,
+                  color: scheme.primary.withValues(alpha: 0.75),
+                ),
+                const Spacer(),
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(timeLine, style: theme.textTheme.labelMedium),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            AudioPreviewTimeline(
+              l10n: l10n,
+              durationSec: dur,
+              startSec: _startSec,
+              endSec: _endSec,
+              positionSec: _positionSec,
+              onSeek: playerReady ? _onTimelineSeek : (_) {},
+              onTapStartMarker: playerReady ? () => unawaited(_tapStartMarker()) : () {},
+              onTapEndMarker: playerReady ? () => unawaited(_tapEndMarker()) : () {},
+            ),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Semantics(
+                button: true,
+                label: l10n.audioEditPlaySelectionSemantics,
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: playerReady ? () => unawaited(_playSelection()) : null,
+                  icon: Icon(LucideIcons.play, size: 16, color: scheme.primary),
+                  label: Text(l10n.audioEditPlaySelection),
+                ),
               ),
             ),
           ],
