@@ -119,7 +119,7 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
       final dur = c.value.duration.inMilliseconds / 1000.0;
       setState(() {
         _player = c;
-        if (dur > 0.5) {
+        if (dur > 0) {
           _durationSec = dur;
           _endSec = dur;
         }
@@ -139,7 +139,7 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
     final dur = c.value.duration.inMilliseconds / 1000.0;
     setState(() {
       _positionSec = pos;
-      if (dur > 0.5 && (_durationSec - dur).abs() > 0.25) {
+      if (dur > 0 && (_durationSec <= 0 || (_durationSec - dur).abs() > 0.25)) {
         _durationSec = dur;
         if (_endSec > dur) _endSec = dur;
       }
@@ -477,8 +477,16 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(l10n.editSpeedSectionTitle, style: theme.textTheme.titleSmall),
-                    const SizedBox(height: 10),
+                    Text(
+                      l10n.audioEditSpeedAndQualityTitle,
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      l10n.editSpeedSectionTitle,
+                      style: theme.textTheme.titleSmall?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -487,24 +495,19 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
                         final label = s == AudioEditSpeedFactor.x1
                             ? "1x"
                             : "${s.factor}x".replaceAll(".0", "");
-                        return ChoiceChip(
-                          label: Text(label),
+                        return _AudioSpeedChip(
+                          label: label,
                           selected: selected,
-                          onSelected: (_) => setState(() => _speed = s),
+                          onTap: () => setState(() => _speed = s),
                         );
                       }).toList(),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              _sectionCard(
-                scheme,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(l10n.audioEditQualityTitle, style: theme.textTheme.titleSmall),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 16),
+                    Text(
+                      l10n.audioEditQualityTitle,
+                      style: theme.textTheme.titleSmall?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 8),
                     SegmentedButton<AudioEditQuality>(
                       segments: [
                         ButtonSegment(
@@ -560,31 +563,56 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
 
   Widget _previewBlock(AppLocalizations l10n, ThemeData theme, ColorScheme scheme) {
     final c = _player;
-    final dur = _durationSec > 0 ? _durationSec : 1.0;
+    final playerDur = c != null && c.value.isInitialized
+        ? c.value.duration.inMilliseconds / 1000.0
+        : 0.0;
+    final dur = _durationSec > 0 ? _durationSec : (playerDur > 0 ? playerDur : 1.0);
     final progress = dur > 0 ? (_positionSec / dur).clamp(0.0, 1.0) : 0.0;
+    final timeLine = "${formatAudioEditTimeSec(_positionSec)} / ${formatAudioEditTimeSec(dur)}";
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(14),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
           children: [
-            Icon(LucideIcons.audioLines, size: 40, color: scheme.primary.withValues(alpha: 0.85)),
-            const SizedBox(height: 12),
-            IconButton.filled(
-              onPressed: c != null && c.value.isInitialized ? _togglePlay : null,
-              icon: Icon(c?.value.isPlaying == true ? LucideIcons.pause : LucideIcons.play),
+            Icon(
+              LucideIcons.audioLines,
+              size: 28,
+              color: scheme.primary.withValues(alpha: 0.82),
             ),
-            const SizedBox(height: 8),
-            Text(
-              "${formatAudioEditTimeSec(_positionSec)} / ${formatAudioEditTimeSec(dur)}",
-              style: theme.textTheme.labelLarge,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      IconButton.filled(
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                        onPressed: c != null && c.value.isInitialized ? _togglePlay : null,
+                        icon: Icon(
+                          c?.value.isPlaying == true ? LucideIcons.pause : LucideIcons.play,
+                          size: 20,
+                        ),
+                      ),
+                      const Spacer(),
+                      Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Text(timeLine, style: theme.textTheme.labelMedium),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  LinearProgressIndicator(value: progress, minHeight: 4),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: progress),
           ],
         ),
       ),
@@ -668,6 +696,56 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
             child: Text(l10n.editTryAgain),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AudioSpeedChip extends StatelessWidget {
+  const _AudioSpeedChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+    final mutedBlue = scheme.primary.withValues(alpha: dark ? 0.42 : 0.72);
+    final borderColor =
+        selected ? mutedBlue : scheme.outline.withValues(alpha: 0.32);
+    final bg = selected
+        ? scheme.primary.withValues(alpha: dark ? 0.12 : 0.08)
+        : scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.38 : 0.5);
+
+    return Material(
+      color: bg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: borderColor, width: selected ? 1.2 : 1),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface.withValues(alpha: 0.93),
+              letterSpacing: 0.1,
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -582,6 +582,7 @@
   "audioEditQualityStandard": "Standard",
   "audioEditQualityHigh": "High",
   "audioEditQualityBest": "Best",
+  "audioEditSpeedAndQualityTitle": "Speed & quality",
   "audioEditCreate": "Create audio edit",
   "audioEditNoChangesYet": "No audio changes yet",
   "audioEditChooseOneChange": "Choose at least one change to create an edit",

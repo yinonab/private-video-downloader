@@ -582,6 +582,7 @@
   "audioEditQualityStandard": "רגילה",
   "audioEditQualityHigh": "גבוהה",
   "audioEditQualityBest": "מיטבית",
+  "audioEditSpeedAndQualityTitle": "מהירות ואיכות",
   "audioEditCreate": "צור עריכת אודיו",
   "audioEditNoChangesYet": "עדיין אין שינוי באודיו",
   "audioEditChooseOneChange": "בחר לפחות שינוי אחד כדי ליצור עריכה",

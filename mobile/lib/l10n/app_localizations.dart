@@ -2996,6 +2996,12 @@ abstract class AppLocalizations {
   /// **'Best'**
   String get audioEditQualityBest;
 
+  /// No description provided for @audioEditSpeedAndQualityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed & quality'**
+  String get audioEditSpeedAndQualityTitle;
+
   /// No description provided for @audioEditCreate.
   ///
   /// In en, this message translates to:

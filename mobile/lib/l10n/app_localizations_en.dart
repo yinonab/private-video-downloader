@@ -1587,6 +1587,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get audioEditQualityBest => 'Best';
 
   @override
+  String get audioEditSpeedAndQualityTitle => 'Speed & quality';
+
+  @override
   String get audioEditCreate => 'Create audio edit';
 
   @override

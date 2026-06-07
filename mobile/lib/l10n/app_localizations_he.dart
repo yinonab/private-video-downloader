@@ -1570,6 +1570,9 @@ class AppLocalizationsHe extends AppLocalizations {
   String get audioEditQualityBest => 'מיטבית';
 
   @override
+  String get audioEditSpeedAndQualityTitle => 'מהירות ואיכות';
+
+  @override
   String get audioEditCreate => 'צור עריכת אודיו';
 
   @override
