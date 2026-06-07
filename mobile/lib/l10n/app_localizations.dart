@@ -3107,14 +3107,20 @@ abstract class AppLocalizations {
   /// No description provided for @audioEditTrimStartMarkerSemantics.
   ///
   /// In en, this message translates to:
-  /// **'Start trim point'**
+  /// **'Start trim handle'**
   String get audioEditTrimStartMarkerSemantics;
 
   /// No description provided for @audioEditTrimEndMarkerSemantics.
   ///
   /// In en, this message translates to:
-  /// **'End trim point'**
+  /// **'End trim handle'**
   String get audioEditTrimEndMarkerSemantics;
+
+  /// No description provided for @audioEditPlayheadSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback position'**
+  String get audioEditPlayheadSemantics;
 
   /// No description provided for @audioEditPlaySelectionSemantics.
   ///

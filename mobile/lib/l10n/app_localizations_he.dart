@@ -1634,6 +1634,9 @@ class AppLocalizationsHe extends AppLocalizations {
   String get audioEditTrimEndMarkerSemantics => 'נקודת סיום';
 
   @override
+  String get audioEditPlayheadSemantics => 'מיקום השמעה';
+
+  @override
   String get audioEditPlaySelectionSemantics => 'נגן את המקטע שנבחר';
 
   @override

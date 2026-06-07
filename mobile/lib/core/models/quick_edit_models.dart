@@ -1162,6 +1162,23 @@ const double kAudioEditMinTrimSpanSec = 1.0;
 const double kAudioEditTrimNudgeSec = 0.5;
 const AudioEditQuality kAudioEditDefaultQuality = AudioEditQuality.high;
 
+/// Clamps audio trim start/end with minimum span [kAudioEditMinTrimSpanSec].
+(double startSec, double endSec) clampAudioEditTrimRange({
+  required double startSec,
+  required double endSec,
+  required double durationSec,
+}) {
+  final dur = durationSec <= 0 ? 1.0 : durationSec;
+  const minSpan = kAudioEditMinTrimSpanSec;
+  var start = startSec.clamp(0.0, dur - minSpan);
+  var end = endSec.clamp(start + minSpan, dur);
+  if (end - start < minSpan) {
+    end = (start + minSpan).clamp(minSpan, dur);
+    start = (end - minSpan).clamp(0.0, dur - minSpan);
+  }
+  return (start, end);
+}
+
 bool audioEditHasChanges({
   required double durationSec,
   required double trimStartSec,

@@ -1,11 +1,15 @@
 import "dart:math" as math;
 
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 
+import "../../../core/models/quick_edit_models.dart";
 import "../../../l10n/app_localizations.dart";
 
-/// Interactive LTR audio timeline: full track, trim range, playhead, S/E markers.
-class AudioPreviewTimeline extends StatelessWidget {
+enum AudioTimelineTrimHandle { start, end }
+
+/// Primary LTR audio trim timeline: draggable S/E handles, scrub playhead, tap-to-seek.
+class AudioPreviewTimeline extends StatefulWidget {
   const AudioPreviewTimeline({
     super.key,
     required this.l10n,
@@ -13,9 +17,14 @@ class AudioPreviewTimeline extends StatelessWidget {
     required this.startSec,
     required this.endSec,
     required this.positionSec,
+    required this.onTrimChanged,
     required this.onSeek,
+    required this.onScrubStart,
+    required this.onScrubEnd,
     required this.onTapStartMarker,
     required this.onTapEndMarker,
+    this.onTrimHandleActive,
+    this.enabled = true,
   });
 
   final AppLocalizations l10n;
@@ -23,84 +32,274 @@ class AudioPreviewTimeline extends StatelessWidget {
   final double startSec;
   final double endSec;
   final double positionSec;
+  final void Function(double startSec, double endSec) onTrimChanged;
   final ValueChanged<double> onSeek;
+  final VoidCallback onScrubStart;
+  final VoidCallback onScrubEnd;
   final VoidCallback onTapStartMarker;
   final VoidCallback onTapEndMarker;
+  final ValueChanged<AudioTimelineTrimHandle?>? onTrimHandleActive;
+  final bool enabled;
 
-  static const double _trackHeight = 6;
-  static const double _markerSize = 22;
-  static const double _playheadWidth = 2;
-  static const double _verticalPad = 4;
+  @override
+  State<AudioPreviewTimeline> createState() => _AudioPreviewTimelineState();
+}
 
-  double get _dur => durationSec <= 0 ? 1.0 : durationSec;
+enum _Interaction { none, scrub, dragStart, dragEnd }
+
+class _AudioPreviewTimelineState extends State<AudioPreviewTimeline> {
+  static const double _trackHeight = 8;
+  static const double _handleVisual = 26;
+  static const double _handleHit = 44;
+  static const double _playheadVisual = 14;
+  static const double _dragSlop = 10;
+  static const double _trackTopNormal = 38;
+  static const double _trackTopStacked = 50;
+
+  _Interaction _mode = _Interaction.none;
+  double? _pointerDownX;
+  double? _tooltipSec;
+  int _lastHapticSecond = -1;
+  double? _scrubPreviewSec;
+  bool _didDrag = false;
+
+  double get _dur => widget.durationSec <= 0 ? 1.0 : widget.durationSec;
+
+  double _frac(double sec) => (sec / _dur).clamp(0.0, 1.0);
+
+  double _secFromX(double x, double width) =>
+      (x / width).clamp(0.0, 1.0) * _dur;
+
+  void _setActiveHandle(AudioTimelineTrimHandle? handle) {
+    widget.onTrimHandleActive?.call(handle);
+  }
+
+  bool _hitHandle(double dx, double dy, double centerX, double centerY) {
+    return (dx - centerX).abs() <= _handleHit / 2 &&
+        (dy - centerY).abs() <= _handleHit / 2;
+  }
+
+  void _maybeHapticOnSecond(double sec) {
+    final whole = sec.floor();
+    if (whole != _lastHapticSecond) {
+      _lastHapticSecond = whole;
+      HapticFeedback.selectionClick();
+    }
+  }
+
+  void _onPointerDown(PointerDownEvent e, BoxConstraints constraints) {
+    if (!widget.enabled) return;
+    final width = constraints.maxWidth;
+    final local = e.localPosition;
+    final dx = local.dx;
+    final dy = local.dy;
+
+    final startX = _frac(widget.startSec) * width;
+    final endX = _frac(widget.endSec) * width;
+    final stack = (endX - startX).abs() < _handleHit * 1.05;
+    final trackTop = stack ? _trackTopStacked : _trackTopNormal;
+    final startY = stack ? 8.0 : trackTop - _handleVisual / 2 + _trackHeight / 2;
+    final endY = stack ? 8.0 + _handleVisual + 4 : startY;
+
+    _pointerDownX = dx;
+    _lastHapticSecond = -1;
+    _scrubPreviewSec = null;
+    _didDrag = false;
+
+    if (_hitHandle(dx, dy, startX, startY)) {
+      setState(() {
+        _mode = _Interaction.dragStart;
+        _tooltipSec = widget.startSec;
+      });
+      _setActiveHandle(AudioTimelineTrimHandle.start);
+      HapticFeedback.lightImpact();
+      return;
+    }
+    if (_hitHandle(dx, dy, endX, endY)) {
+      setState(() {
+        _mode = _Interaction.dragEnd;
+        _tooltipSec = widget.endSec;
+      });
+      _setActiveHandle(AudioTimelineTrimHandle.end);
+      HapticFeedback.lightImpact();
+      return;
+    }
+
+    setState(() {
+      _mode = _Interaction.scrub;
+      _scrubPreviewSec = _secFromX(dx, width);
+    });
+    widget.onScrubStart();
+    widget.onSeek(_scrubPreviewSec!);
+  }
+
+  void _onPointerMove(PointerMoveEvent e, BoxConstraints constraints) {
+    if (!widget.enabled || _mode == _Interaction.none) return;
+    final width = constraints.maxWidth;
+    final dx = e.localPosition.dx;
+    if (_pointerDownX != null && (dx - _pointerDownX!).abs() > _dragSlop) {
+      _didDrag = true;
+    }
+    final sec = _secFromX(dx, width);
+
+    switch (_mode) {
+      case _Interaction.dragStart:
+        final pair = clampAudioEditTrimRange(
+          startSec: sec,
+          endSec: widget.endSec,
+          durationSec: _dur,
+        );
+        widget.onTrimChanged(pair.$1, pair.$2);
+        _maybeHapticOnSecond(pair.$1);
+        setState(() => _tooltipSec = pair.$1);
+      case _Interaction.dragEnd:
+        final pair = clampAudioEditTrimRange(
+          startSec: widget.startSec,
+          endSec: sec,
+          durationSec: _dur,
+        );
+        widget.onTrimChanged(pair.$1, pair.$2);
+        _maybeHapticOnSecond(pair.$2);
+        setState(() => _tooltipSec = pair.$2);
+      case _Interaction.scrub:
+        setState(() => _scrubPreviewSec = sec);
+        widget.onSeek(sec);
+      case _Interaction.none:
+        break;
+    }
+  }
+
+  void _onPointerEnd() {
+    if (_mode == _Interaction.none) return;
+
+    if (_mode == _Interaction.dragStart && !_didDrag) {
+      widget.onTapStartMarker();
+    } else if (_mode == _Interaction.dragEnd && !_didDrag) {
+      widget.onTapEndMarker();
+    } else if (_mode == _Interaction.dragStart) {
+      widget.onSeek(widget.startSec);
+    } else if (_mode == _Interaction.dragEnd) {
+      widget.onSeek(widget.endSec);
+    }
+
+    if (_mode == _Interaction.scrub) {
+      widget.onScrubEnd();
+    }
+
+    _setActiveHandle(null);
+    setState(() {
+      _mode = _Interaction.none;
+      _pointerDownX = null;
+      _tooltipSec = null;
+      _scrubPreviewSec = null;
+      _didDrag = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final displayPos = _scrubPreviewSec ?? widget.positionSec;
 
     return Directionality(
       textDirection: TextDirection.ltr,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
-          final startX = (startSec / _dur).clamp(0.0, 1.0) * width;
-          final endX = (endSec / _dur).clamp(0.0, 1.0) * width;
-          final playX = (positionSec / _dur).clamp(0.0, 1.0) * width;
-          final markerGap = (endX - startX).abs();
-          final stackMarkers = markerGap < _markerSize + 6;
-          final startMarkerTop = stackMarkers ? _verticalPad : _verticalPad;
-          final endMarkerTop = stackMarkers ? _verticalPad + _markerSize + 2 : _verticalPad;
+          final startX = _frac(widget.startSec) * width;
+          final endX = _frac(widget.endSec) * width;
+          final playX = _frac(displayPos) * width;
+          final stack = (endX - startX).abs() < _handleHit * 1.05;
+          final trackTop = stack ? _trackTopStacked : _trackTopNormal;
+          final totalHeight = stack ? 92.0 : 72.0;
+          final startY = stack ? 8.0 : trackTop - _handleVisual / 2 + _trackHeight / 2;
+          final endY = stack ? 8.0 + _handleVisual + 4 : startY;
+          final draggingStart = _mode == _Interaction.dragStart;
+          final draggingEnd = _mode == _Interaction.dragEnd;
 
           return SizedBox(
-            height: stackMarkers ? 78 : 56,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: (stackMarkers ? 52 : 34) - _trackHeight / 2,
-                  height: _trackHeight,
-                  child: _TimelineTrack(
-                    durationSec: _dur,
-                    startSec: startSec.clamp(0.0, _dur),
-                    endSec: endSec.clamp(0.0, _dur),
-                    positionSec: positionSec.clamp(0.0, _dur),
-                    onSeek: onSeek,
-                  ),
-                ),
-                Positioned(
-                  left: (playX - _playheadWidth / 2).clamp(0.0, width - _playheadWidth),
-                  top: (stackMarkers ? 44 : 26),
-                  bottom: 6,
-                  child: IgnorePointer(
-                    child: Container(
-                      width: _playheadWidth,
-                      decoration: BoxDecoration(
-                        color: scheme.onSurface.withValues(alpha: 0.88),
-                        borderRadius: BorderRadius.circular(999),
+            height: totalHeight,
+            child: Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: (e) => _onPointerDown(e, constraints),
+              onPointerMove: (e) => _onPointerMove(e, constraints),
+              onPointerUp: (_) => _onPointerEnd(),
+              onPointerCancel: (_) => _onPointerEnd(),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: trackTop,
+                    height: _trackHeight,
+                    child: CustomPaint(
+                      painter: _TimelineTrackPainter(
+                        colorScheme: scheme,
+                        durationSec: _dur,
+                        startSec: widget.startSec,
+                        endSec: widget.endSec,
                       ),
                     ),
                   ),
-                ),
-                _MarkerBadge(
-                  label: "S",
-                  semanticsLabel: l10n.audioEditTrimStartMarkerSemantics,
-                  left: (startX - _markerSize / 2).clamp(0.0, width - _markerSize),
-                  top: startMarkerTop,
-                  size: _markerSize,
-                  onTap: onTapStartMarker,
-                ),
-                _MarkerBadge(
-                  label: "E",
-                  semanticsLabel: l10n.audioEditTrimEndMarkerSemantics,
-                  semanticsHint: l10n.audioEditPreviewEndingSemantics,
-                  left: (endX - _markerSize / 2).clamp(0.0, width - _markerSize),
-                  top: endMarkerTop,
-                  size: _markerSize,
-                  onTap: onTapEndMarker,
-                ),
-              ],
+                  Positioned(
+                    left: (playX - _playheadVisual / 2).clamp(0.0, width - _playheadVisual),
+                    top: trackTop + _trackHeight / 2 - _playheadVisual / 2,
+                    child: Semantics(
+                      label: widget.l10n.audioEditPlayheadSemantics,
+                      child: IgnorePointer(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 80),
+                          width: _playheadVisual,
+                          height: _playheadVisual,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: scheme.onSurface,
+                            border: Border.all(color: scheme.surface, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: scheme.shadow.withValues(alpha: 0.2),
+                                blurRadius: 3,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  _TrimHandle(
+                    label: "S",
+                    semanticsLabel: widget.l10n.audioEditTrimStartMarkerSemantics,
+                    centerX: startX,
+                    centerY: startY,
+                    visualSize: _handleVisual,
+                    active: draggingStart,
+                    scheme: scheme,
+                    theme: theme,
+                  ),
+                  _TrimHandle(
+                    label: "E",
+                    semanticsLabel: widget.l10n.audioEditTrimEndMarkerSemantics,
+                    semanticsHint: widget.l10n.audioEditPreviewEndingSemantics,
+                    centerX: endX,
+                    centerY: endY,
+                    visualSize: _handleVisual,
+                    active: draggingEnd,
+                    scheme: scheme,
+                    theme: theme,
+                  ),
+                  if (_tooltipSec != null && _mode != _Interaction.scrub)
+                    _DragTooltip(
+                      timeSec: _tooltipSec!,
+                      centerX: _mode == _Interaction.dragEnd ? endX : startX,
+                      width: width,
+                      theme: theme,
+                      scheme: scheme,
+                    ),
+                ],
+              ),
             ),
           );
         },
@@ -109,44 +308,117 @@ class AudioPreviewTimeline extends StatelessWidget {
   }
 }
 
-class _TimelineTrack extends StatelessWidget {
-  const _TimelineTrack({
-    required this.durationSec,
-    required this.startSec,
-    required this.endSec,
-    required this.positionSec,
-    required this.onSeek,
+class _TrimHandle extends StatelessWidget {
+  const _TrimHandle({
+    required this.label,
+    required this.semanticsLabel,
+    this.semanticsHint,
+    required this.centerX,
+    required this.centerY,
+    required this.visualSize,
+    required this.active,
+    required this.scheme,
+    required this.theme,
   });
 
-  final double durationSec;
-  final double startSec;
-  final double endSec;
-  final double positionSec;
-  final ValueChanged<double> onSeek;
+  final String label;
+  final String semanticsLabel;
+  final String? semanticsHint;
+  final double centerX;
+  final double centerY;
+  final double visualSize;
+  final bool active;
+  final ColorScheme scheme;
+  final ThemeData theme;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final scale = active ? 1.12 : 1.0;
+    final elevation = active ? 6.0 : 2.0;
 
-    return Semantics(
-      slider: true,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (details) {
-          final box = context.findRenderObject() as RenderBox?;
-          if (box == null) return;
-          final local = box.globalToLocal(details.globalPosition);
-          final frac = (local.dx / box.size.width).clamp(0.0, 1.0);
-          onSeek(frac * durationSec);
-        },
-        child: CustomPaint(
-          painter: _TimelineTrackPainter(
-            colorScheme: scheme,
-            durationSec: durationSec,
-            startSec: startSec,
-            endSec: endSec,
+    return Positioned(
+      left: centerX - visualSize / 2,
+      top: centerY - visualSize / 2,
+      child: Semantics(
+        label: semanticsLabel,
+        hint: semanticsHint,
+        child: IgnorePointer(
+          child: AnimatedScale(
+            scale: scale,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+            child: Material(
+              elevation: elevation,
+              color: active
+                  ? scheme.primary
+                  : scheme.primary.withValues(alpha: 0.92),
+              shape: CircleBorder(
+                side: BorderSide(
+                  color: active
+                      ? scheme.primary.withValues(alpha: 0.95)
+                      : scheme.surface,
+                  width: active ? 2.5 : 2,
+                ),
+              ),
+              child: SizedBox(
+                width: visualSize,
+                height: visualSize,
+                child: Center(
+                  child: Text(
+                    label,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: scheme.onPrimary,
+                      fontWeight: FontWeight.w800,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+  }
+}
+
+class _DragTooltip extends StatelessWidget {
+  const _DragTooltip({
+    required this.timeSec,
+    required this.centerX,
+    required this.width,
+    required this.theme,
+    required this.scheme,
+  });
+
+  final double timeSec;
+  final double centerX;
+  final double width;
+  final ThemeData theme;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    const tooltipW = 72.0;
+    final left = (centerX - tooltipW / 2).clamp(4.0, width - tooltipW - 4);
+
+    return Positioned(
+      left: left,
+      top: 0,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.inverseSurface.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Text(
+            formatAudioEditTimeSec(timeSec),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: scheme.onInverseSurface,
+              fontFeatures: [const FontFeature.tabularFigures()],
+            ),
+          ),
         ),
       ),
     );
@@ -212,66 +484,5 @@ class _TimelineTrackPainter extends CustomPainter {
         oldDelegate.startSec != startSec ||
         oldDelegate.endSec != endSec ||
         oldDelegate.colorScheme != colorScheme;
-  }
-}
-
-class _MarkerBadge extends StatelessWidget {
-  const _MarkerBadge({
-    required this.label,
-    required this.semanticsLabel,
-    this.semanticsHint,
-    required this.left,
-    required this.top,
-    required this.size,
-    required this.onTap,
-  });
-
-  final String label;
-  final String semanticsLabel;
-  final String? semanticsHint;
-  final double left;
-  final double top;
-  final double size;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
-
-    return Positioned(
-      left: left,
-      top: top,
-      child: Semantics(
-        button: true,
-        label: semanticsLabel,
-        hint: semanticsHint,
-        child: Material(
-          color: scheme.primary.withValues(alpha: 0.9),
-          shape: CircleBorder(
-            side: BorderSide(color: scheme.surface, width: 2),
-          ),
-          elevation: 2,
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onTap,
-            child: SizedBox(
-              width: size,
-              height: size,
-              child: Center(
-                child: Text(
-                  label,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: scheme.onPrimary,
-                    fontWeight: FontWeight.w800,
-                    height: 1,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

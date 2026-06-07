@@ -58,6 +58,8 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
   bool _downloadingFile = false;
   bool _loading = true;
   bool _stopAtTrimEnd = false;
+  bool _scrubWasPlaying = false;
+  AudioTimelineTrimHandle? _activeTrimHandle;
 
   @override
   void initState() {
@@ -157,7 +159,24 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
     if (_stopAtTrimEnd && pos >= _endSec - 0.05 && c.value.isPlaying) {
       _stopAtTrimEnd = false;
       unawaited(c.pause());
+    } else if (!_stopAtTrimEnd &&
+        dur > 0 &&
+        pos >= dur - 0.05 &&
+        c.value.isPlaying) {
+      unawaited(c.pause());
     }
+  }
+
+  void _onTrimChanged(double startSec, double endSec) {
+    final pair = clampAudioEditTrimRange(
+      startSec: startSec,
+      endSec: endSec,
+      durationSec: _effectiveDuration,
+    );
+    setState(() {
+      _startSec = pair.$1;
+      _endSec = pair.$2;
+    });
   }
 
   bool get _trimApplied {
@@ -219,7 +238,22 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
 
   Future<void> _onTimelineSeek(double sec) async {
     _stopAtTrimEnd = false;
+    final c = _player;
+    if (c == null || !c.value.isInitialized) return;
     await _seekPlayerTo(sec);
+    if (_scrubWasPlaying && !c.value.isPlaying) {
+      await c.play();
+    }
+  }
+
+  void _onTimelineScrubStart() {
+    final c = _player;
+    _scrubWasPlaying = c?.value.isPlaying ?? false;
+    _stopAtTrimEnd = false;
+  }
+
+  void _onTimelineScrubEnd() {
+    _scrubWasPlaying = false;
   }
 
   Future<void> _togglePlay() async {
@@ -229,11 +263,11 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
       _stopAtTrimEnd = false;
       await c.pause();
     } else {
-      if (_positionSec < _startSec || _positionSec >= _endSec - 0.05) {
-        await _playFrom(_startSec, stopAtTrimEnd: true);
-        return;
+      _stopAtTrimEnd = false;
+      final dur = _effectiveDuration;
+      if (_positionSec >= dur - 0.05) {
+        await _seekPlayerTo(0);
       }
-      _stopAtTrimEnd = true;
       await c.play();
     }
     if (mounted) setState(() {});
@@ -518,10 +552,9 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
                   durationSec: _durationSec,
                   startSec: _startSec,
                   endSec: _endSec,
-                  onChanged: (s, e) => setState(() {
-                    _startSec = s;
-                    _endSec = e;
-                  }),
+                  startHandleActive: _activeTrimHandle == AudioTimelineTrimHandle.start,
+                  endHandleActive: _activeTrimHandle == AudioTimelineTrimHandle.end,
+                  onChanged: (s, e) => _onTrimChanged(s, e),
                   onReset: _resetTrim,
                 ),
               ),
@@ -663,9 +696,18 @@ class _AudioEditScreenState extends State<AudioEditScreen> {
               startSec: _startSec,
               endSec: _endSec,
               positionSec: _positionSec,
-              onSeek: playerReady ? _onTimelineSeek : (_) {},
-              onTapStartMarker: playerReady ? () => unawaited(_tapStartMarker()) : () {},
-              onTapEndMarker: playerReady ? () => unawaited(_tapEndMarker()) : () {},
+              enabled: playerReady,
+              onTrimChanged: _onTrimChanged,
+              onSeek: _onTimelineSeek,
+              onScrubStart: _onTimelineScrubStart,
+              onScrubEnd: _onTimelineScrubEnd,
+              onTrimHandleActive: (h) {
+                if (_activeTrimHandle != h) {
+                  setState(() => _activeTrimHandle = h);
+                }
+              },
+              onTapStartMarker: () => unawaited(_tapStartMarker()),
+              onTapEndMarker: () => unawaited(_tapEndMarker()),
             ),
             const SizedBox(height: 4),
             Align(

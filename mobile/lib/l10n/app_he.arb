@@ -607,6 +607,7 @@
   "audioEditPlaySelection": "נגן מקטע",
   "audioEditTrimStartMarkerSemantics": "נקודת התחלה",
   "audioEditTrimEndMarkerSemantics": "נקודת סיום",
+  "audioEditPlayheadSemantics": "מיקום השמעה",
   "audioEditPlaySelectionSemantics": "נגן את המקטע שנבחר",
   "audioEditPreviewEndingSemantics": "בדוק את הסיום",
   "editsFolderName": "עריכות",
