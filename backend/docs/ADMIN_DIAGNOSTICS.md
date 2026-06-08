@@ -89,6 +89,64 @@ Paths are **redacted** unless they look like standard Docker paths (`/app/storag
 - **Queue metrics**: if BullMQ introspection throws, section status is **`skipped`**.
 - **Recent failures**: if Prisma query throws, section status is **`skipped`**.
 
+## CLI: YouTube baseline matrix (`npm run diag:youtube-matrix`)
+
+Separate from **`diag:runtime`** (toolchain presence) and **`GET /admin/diagnostics?deep=true`** (optional single-URL API probe). This script runs **controlled, metadata-only** yt-dlp analyze probes against a **small** URL set and prints a compact classification table.
+
+### Purpose
+
+- Baseline YouTube reliability checks (auth/bot, geo, formats, network) using the **same production metadata path** as `POST /analyze` (`fetchMetadataJson` + temp cookies copy).
+- **Does not download media** (`--skip-download` / `--dump-json` only).
+- Intended for **manual, infrequent** operator use — not for cron loops or high-volume testing.
+
+### URL input (precedence)
+
+1. **`YOUTUBE_DIAG_URLS_FILE`** — path to a text file (one URL per line; `#` comments ignored).
+2. **`YOUTUBE_DIAG_URLS`** — comma- or newline-separated URLs (appended after file URLs, deduplicated).
+3. If **neither** is set → one built-in **public smoke URL** only (single run).
+
+When a custom list is supplied, URLs are capped at **`YOUTUBE_DIAG_MAX_URLS`** (default **5**). The default smoke run always uses **exactly one** URL.
+
+### Other env
+
+| Variable | Meaning |
+|----------|---------|
+| **`YOUTUBE_DIAG_MAX_URLS`** | Max URLs when a list is provided (default `5`) |
+| **`YOUTUBE_DIAG_DELAY_MS`** | Pause between URLs (default `2000` when >1 URL) |
+| **`YOUTUBE_DIAG_VERBOSE=1`** | Print **redacted** stderr tails on failures |
+| **`COOKIES_FILE`** | Same as production — probed via temp writable copy, never passed directly |
+
+### Example
+
+```bash
+cd backend
+# Single default smoke (1 URL)
+npm run diag:youtube-matrix
+
+# Custom list from env (capped at 5)
+YOUTUBE_DIAG_URLS="https://www.youtube.com/watch?v=…,https://youtu.be/…" npm run diag:youtube-matrix
+
+# From file with verbose redacted stderr
+YOUTUBE_DIAG_URLS_FILE=./secrets/youtube-diag-urls.txt YOUTUBE_DIAG_VERBOSE=1 npm run diag:youtube-matrix
+```
+
+### Output columns
+
+`idx`, `host`, `videoId`, `mode` (`analyze`), `cookies`, `tempCookie`, `result`, `classification`, `code`, `durationMs`.
+
+Classifications: `success`, `auth_required`, `geo_restricted`, `no_formats_found`, `format_unavailable`, `network_or_proxy`, `unknown`.
+
+### Security
+
+- Never prints cookie values, cookie file contents, PO tokens, or proxy credentials.
+- Does not print full URLs in the table (host + video id only).
+- Full stderr only with **`YOUTUBE_DIAG_VERBOSE=1`**, and sensitive fragments are redacted.
+
+### Related CLI checks
+
+- **`npm run diag:runtime`** — yt-dlp/ffmpeg/node/cookies **presence** (no YouTube HTTP).
+- **`npm run diag:ytdlp-classify`** — offline stderr → classification regression (no network).
+
 ## Related endpoints
 
 - **`GET /health`** — lightweight public liveness (unchanged)
