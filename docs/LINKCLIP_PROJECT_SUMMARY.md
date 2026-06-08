@@ -153,7 +153,7 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 
 ### Admin & diagnostics
 
-- **`GET /admin/diagnostics`** — structured checks: storage, yt-dlp, ffmpeg, cookies heuristic, YouTube readiness, DB, Redis, queues, recent failures. Details: `backend/docs/ADMIN_DIAGNOSTICS.md`. **Production runtime:** `cd backend && npm run diag:runtime` validates **yt-dlp**, **yt-dlp-ejs** (pip), **node**, **ffmpeg**, and **caption fonts** (when fontconfig is present) before trusting download health. **Audio edit:** `npm run diag:audio-edit` (synthetic MP3, trim/speed/quality exports, ffprobe audio-only). **yt-dlp stderr classification:** `npm run diag:ytdlp-classify`.
+- **`GET /admin/diagnostics`** — structured checks: storage, yt-dlp, ffmpeg, cookies heuristic, YouTube readiness, DB, Redis, queues, recent failures. Details: `backend/docs/ADMIN_DIAGNOSTICS.md`. **Production runtime:** `cd backend && npm run diag:runtime` validates **yt-dlp**, **yt-dlp-ejs** (pip), **node**, **ffmpeg**, and **caption fonts** (when fontconfig is present) before trusting download health. **Audio edit:** `npm run diag:audio-edit` (synthetic MP3, trim/speed/quality exports, ffprobe audio-only). **yt-dlp stderr classification:** `npm run diag:ytdlp-classify`. **YouTube baseline matrix (metadata-only, rate-conscious):** `npm run diag:youtube-matrix` — see `ADMIN_DIAGNOSTICS.md` § CLI YouTube baseline matrix.
 - **`GET /health`** — public liveness.
 - Other admin routes (e.g. invite codes) — see `admin.routes.ts`.
 
