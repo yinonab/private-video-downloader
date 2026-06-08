@@ -84,7 +84,7 @@ Verified **in repository / documented flows** (operators still run their own QA)
 ```
 
 - **Storage:** API and worker mount the **same** Docker volume in production Compose so downloads and edit outputs are consistent.
-- **Cookies:** Host path `backend/secrets/` mounted read-only at `/app/secrets`; yt-dlp uses a **temporary writable copy** of the cookies file when invoking yt-dlp (see `ytdlp.ts`).
+- **Cookies:** Host path `backend/secrets/` mounted read-only at `/app/secrets`; yt-dlp always uses `prepareYtDlpCookiesFile()` — a **unique writable temp copy** (`chmod 600`, per-request cleanup) — never the mounted secrets path directly (see `ytdlp.ts`; probed by admin diagnostics + `diag:runtime`).
 
 ---
 
@@ -186,7 +186,7 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 | Path | Role |
 |------|------|
 | `lib/features/home/` | Home: compact **Paste link** / **Edit video** row, segmented **Downloads** / **Edits** tabs, compact download cards (primary action + menu / long-press / swipe) |
-| `lib/features/analyze/` | Analyze flow, quality selector, brain SVG hero (`brain_side_profile.svg` via `flutter_svg`) |
+| `lib/features/analyze/` | Analyze flow, **Video / Audio** tabbed quality selector (`quality_selector.dart`), brain SVG hero (`brain_side_profile.svg` via `flutter_svg`) |
 | `lib/features/download_status/` | Progress, success actions (open/share/edit) |
 | `lib/features/edit/` | Quick Edit UI (horizontal **scrollable** tool strip: Trim → Speed → Format → Captions → Audio → Quality — **RTL-aware overflow arrows + edge fades** when tabs clip), **Captions V1.5–V3.4I** panel: OFF = inviting CTA card; ON = compact **Captions on** bar + creator **Look** hero (sample preview + swatches) + secondary **Draft**; **MP3** downloads open **`AudioEditScreen`** only after local save guard (**V1.1**: range trim UI, long-press nudge, video-matched progress/success, reliable MP3 share; **V1.2**: save-now progress dialog + snackbar, compact preview, speed/quality combined card, tap-to-edit trim times; **V1.3**: primary preview timeline with **draggable S/E handles**, scrub playhead, play selection; **V1.3.1**: synchronized trim range bar restored in Trim Audio section (shared timeline component, trim mode); **`AudioDownloadScreen`** remains fallback when source invalid; **`CaptionLookEditorScreen`** (Presets / Text / Highlight / Position; **V3.4G** preview stage + D-pad fine-tune); full styling in look editor only; **`captions`** JSON is explicit **`style` / fontSize / fontFamily / position / color / wordHighlight / `offsetX` / `offsetY`** — preset key not sent), **approximate captions overlay** with static highlighted sample word when word highlight is on; draft segments preserve optional **`words[]`** for **`mode=segments`** burn (no per-word editor); expired-source sheet, trim/speed/format/audio/quality controls |
 | `lib/features/onboarding/` | Register device |

@@ -129,6 +129,19 @@ class FormatOption {
     }
   }
 
+  static bool isAudioFormat(FormatOption f) =>
+      f.type == "audio" || f.value == "audio" || f.value == "audio_mp3";
+
+  static List<int> indicesForVideo(List<FormatOption> formats) => [
+        for (var i = 0; i < formats.length; i++)
+          if (!isAudioFormat(formats[i])) i,
+      ];
+
+  static List<int> indicesForAudio(List<FormatOption> formats) => [
+        for (var i = 0; i < formats.length; i++)
+          if (isAudioFormat(formats[i])) i,
+      ];
+
   static int pickDefaultFormatIndex(List<FormatOption> formats) {
     bool matchesId(FormatOption f, String id) {
       final v = f.value;

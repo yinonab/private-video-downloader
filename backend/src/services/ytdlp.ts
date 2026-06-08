@@ -181,34 +181,150 @@ export function cookiesFileConfiguredButUnusable(): boolean {
   return resolveValidatedCookiesSourcePathSync() === null;
 }
 
+export type YtDlpCookiesTempFile = {
+  path: string;
+  cleanup: () => Promise<void>;
+};
+
+export type YtDlpCookiesTempProbe = {
+  ok: boolean;
+  configured: boolean;
+  sourceReadable: boolean;
+  tempCreated: boolean;
+  tempWritable: boolean;
+  tempBasename: string | null;
+  bytesCopied: number;
+  error: string | null;
+};
+
+function ytDlpCookiesTempPath(): string {
+  const tmpDir = process.platform === "win32" ? os.tmpdir() : "/tmp";
+  return path.join(
+    tmpDir,
+    `linkclip-yt-cookies-${process.pid}-${randomBytes(8).toString("hex")}.txt`
+  );
+}
+
 /**
- * Runs `fn` with `--cookies` pointing at a writable temp copy of the validated secrets file.
- * yt-dlp may update the cookie jar on exit; the read-only mount must never be passed directly.
- * Temp files are unique per call (pid + random) and removed in `finally`.
+ * Copies the validated read-only cookies file to a unique writable temp path for yt-dlp.
+ * Never passes the mounted secrets file directly — yt-dlp may rewrite the jar on exit.
  */
-export async function withYtDlpCookiesArgs<T>(fn: (cookiesArgs: string[]) => Promise<T>): Promise<T> {
+export async function prepareYtDlpCookiesFile(): Promise<YtDlpCookiesTempFile | null> {
   const source = resolveValidatedCookiesSourcePathSync();
   if (!source) {
-    return fn([]);
+    return null;
   }
 
-  const tmpDir = process.platform === "win32" ? os.tmpdir() : "/tmp";
-  const tmpPath = path.join(
-    tmpDir,
-    `linkclip-cookies-${process.pid}-${randomBytes(8).toString("hex")}.txt`
-  );
+  const tmpPath = ytDlpCookiesTempPath();
 
   try {
     await fsPromises.copyFile(source, tmpPath);
+    try {
+      await fsPromises.chmod(tmpPath, 0o600);
+    } catch {
+      // Best-effort permissions; temp dir is still writable for yt-dlp.
+    }
+    logger.debug(
+      { tempBasename: path.basename(tmpPath), sourceExists: true },
+      "yt-dlp cookies temp copy created"
+    );
+    return {
+      path: tmpPath,
+      cleanup: async () => {
+        await fsPromises.unlink(tmpPath).catch(() => {});
+      },
+    };
   } catch (e) {
-    logger.warn({ err: e instanceof Error ? e.message : String(e) }, "failed to copy cookies to temp; continuing without cookies");
+    logger.warn(
+      { err: e instanceof Error ? e.message : String(e) },
+      "failed to copy cookies to temp; continuing without cookies"
+    );
+    return null;
+  }
+}
+
+/** Diagnostics helper: verify temp cookies copy is creatable and writable without logging contents. */
+export async function probeYtDlpCookiesTempCopy(): Promise<YtDlpCookiesTempProbe> {
+  const configured = Boolean(config.cookiesFile?.trim());
+  const source = resolveValidatedCookiesSourcePathSync();
+  if (!configured) {
+    return {
+      ok: true,
+      configured: false,
+      sourceReadable: false,
+      tempCreated: false,
+      tempWritable: false,
+      tempBasename: null,
+      bytesCopied: 0,
+      error: null,
+    };
+  }
+  if (!source) {
+    return {
+      ok: false,
+      configured: true,
+      sourceReadable: false,
+      tempCreated: false,
+      tempWritable: false,
+      tempBasename: null,
+      bytesCopied: 0,
+      error: "configured cookies file is missing or invalid",
+    };
+  }
+
+  const prepared = await prepareYtDlpCookiesFile();
+  if (!prepared) {
+    return {
+      ok: false,
+      configured: true,
+      sourceReadable: true,
+      tempCreated: false,
+      tempWritable: false,
+      tempBasename: null,
+      bytesCopied: 0,
+      error: "temp cookies copy could not be created",
+    };
+  }
+
+  try {
+    const st = await fsPromises.stat(prepared.path);
+    let tempWritable = false;
+    try {
+      await fsPromises.access(prepared.path, fs.constants.W_OK);
+      tempWritable = true;
+    } catch {
+      tempWritable = false;
+    }
+    const ok = st.size > 0 && tempWritable;
+    return {
+      ok,
+      configured: true,
+      sourceReadable: true,
+      tempCreated: true,
+      tempWritable,
+      tempBasename: path.basename(prepared.path),
+      bytesCopied: st.size,
+      error: ok ? null : "temp cookies copy is empty or not writable",
+    };
+  } finally {
+    await prepared.cleanup();
+  }
+}
+
+/**
+ * Runs `fn` with `--cookies` pointing at a writable temp copy of the validated secrets file.
+ * Temp files are unique per call (pid + random) and removed in `finally`.
+ */
+export async function withYtDlpCookiesArgs<T>(fn: (cookiesArgs: string[]) => Promise<T>): Promise<T> {
+  const prepared = await prepareYtDlpCookiesFile();
+  if (!prepared) {
     return fn([]);
   }
 
   try {
-    return await fn(["--cookies", tmpPath]);
+    return await fn(["--cookies", prepared.path]);
   } finally {
-    await fsPromises.unlink(tmpPath).catch(() => {});
+    await prepared.cleanup();
   }
 }
 

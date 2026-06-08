@@ -252,6 +252,18 @@ class AppLocalizationsHe extends AppLocalizations {
   String get analyzeChooseQuality => 'בחר איכות';
 
   @override
+  String get analyzeFormatTabVideo => 'וידאו';
+
+  @override
+  String get analyzeFormatTabAudio => 'אודיו';
+
+  @override
+  String get formatAudioMp3Subtitle => 'להורדת שמע בלבד';
+
+  @override
+  String get formatAudioMp3Description => 'מתאים למוזיקה, פודקאסטים והאזנה';
+
+  @override
   String get analyzePrepareDownload => 'הכן להורדה';
 
   @override
@@ -274,7 +286,7 @@ class AppLocalizationsHe extends AppLocalizations {
   String get format480pMp4 => '480p MP4';
 
   @override
-  String get formatAudioMp3 => 'Audio MP3';
+  String get formatAudioMp3 => 'אודיו MP3';
 
   @override
   String get qualityTikTokReady => 'מתאים לטיק טוק';

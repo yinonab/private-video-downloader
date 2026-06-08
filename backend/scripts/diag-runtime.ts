@@ -3,6 +3,7 @@
  * Run: npm run diag:runtime
  */
 import { execSync, spawnSync } from "node:child_process";
+import dotenv from "dotenv";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -88,61 +89,110 @@ function record(name: string, ok: boolean, detail: string, required = true): voi
   checks.push({ name, ok, detail, required });
 }
 
-console.info("LinkClip runtime diagnostic\n");
-
-{
-  const r = commandOk("yt-dlp", ["--version"]);
-  record("yt-dlp", r.ok, r.detail);
-}
-
-{
-  const py = commandOk("python3", ["--version"]);
-  record("python3", py.ok, py.detail);
-  if (py.ok) {
-    const ejs = pipShow("yt-dlp-ejs");
-    record("yt-dlp-ejs", ejs.ok, ejs.detail);
-    const ytdlpPkg = pipShow("yt-dlp");
-    if (!ytdlpPkg.ok) {
-      record("yt-dlp (pip)", false, ytdlpPkg.detail);
-    }
-  } else {
-    record("yt-dlp-ejs", false, "python3 required for pip show");
+/** Minimal env so optional ytdlp probe can load config when .env is absent (e.g. CI). */
+function ensureDiagEnv(): void {
+  const stubs: Record<string, string> = {
+    DATABASE_URL: "postgresql://diag/diag",
+    REDIS_URL: "redis://127.0.0.1:6379",
+    STORAGE_DIR: path.join(backendRoot, "storage"),
+    ADMIN_TOKEN: "diag-admin-token",
+    DEVICE_TOKEN_SECRET: "diag-device-token-secret",
+  };
+  for (const [k, v] of Object.entries(stubs)) {
+    if (!process.env[k]?.trim()) process.env[k] = v;
   }
 }
 
-{
-  const r = commandOk("node", ["--version"]);
-  record("node", r.ok, r.detail);
+async function main(): Promise<void> {
+  dotenv.config({ path: path.join(backendRoot, ".env") });
+  console.info("LinkClip runtime diagnostic\n");
+
+  {
+    const r = commandOk("yt-dlp", ["--version"]);
+    record("yt-dlp", r.ok, r.detail);
+  }
+
+  {
+    const py = commandOk("python3", ["--version"]);
+    record("python3", py.ok, py.detail);
+    if (py.ok) {
+      const ejs = pipShow("yt-dlp-ejs");
+      record("yt-dlp-ejs", ejs.ok, ejs.detail);
+      const ytdlpPkg = pipShow("yt-dlp");
+      if (!ytdlpPkg.ok) {
+        record("yt-dlp (pip)", false, ytdlpPkg.detail);
+      }
+    } else {
+      record("yt-dlp-ejs", false, "python3 required for pip show");
+    }
+  }
+
+  {
+    const r = commandOk("node", ["--version"]);
+    record("node", r.ok, r.detail);
+  }
+
+  {
+    const r = commandOk("ffmpeg", ["-version"]);
+    record("ffmpeg", r.ok, r.detail ? firstLine(r.detail) : "ok");
+  }
+
+  {
+    try {
+      ensureDiagEnv();
+      const { probeYtDlpCookiesTempCopy } = await import("../src/services/ytdlp");
+      const probe = await probeYtDlpCookiesTempCopy();
+      if (!probe.configured) {
+        record("yt-dlp cookies temp copy", true, "COOKIES_FILE not configured (skipped)", false);
+      } else if (probe.ok) {
+        record(
+          "yt-dlp cookies temp copy",
+          true,
+          `writable temp ok (${probe.tempBasename ?? "temp"}, ${probe.bytesCopied} bytes)`,
+          false
+        );
+      } else {
+        record("yt-dlp cookies temp copy", false, probe.error ?? "temp copy probe failed", false);
+      }
+    } catch (e) {
+      record(
+        "yt-dlp cookies temp copy",
+        false,
+        e instanceof Error ? e.message : String(e),
+        false
+      );
+    }
+  }
+
+  if (hasCaptionFontsScript() && fontconfigAvailable()) {
+    console.info("\n--- caption fonts ---\n");
+    runCaptionFontsDiag();
+  } else if (hasCaptionFontsScript()) {
+    checks.push({
+      name: "caption-fonts (diag:caption-fonts)",
+      ok: true,
+      detail: "skipped (fontconfig/fc-match not available on this host)",
+      required: false,
+    });
+  }
+
+  console.info("\n--- summary ---\n");
+  let failedRequired = 0;
+  for (const c of checks) {
+    const tag = c.ok ? "OK" : c.required ? "FAIL" : "SKIP";
+    console.info(`[${tag}] ${c.name}: ${c.detail}`);
+    if (!c.ok && c.required) failedRequired++;
+  }
+
+  if (failedRequired > 0) {
+    console.error(`\n${failedRequired} required check(s) failed.`);
+    process.exit(1);
+  }
+
+  console.info("\nAll required runtime checks passed.");
 }
 
-{
-  const r = commandOk("ffmpeg", ["-version"]);
-  record("ffmpeg", r.ok, r.detail ? firstLine(r.detail) : "ok");
-}
-
-if (hasCaptionFontsScript() && fontconfigAvailable()) {
-  console.info("\n--- caption fonts ---\n");
-  runCaptionFontsDiag();
-} else if (hasCaptionFontsScript()) {
-  checks.push({
-    name: "caption-fonts (diag:caption-fonts)",
-    ok: true,
-    detail: "skipped (fontconfig/fc-match not available on this host)",
-    required: false,
-  });
-}
-
-console.info("\n--- summary ---\n");
-let failedRequired = 0;
-for (const c of checks) {
-  const tag = c.ok ? "OK" : c.required ? "FAIL" : "SKIP";
-  console.info(`[${tag}] ${c.name}: ${c.detail}`);
-  if (!c.ok && c.required) failedRequired++;
-}
-
-if (failedRequired > 0) {
-  console.error(`\n${failedRequired} required check(s) failed.`);
+main().catch((err) => {
+  console.error(err);
   process.exit(1);
-}
-
-console.info("\nAll required runtime checks passed.");
+});

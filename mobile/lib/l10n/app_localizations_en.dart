@@ -255,6 +255,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get analyzeChooseQuality => 'Choose quality';
 
   @override
+  String get analyzeFormatTabVideo => 'Video';
+
+  @override
+  String get analyzeFormatTabAudio => 'Audio';
+
+  @override
+  String get formatAudioMp3Subtitle => 'Download audio only';
+
+  @override
+  String get formatAudioMp3Description =>
+      'Great for music, podcasts, and listening';
+
+  @override
   String get analyzePrepareDownload => 'Prepare download';
 
   @override

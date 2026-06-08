@@ -6,7 +6,11 @@ import path from "node:path";
 import readline from "node:readline";
 import type { FastifyInstance } from "fastify";
 import { config } from "../../config";
-import { looksLikeNetscapeCookiesFileContent, YTDLP_JS_RUNTIME_ARGS } from "../../services/ytdlp";
+import {
+  looksLikeNetscapeCookiesFileContent,
+  probeYtDlpCookiesTempCopy,
+  YTDLP_JS_RUNTIME_ARGS,
+} from "../../services/ytdlp";
 
 const CMD_TIMEOUT_MS = 12_000;
 const DEEP_YTDLP_TIMEOUT_MS = 28_000;
@@ -454,6 +458,17 @@ export async function runDiagnostics(
         cookieDetails.domains = scanCookieDomainsFromText(loaded.textForValidateAndDomains);
         cookiesOk = st.size > 0 && validNetscape && loaded.lineCount > 0;
         if (!validNetscape && st.size > 0) pushWarn("Cookies file does not look like valid Netscape format");
+        if (cookiesOk) {
+          const tempProbe = await probeYtDlpCookiesTempCopy();
+          cookieDetails.tempCopyOk = tempProbe.ok;
+          cookieDetails.tempCopyWritable = tempProbe.tempWritable;
+          cookieDetails.tempCopyBasename = tempProbe.tempBasename;
+          cookieDetails.tempCopyBytes = tempProbe.bytesCopied;
+          if (!tempProbe.ok) {
+            cookiesOk = false;
+            pushWarn(tempProbe.error ?? "yt-dlp cookies temp copy probe failed");
+          }
+        }
       } catch (e) {
         cookieDetails.readable = false;
         cookieDetails.readError = e instanceof Error ? e.message : String(e);

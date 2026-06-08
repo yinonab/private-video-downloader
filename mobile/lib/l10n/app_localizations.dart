@@ -572,6 +572,30 @@ abstract class AppLocalizations {
   /// **'Choose quality'**
   String get analyzeChooseQuality;
 
+  /// No description provided for @analyzeFormatTabVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get analyzeFormatTabVideo;
+
+  /// No description provided for @analyzeFormatTabAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get analyzeFormatTabAudio;
+
+  /// No description provided for @formatAudioMp3Subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download audio only'**
+  String get formatAudioMp3Subtitle;
+
+  /// No description provided for @formatAudioMp3Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Great for music, podcasts, and listening'**
+  String get formatAudioMp3Description;
+
   /// No description provided for @analyzePrepareDownload.
   ///
   /// In en, this message translates to:
