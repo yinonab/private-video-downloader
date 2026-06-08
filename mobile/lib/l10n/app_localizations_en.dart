@@ -443,6 +443,35 @@ class AppLocalizationsEn extends AppLocalizations {
       'We couldn\'t read this Facebook video right now. This link may require special access or Facebook may be blocking access to it. Try another link or try again later.';
 
   @override
+  String get errorYoutubeAuthRequiredTitle => 'YouTube verification required';
+
+  @override
+  String get errorYoutubeAuthRequiredBody =>
+      'YouTube requires verification for this link. The video may be restricted or YouTube may be asking for a \"not a bot\" check. Try another link or try again later.';
+
+  @override
+  String get errorYoutubeGeoRestrictedTitle =>
+      'Video unavailable in server region';
+
+  @override
+  String get errorYoutubeGeoRestrictedBody =>
+      'This video is not available in the download server\'s region. It may only be available in specific countries. Try another link.';
+
+  @override
+  String get errorNoDownloadableFormatsTitle => 'No downloadable formats found';
+
+  @override
+  String get errorNoDownloadableFormatsBody =>
+      'We couldn\'t find downloadable formats for this link. The content may be private, restricted, removed, or not supported right now. Try another link.';
+
+  @override
+  String get errorFacebookNoFormatsFoundTitle => 'No Facebook formats found';
+
+  @override
+  String get errorFacebookNoFormatsFoundBody =>
+      'We couldn\'t find downloadable formats for this Facebook video. The content may be private, restricted, or not supported right now. Try another link.';
+
+  @override
   String get errorServerUrlInvalidConfig =>
       'The server address is invalid. Check settings and try again.';
 

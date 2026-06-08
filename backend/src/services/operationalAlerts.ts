@@ -281,6 +281,12 @@ export function analyzeErrorCodeForYtdlpClassification(c: YtdlpStderrKind): stri
       return codes.LINKCLIP_ERR_PLATFORM_UNSUPPORTED;
     case "format_unavailable":
       return codes.LINKCLIP_ERR_ANALYZE_METADATA_UNAVAILABLE;
+    case "geo_restricted":
+      return codes.YOUTUBE_GEO_RESTRICTED;
+    case "no_formats_found":
+      return codes.NO_DOWNLOADABLE_FORMATS;
+    case "auth_required":
+      return codes.YOUTUBE_AUTH_REQUIRED;
     default:
       return codes.ANALYZE_FAILED;
   }

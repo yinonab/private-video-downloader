@@ -5,9 +5,16 @@ import "package:lucide_icons_flutter/lucide_icons.dart";
 import "app_button.dart";
 
 class ErrorView extends StatelessWidget {
-  const ErrorView({super.key, required this.title, required this.retryLabel, required this.onRetry});
+  const ErrorView({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.retryLabel,
+    required this.onRetry,
+  });
 
   final String title;
+  final String? subtitle;
   final String retryLabel;
   final VoidCallback onRetry;
 
@@ -26,6 +33,14 @@ class ErrorView extends StatelessWidget {
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(color: scheme.error),
           ),
+          if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              subtitle!,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
           const SizedBox(height: 18),
           AppPrimaryButton(label: retryLabel, onPressed: onRetry),
         ],

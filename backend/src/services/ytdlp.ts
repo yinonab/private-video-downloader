@@ -330,6 +330,8 @@ export async function withYtDlpCookiesArgs<T>(fn: (cookiesArgs: string[]) => Pro
 
 export type YtdlpStderrKind =
   | "auth_required"
+  | "geo_restricted"
+  | "no_formats_found"
   | "rate_limited"
   | "private_content"
   | "not_available"
@@ -338,6 +340,14 @@ export type YtdlpStderrKind =
   | "format_unavailable"
   | "drm_protected"
   | "unknown";
+
+/** Safe operational flags for analyze failure logs (no cookie values). */
+export function ytDlpCookiesOperationalFlags(): { hasCookiesConfigured: boolean; tempCookieUsed: boolean } {
+  const configured = Boolean(process.env.COOKIES_FILE?.trim());
+  const unusable = cookiesFileConfiguredButUnusable();
+  const hasCookiesConfigured = configured && !unusable;
+  return { hasCookiesConfigured, tempCookieUsed: hasCookiesConfigured };
+}
 
 export class YtdlpMetadataError extends Error {
   constructor(
@@ -387,11 +397,31 @@ export function stderrIndicatesDrmProtection(stderr: string): boolean {
   return false;
 }
 
+export function stderrIndicatesYouTubeAuthChallenge(stderr: string): boolean {
+  const s = stderr.toLowerCase();
+  if (/sign in to confirm you'?re not a bot/.test(s)) return true;
+  if (/provided youtube account cookies are no longer valid/.test(s)) return true;
+  if (/use --cookies-from-browser or --cookies/.test(s) && /\[youtube\]/i.test(stderr)) return true;
+  return false;
+}
+
 export function classifyYtDlpStderr(stderr: string): YtdlpStderrKind {
   const s = stderr.toLowerCase();
 
   if (stderrIndicatesDrmProtection(stderr)) {
     return "drm_protected";
+  }
+
+  if (
+    /not made this video available in your country/.test(s) ||
+    /you might want to use a vpn or a proxy/.test(s) ||
+    /this video is available in/.test(s)
+  ) {
+    return "geo_restricted";
+  }
+
+  if (/no video formats found|no audio formats found|no formats found/.test(s)) {
+    return "no_formats_found";
   }
 
   if (/requested format is not available/i.test(s)) {
@@ -413,6 +443,7 @@ export function classifyYtDlpStderr(stderr: string): YtdlpStderrKind {
     return "rate_limited";
   }
   if (
+    stderrIndicatesYouTubeAuthChallenge(stderr) ||
     /login required|login page|registered users|authentication|use --cookies|cookies-from-browser|checkpoint|challenge|locked behind the login page/.test(
       s
     )

@@ -45,6 +45,14 @@ export const codes = {
   LINKCLIP_ERR_ANALYZE_METADATA_UNAVAILABLE: "LINKCLIP_ERR_ANALYZE_METADATA_UNAVAILABLE",
   /** Facebook: yt-dlp "Cannot parse data" and HTML/JSON fallback found no playable CDN URLs. */
   FACEBOOK_EXTRACT_FAILED: "FACEBOOK_EXTRACT_FAILED",
+  /** YouTube bot challenge / expired cookies — analyze metadata blocked. */
+  YOUTUBE_AUTH_REQUIRED: "YOUTUBE_AUTH_REQUIRED",
+  /** YouTube geo / region restriction on the download server. */
+  YOUTUBE_GEO_RESTRICTED: "YOUTUBE_GEO_RESTRICTED",
+  /** yt-dlp found no downloadable formats (non-Facebook). */
+  NO_DOWNLOADABLE_FORMATS: "NO_DOWNLOADABLE_FORMATS",
+  /** Facebook extractor returned no video/audio formats. */
+  FACEBOOK_NO_FORMATS_FOUND: "FACEBOOK_NO_FORMATS_FOUND",
   EDIT_JOB_NOT_FOUND: "EDIT_JOB_NOT_FOUND",
   EDIT_INVALID_SOURCE: "EDIT_INVALID_SOURCE",
   EDIT_FAILED: "EDIT_FAILED",

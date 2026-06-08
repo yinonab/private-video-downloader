@@ -18,6 +18,7 @@
     "poc:caption-highlight": "tsx scripts/poc-caption-highlight-overlay.ts",
     "diag:caption-highlight": "tsx scripts/diag-caption-highlight.ts",
     "diag:audio-edit": "tsx scripts/diag-audio-edit.ts",
+    "diag:ytdlp-classify": "tsx scripts/diag-ytdlp-classify.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",

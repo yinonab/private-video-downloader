@@ -4,9 +4,14 @@ import {
   fetchMetadataJson,
   stderrIndicatesFacebookCannotParseData,
   YtdlpMetadataError,
+  ytDlpCookiesOperationalFlags,
   type YtdlpFormatRow,
   type YtdlpVideoInfo,
 } from "../../services/ytdlp";
+import {
+  analyzeFailureCooldownKey,
+  mapYtdlpAnalyzeFailure,
+} from "../../services/ytdlpAnalyzeErrors";
 import {
   assertUrlSafeForFetch,
   hostnameIsFacebook,
@@ -81,6 +86,14 @@ function buildSyntheticFacebookYtdlpMeta(
 }
 
 function handleYtdlpAnalyzeError(err: YtdlpMetadataError, urlHost: string): never {
+  const mapped = mapYtdlpAnalyzeFailure(err.classification, urlHost, err.stderrTail);
+  if (mapped) {
+    throw new AppError(mapped.code, mapped.message, mapped.statusCode, undefined, {
+      classification: mapped.classification,
+      ...(mapped.platform ? { platform: mapped.platform } : {}),
+    });
+  }
+
   if (err.classification === "drm_protected") {
     throw new AppError(
       codes.DRM_PROTECTED,
@@ -182,7 +195,27 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
       throw new AppError(codes.ANALYZE_FAILED, "Could not analyze URL", 502);
     }
 
-    logger.warn({ classification: err.classification, urlHost }, "analyze yt-dlp metadata failed");
+    const mapped = mapYtdlpAnalyzeFailure(err.classification, urlHost, err.stderrTail);
+    const errorCode =
+      mapped?.code ?? analyzeErrorCodeForYtdlpClassification(err.classification);
+    const logClassification = mapped?.classification ?? err.classification;
+    const platform = mapped?.platform;
+    const statusCode = mapped?.statusCode ?? 502;
+    const cookieFlags = ytDlpCookiesOperationalFlags();
+
+    logger.warn(
+      {
+        classification: logClassification,
+        code: errorCode,
+        urlHost,
+        platform: platform ?? "unknown",
+        statusCode,
+        cooldownKey: analyzeFailureCooldownKey(logClassification, urlHost),
+        hasCookiesConfigured: cookieFlags.hasCookiesConfigured,
+        tempCookieUsed: cookieFlags.tempCookieUsed,
+      },
+      "analyze yt-dlp metadata failed"
+    );
 
     const instagramNotified = tryNotifyInstagramYtDlpCritical({
       context: "analyze",
@@ -221,8 +254,9 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
       if (!instagramNotified) {
         notifyAnalyzeFailedGeneric({
           urlHost,
-          classification: err.classification,
-          errorCode: analyzeErrorCodeForYtdlpClassification(err.classification),
+          classification: logClassification,
+          errorCode,
+          platformLabel: platform,
           actionHint:
             err.classification === "drm_protected"
               ? "DRM-protected source — not supported; no bypass attempted."

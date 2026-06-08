@@ -106,6 +106,14 @@ class ApiError implements Exception {
         return "הסרטון הערוך כבר לא זמין בשרת ולא נמצא במכשיר.";
       case "FACEBOOK_EXTRACT_FAILED":
         return "לא הצלחנו לקרוא את הסרטון מפייסבוק כרגע. ייתכן שהקישור דורש גישה מיוחדת או שפייסבוק חסמה את הגישה אליו. נסה קישור אחר או נסה שוב מאוחר יותר.";
+      case "YOUTUBE_AUTH_REQUIRED":
+        return "נדרש אימות YouTube";
+      case "YOUTUBE_GEO_RESTRICTED":
+        return "הסרטון לא זמין באזור השרת";
+      case "NO_DOWNLOADABLE_FORMATS":
+        return "לא נמצאו פורמטים להורדה";
+      case "FACEBOOK_NO_FORMATS_FOUND":
+        return "לא נמצאו פורמטים בפייסבוק";
       case "EDIT_JOB_NOT_FOUND":
         return "משימת העריכה לא נמצאה.";
       case "EDIT_INVALID_SOURCE":

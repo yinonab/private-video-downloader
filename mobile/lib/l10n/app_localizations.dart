@@ -908,6 +908,54 @@ abstract class AppLocalizations {
   /// **'We couldn\'t read this Facebook video right now. This link may require special access or Facebook may be blocking access to it. Try another link or try again later.'**
   String get errorFacebookExtractFailed;
 
+  /// No description provided for @errorYoutubeAuthRequiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube verification required'**
+  String get errorYoutubeAuthRequiredTitle;
+
+  /// No description provided for @errorYoutubeAuthRequiredBody.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube requires verification for this link. The video may be restricted or YouTube may be asking for a \"not a bot\" check. Try another link or try again later.'**
+  String get errorYoutubeAuthRequiredBody;
+
+  /// No description provided for @errorYoutubeGeoRestrictedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Video unavailable in server region'**
+  String get errorYoutubeGeoRestrictedTitle;
+
+  /// No description provided for @errorYoutubeGeoRestrictedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This video is not available in the download server\'s region. It may only be available in specific countries. Try another link.'**
+  String get errorYoutubeGeoRestrictedBody;
+
+  /// No description provided for @errorNoDownloadableFormatsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No downloadable formats found'**
+  String get errorNoDownloadableFormatsTitle;
+
+  /// No description provided for @errorNoDownloadableFormatsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t find downloadable formats for this link. The content may be private, restricted, removed, or not supported right now. Try another link.'**
+  String get errorNoDownloadableFormatsBody;
+
+  /// No description provided for @errorFacebookNoFormatsFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No Facebook formats found'**
+  String get errorFacebookNoFormatsFoundTitle;
+
+  /// No description provided for @errorFacebookNoFormatsFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t find downloadable formats for this Facebook video. The content may be private, restricted, or not supported right now. Try another link.'**
+  String get errorFacebookNoFormatsFoundBody;
+
   /// No description provided for @errorServerUrlInvalidConfig.
   ///
   /// In en, this message translates to:

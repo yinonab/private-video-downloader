@@ -1,9 +1,52 @@
 import "../../l10n/app_localizations.dart";
 import "../models/api_error.dart";
 
+/// Title + optional body for full-screen analyze errors.
+class ApiErrorDetail {
+  const ApiErrorDetail({required this.title, this.body});
+
+  final String title;
+  final String? body;
+}
+
+ApiErrorDetail localizedApiErrorDetail(AppLocalizations l10n, ApiError e) {
+  switch (e.code) {
+    case "YOUTUBE_AUTH_REQUIRED":
+      return ApiErrorDetail(
+        title: l10n.errorYoutubeAuthRequiredTitle,
+        body: l10n.errorYoutubeAuthRequiredBody,
+      );
+    case "YOUTUBE_GEO_RESTRICTED":
+      return ApiErrorDetail(
+        title: l10n.errorYoutubeGeoRestrictedTitle,
+        body: l10n.errorYoutubeGeoRestrictedBody,
+      );
+    case "NO_DOWNLOADABLE_FORMATS":
+      return ApiErrorDetail(
+        title: l10n.errorNoDownloadableFormatsTitle,
+        body: l10n.errorNoDownloadableFormatsBody,
+      );
+    case "FACEBOOK_NO_FORMATS_FOUND":
+      return ApiErrorDetail(
+        title: l10n.errorFacebookNoFormatsFoundTitle,
+        body: l10n.errorFacebookNoFormatsFoundBody,
+      );
+    default:
+      return ApiErrorDetail(title: localizedApiErrorMessage(l10n, e));
+  }
+}
+
 /// Maps backend error codes to localized UX strings for snackbars and full-screen errors.
 String localizedApiErrorMessage(AppLocalizations l10n, ApiError e) {
   switch (e.code) {
+    case "YOUTUBE_AUTH_REQUIRED":
+      return l10n.errorYoutubeAuthRequiredTitle;
+    case "YOUTUBE_GEO_RESTRICTED":
+      return l10n.errorYoutubeGeoRestrictedTitle;
+    case "NO_DOWNLOADABLE_FORMATS":
+      return l10n.errorNoDownloadableFormatsTitle;
+    case "FACEBOOK_NO_FORMATS_FOUND":
+      return l10n.errorFacebookNoFormatsFoundTitle;
     case "MISSING_LINK":
       return l10n.analyzeMissingLink;
     case "UNSUPPORTED_QUALITY":

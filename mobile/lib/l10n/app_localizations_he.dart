@@ -437,6 +437,34 @@ class AppLocalizationsHe extends AppLocalizations {
       'לא הצלחנו לקרוא את הסרטון מפייסבוק כרגע. ייתכן שהקישור דורש גישה מיוחדת או שפייסבוק חסמה את הגישה אליו. נסה קישור אחר או נסה שוב מאוחר יותר.';
 
   @override
+  String get errorYoutubeAuthRequiredTitle => 'נדרש אימות YouTube';
+
+  @override
+  String get errorYoutubeAuthRequiredBody =>
+      'YouTube מבקש אימות עבור הקישור הזה. ייתכן שהסרטון מוגבל או ש־YouTube מבקש בדיקת \"לא רובוט\". נסה קישור אחר או נסה שוב מאוחר יותר.';
+
+  @override
+  String get errorYoutubeGeoRestrictedTitle => 'הסרטון לא זמין באזור השרת';
+
+  @override
+  String get errorYoutubeGeoRestrictedBody =>
+      'הסרטון לא זמין באזור של שרת ההורדה. ייתכן שהוא זמין רק במדינות מסוימות. נסה קישור אחר.';
+
+  @override
+  String get errorNoDownloadableFormatsTitle => 'לא נמצאו פורמטים להורדה';
+
+  @override
+  String get errorNoDownloadableFormatsBody =>
+      'לא הצלחנו למצוא פורמט הורדה לקישור הזה. ייתכן שהתוכן פרטי, מוגבל, נמחק או לא נתמך כרגע. נסה קישור אחר.';
+
+  @override
+  String get errorFacebookNoFormatsFoundTitle => 'לא נמצאו פורמטים בפייסבוק';
+
+  @override
+  String get errorFacebookNoFormatsFoundBody =>
+      'לא הצלחנו למצוא פורמט הורדה לסרטון הזה בפייסבוק. ייתכן שהתוכן פרטי, מוגבל או לא נתמך כרגע. נסה קישור אחר.';
+
+  @override
   String get errorServerUrlInvalidConfig =>
       'כתובת השרת לא תקינה. בדוק את ההגדרות ונסה שוב.';
 

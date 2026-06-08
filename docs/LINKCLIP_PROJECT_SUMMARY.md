@@ -102,6 +102,13 @@ Verified **in repository / documented flows** (operators still run their own QA)
 - `POST /analyze` — URL safety (including **Threads** rejection), platform detection, yt-dlp metadata path.
 - Rate limiting: **`ANALYZE_DAILY_LIMIT`** (default `200` in example env).
 - **DRM-protected sources:** When yt-dlp stderr indicates DRM (e.g. Spotify track URLs), analyze returns HTTP **422**, code **`DRM_PROTECTED`**, with a non-technical English message (no raw stderr). Operational Slack uses classification **`drm_protected`**, host only, same error code. LinkClip does **not** attempt DRM bypass or Spotify track downloads.
+- **Source-specific yt-dlp failures (typed analyze errors):** stderr is classified in `ytdlp.ts` (`classifyYtDlpStderr`) and mapped in `ytdlpAnalyzeErrors.ts`. Responses use HTTP **422** with **`error.code`**, optional **`classification`** / **`platform`** in the JSON body (no raw stderr). Flutter shows title + body on the analyze screen via `localizedApiErrorDetail` + `ErrorView.subtitle`.
+  - **`YOUTUBE_AUTH_REQUIRED`** — bot challenge / expired YouTube cookies (`auth_required`, platform `youtube`).
+  - **`YOUTUBE_GEO_RESTRICTED`** — region-blocked on the server (`geo_restricted`).
+  - **`NO_DOWNLOADABLE_FORMATS`** — no video/audio formats (generic hosts).
+  - **`FACEBOOK_NO_FORMATS_FOUND`** — Facebook extractor returned no formats (`no_formats_found`, platform `facebook`).
+  - Unclassified failures still return **`ANALYZE_FAILED`** (HTTP **502**). Existing codes (**`DRM_PROTECTED`**, **`LINKCLIP_ERR_*`**, **`FACEBOOK_EXTRACT_FAILED`**, etc.) unchanged.
+- **Analyze failure logs** include `classification`, `code`, `urlHost`, `platform`, `statusCode`, `cooldownKey`, `hasCookiesConfigured`, `tempCookieUsed` (no cookie values). Regression: `cd backend && npm run diag:ytdlp-classify`.
 
 #### Facebook fallback (HTML / embedded JSON → direct CDN MP4)
 
@@ -146,7 +153,7 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 
 ### Admin & diagnostics
 
-- **`GET /admin/diagnostics`** — structured checks: storage, yt-dlp, ffmpeg, cookies heuristic, YouTube readiness, DB, Redis, queues, recent failures. Details: `backend/docs/ADMIN_DIAGNOSTICS.md`. **Production runtime:** `cd backend && npm run diag:runtime` validates **yt-dlp**, **yt-dlp-ejs** (pip), **node**, **ffmpeg**, and **caption fonts** (when fontconfig is present) before trusting download health. **Audio edit:** `npm run diag:audio-edit` (synthetic MP3, trim/speed/quality exports, ffprobe audio-only).
+- **`GET /admin/diagnostics`** — structured checks: storage, yt-dlp, ffmpeg, cookies heuristic, YouTube readiness, DB, Redis, queues, recent failures. Details: `backend/docs/ADMIN_DIAGNOSTICS.md`. **Production runtime:** `cd backend && npm run diag:runtime` validates **yt-dlp**, **yt-dlp-ejs** (pip), **node**, **ffmpeg**, and **caption fonts** (when fontconfig is present) before trusting download health. **Audio edit:** `npm run diag:audio-edit` (synthetic MP3, trim/speed/quality exports, ffprobe audio-only). **yt-dlp stderr classification:** `npm run diag:ytdlp-classify`.
 - **`GET /health`** — public liveness.
 - Other admin routes (e.g. invite codes) — see `admin.routes.ts`.
 
@@ -174,6 +181,7 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 
 - Central **`AppError`** / **`codes`** in `backend/src/types/errors.ts`; Flutter maps known codes via `mobile/lib/core/models/api_error.dart` and **`mobile/lib/core/l10n/api_error_localizations.dart`** (captions-related: **`CAPTIONS_TRANSCRIPTION_UNAVAILABLE`**, **`CAPTIONS_DRAFT_UNAVAILABLE`**, **`INVALID_CAPTION_SEGMENTS`**, **`CAPTIONS_GENERATION_FAILED`**, **`UNSUPPORTED_CAPTIONS_MODE`/`LANGUAGE`/generic fallback**, granular **`UNSUPPORTED_CAPTIONS_STYLE`**, **`UNSUPPORTED_CAPTIONS_POSITION`**, **`UNSUPPORTED_CAPTIONS_POSITION_OFFSET`**, **`UNSUPPORTED_CAPTIONS_FONT_SIZE`**, **`UNSUPPORTED_CAPTIONS_COLOR`**, **`UNSUPPORTED_CAPTIONS_FONT_FAMILY`**).
 - **`DRM_PROTECTED`** — DRM-blocked yt-dlp flows (e.g. Spotify); Flutter **`errorDrmProtected`** (EN/HE).
+- **Analyze yt-dlp (typed):** **`YOUTUBE_AUTH_REQUIRED`**, **`YOUTUBE_GEO_RESTRICTED`**, **`NO_DOWNLOADABLE_FORMATS`**, **`FACEBOOK_NO_FORMATS_FOUND`** — Flutter title/body pairs in ARB + **`localizedApiErrorDetail`** on analyze **`ErrorView`**.
 
 ---
 

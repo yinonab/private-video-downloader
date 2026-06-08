@@ -137,8 +137,10 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       );
     }
     if (_err != null) {
+      final detail = localizedApiErrorDetail(l10n, _err!);
       return ErrorView(
-        title: localizedApiErrorMessage(l10n, _err!),
+        title: detail.title,
+        subtitle: detail.body,
         retryLabel: l10n.bootstrapRetry,
         onRetry: _run,
       );

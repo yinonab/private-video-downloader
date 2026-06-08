@@ -36,6 +36,18 @@ export function hostnameIsInstagram(hostname: string): boolean {
   return h === "instagram.com" || h.endsWith(".instagram.com");
 }
 
+/** youtube.com / youtu.be / music.youtube.com etc. */
+export function hostnameIsYouTube(hostname: string): boolean {
+  const h = hostname.trim().toLowerCase();
+  return (
+    h === "youtube.com" ||
+    h.endsWith(".youtube.com") ||
+    h === "youtu.be" ||
+    h === "music.youtube.com" ||
+    h.endsWith(".youtu.be")
+  );
+}
+
 /** facebook.com / www.facebook.com / m.facebook.com / mbasic etc. */
 export function hostnameIsFacebook(hostname: string): boolean {
   const h = hostname.trim().toLowerCase();
