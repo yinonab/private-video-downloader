@@ -132,20 +132,87 @@ YOUTUBE_DIAG_URLS_FILE=./secrets/youtube-diag-urls.txt YOUTUBE_DIAG_VERBOSE=1 np
 
 ### Output columns
 
-`idx`, `host`, `videoId`, `mode` (`analyze`), `cookies`, `tempCookie`, `result`, `classification`, `code`, `durationMs`.
+`idx`, `host`, `videoId`, `mode` (`analyze`), `cookies`, `tempCookie`, `poEnabled`, `poUsed`, `poClient`, `providerOk`, `classification`, `code`, `durationMs`.
+
+When **`YTDLP_PO_TOKEN_ENABLED=false`** (default), `poEnabled`/`poUsed` are `no` and no PO extractor args are added — behavior matches cookies-only production.
 
 Classifications: `success`, `auth_required`, `geo_restricted`, `no_formats_found`, `format_unavailable`, `network_or_proxy`, `unknown`.
+
+### Before/after PO comparison
+
+```bash
+# Baseline (PO disabled)
+YTDLP_PO_TOKEN_ENABLED=false \
+YOUTUBE_DIAG_URLS_FILE=/tmp/youtube-diag-urls.txt \
+YOUTUBE_DIAG_MAX_URLS=5 YOUTUBE_DIAG_DELAY_MS=2500 \
+npm run diag:youtube-matrix
+
+# PO enabled (requires provider + plugin)
+YTDLP_PO_TOKEN_ENABLED=true \
+YOUTUBE_DIAG_URLS_FILE=/tmp/youtube-diag-urls.txt \
+YOUTUBE_DIAG_MAX_URLS=5 YOUTUBE_DIAG_DELAY_MS=2500 \
+npm run diag:youtube-matrix
+```
+
+Example URL list template: `backend/scripts/fixtures/youtube-diag-urls.example.txt`.
 
 ### Security
 
 - Never prints cookie values, cookie file contents, PO tokens, or proxy credentials.
 - Does not print full URLs in the table (host + video id only).
+- Internal yt-dlp failure logs are **suppressed** during matrix runs unless **`YOUTUBE_DIAG_VERBOSE=1`**.
 - Full stderr only with **`YOUTUBE_DIAG_VERBOSE=1`**, and sensitive fragments are redacted.
+
+## CLI: YouTube PO Token spike (`npm run diag:youtube-pot`)
+
+Validates **optional** PO Token Provider configuration before enabling in production.
+
+### Provider
+
+Uses **[bgutil-ytdlp-pot-provider](https://github.com/Brainicism/bgutil-ytdlp-pot-provider)** (yt-dlp maintainer–maintained):
+
+- **Plugin:** `pip install bgutil-ytdlp-pot-provider` (in API/worker Docker image).
+- **HTTP server (recommended):** `brainicism/bgutil-ytdlp-pot-provider` Docker image on port **4416**.
+- **yt-dlp version:** `2025.05.22+` (satisfied by image pip install).
+
+When enabled, yt-dlp receives:
+
+- `--extractor-args youtube:player_client=<YTDLP_PO_TOKEN_CLIENT>` (default `mweb`)
+- `--extractor-args youtubepot-bgutilhttp:base_url=<YTDLP_PO_TOKEN_PROVIDER_URL>`
+
+### Config (disabled by default)
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| **`YTDLP_PO_TOKEN_ENABLED`** | `false` | Master switch — when false, no PO args, no provider contact |
+| **`YTDLP_PO_TOKEN_PROVIDER_URL`** | empty → `http://127.0.0.1:4416` when enabled | bgutil HTTP server base URL |
+| **`YTDLP_PO_TOKEN_CLIENT`** | `mweb` | YouTube innertube client (per PO Token Guide) |
+| **`YTDLP_PO_TOKEN_TIMEOUT_MS`** | `8000` | Provider reachability probe timeout |
+| **`YTDLP_PO_TOKEN_MODE`** | `server` | `server` (HTTP) or `script` |
+| **`YTDLP_PO_TOKEN_CACHE_ENABLED`** | `true` | Documented; provider handles caching |
+
+### Docker
+
+Optional compose service (profile **`pot`** — not started by default):
+
+```bash
+docker compose -f docker-compose.prod.yml --profile pot up -d bgutil-pot
+```
+
+Set `YTDLP_PO_TOKEN_PROVIDER_URL=http://bgutil-pot:4416` in `.env.production` when enabling.
+
+### diag:youtube-pot behavior
+
+1. Prints config + plugin install + provider reachability.
+2. Exits with error if **enabled** but plugin/provider unavailable.
+3. Runs one smoke metadata test (or URL list when enabled).
+4. Reuses **`YOUTUBE_DIAG_*`** env vars for URL input.
 
 ### Related CLI checks
 
 - **`npm run diag:runtime`** — yt-dlp/ffmpeg/node/cookies **presence** (no YouTube HTTP).
 - **`npm run diag:ytdlp-classify`** — offline stderr → classification regression (no network).
+- **`npm run diag:youtube-matrix`** — baseline matrix with optional PO columns.
 
 ## Related endpoints
 

@@ -70,6 +70,22 @@ export const config = {
 
   /** V3.4B — canvas overlay for wordHighlight=color|box (ASS for none). */
   captionHighlightOverlay: parseBooleanEnv(process.env.LINKCLIP_CAPTION_HIGHLIGHT_OVERLAY, true),
+
+  /**
+   * YouTube PO Token Provider spike (disabled by default).
+   * Uses bgutil-ytdlp-pot-provider + optional HTTP server (see ytdlpPoToken.ts).
+   */
+  ytdlpPoTokenEnabled: parseBooleanEnv(process.env.YTDLP_PO_TOKEN_ENABLED, false),
+  ytdlpPoTokenProviderUrl: (process.env.YTDLP_PO_TOKEN_PROVIDER_URL ?? "").trim(),
+  ytdlpPoTokenClient: ((process.env.YTDLP_PO_TOKEN_CLIENT ?? "").trim() || "mweb"),
+  ytdlpPoTokenTimeoutMs: (() => {
+    const n = Number(process.env.YTDLP_PO_TOKEN_TIMEOUT_MS ?? "8000");
+    if (!Number.isFinite(n)) return 8000;
+    return Math.max(1000, Math.min(60_000, Math.floor(n)));
+  })(),
+  ytdlpPoTokenMode: ((process.env.YTDLP_PO_TOKEN_MODE ?? "").trim() || "server") as "server" | "script",
+  ytdlpPoTokenCacheEnabled: parseBooleanEnv(process.env.YTDLP_PO_TOKEN_CACHE_ENABLED, true),
+  ytdlpPoTokenScriptHome: (process.env.YTDLP_PO_TOKEN_SCRIPT_HOME ?? "").trim(),
 };
 
 export type AppConfig = typeof config;

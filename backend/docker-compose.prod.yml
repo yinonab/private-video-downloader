@@ -81,6 +81,25 @@ services:
     networks:
       - linkclip
 
+  # Optional YouTube PO Token HTTP provider (bgutil). Not started unless profile `pot` is enabled.
+  # Enable: docker compose -f docker-compose.prod.yml --profile pot up -d
+  # Set in .env.production: YTDLP_PO_TOKEN_ENABLED=true, YTDLP_PO_TOKEN_PROVIDER_URL=http://bgutil-pot:4416
+  bgutil-pot:
+    profiles: ["pot"]
+    image: brainicism/bgutil-ytdlp-pot-provider:1.3.1
+    container_name: linkclip-bgutil-pot
+    restart: unless-stopped
+    expose:
+      - "4416"
+    networks:
+      - linkclip
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:4416/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
   cleanup:
     image: alpine:3.20
     container_name: linkclip-cleanup

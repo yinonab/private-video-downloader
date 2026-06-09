@@ -7,6 +7,11 @@ import path from "node:path";
 import { config } from "../config";
 import { codes } from "../types/errors";
 import { logger } from "./logger";
+import {
+  withYtDlpPoTokenArgs,
+  ytdlpPoTokenContextFromUrl,
+  ytDlpPoTokenOperationalFlags,
+} from "./ytdlpPoToken";
 
 export interface YtdlpFormatRow {
   format_id?: string;
@@ -471,19 +476,33 @@ export function parseYtDlpProgress(line: string): { progress: number; speedText:
   };
 }
 
-export async function fetchMetadataJson(url: string): Promise<YtdlpVideoInfo> {
+export type FetchMetadataJsonOptions = {
+  /** When false, suppresses internal logger.warn on yt-dlp metadata failures (diagnostics). */
+  logFailures?: boolean;
+};
+
+export async function fetchMetadataJson(
+  url: string,
+  options?: FetchMetadataJsonOptions
+): Promise<YtdlpVideoInfo> {
+  const logFailures = options?.logFailures !== false;
+  const poContext = ytdlpPoTokenContextFromUrl(url, "analyze");
+
   return withYtDlpCookiesArgs(async (cookiesArgs) => {
     const env = ytDlpMetadataEnv();
     /** `--skip-download`: metadata-only; avoids failing format merges that only matter when downloading. */
-    const metaCore = [
-      ...cookiesArgs,
-      ...YTDLP_JS_RUNTIME_ARGS,
-      "--no-config",
-      "--skip-download",
-      "--dump-json",
-      "--no-playlist",
-      "--no-warnings",
-    ];
+    const metaCore = withYtDlpPoTokenArgs(
+      [
+        ...cookiesArgs,
+        ...YTDLP_JS_RUNTIME_ARGS,
+        "--no-config",
+        "--skip-download",
+        "--dump-json",
+        "--no-playlist",
+        "--no-warnings",
+      ],
+      poContext
+    );
 
     const parseStdout = (stdout: string): YtdlpVideoInfo => {
       const line = stdout.trim().split("\n").filter(Boolean).pop();
@@ -510,10 +529,20 @@ export async function fetchMetadataJson(url: string): Promise<YtdlpVideoInfo> {
       classification === "format_unavailable" || stderrMeansUnavailableFormat(stderr ?? "");
 
     if (!fmtMiss) {
-      logger.warn(
-        { code, classification, stderrTail: (stderr ?? "").slice(-2000) },
-        "yt-dlp metadata failed"
-      );
+      if (logFailures) {
+        logger.warn(
+          {
+            code,
+            classification,
+            stderrTail: (stderr ?? "").slice(-2000),
+            ...ytDlpPoTokenOperationalFlags(poContext),
+            operation: poContext.operation,
+            platform: poContext.platform ?? "youtube",
+            urlHost: poContext.urlHost,
+          },
+          "yt-dlp metadata failed"
+        );
+      }
       throw new YtdlpMetadataError(classification, (stderr ?? "").slice(-2000));
     }
 
@@ -526,18 +555,38 @@ export async function fetchMetadataJson(url: string): Promise<YtdlpVideoInfo> {
       const stillFmt =
         classification === "format_unavailable" || stderrMeansUnavailableFormat(stderr ?? "");
       if (!stillFmt) {
-        logger.warn(
-          { code, classification, stderrTail: (stderr ?? "").slice(-2000) },
-          "yt-dlp metadata failed"
-        );
+        if (logFailures) {
+          logger.warn(
+            {
+              code,
+              classification,
+              stderrTail: (stderr ?? "").slice(-2000),
+              ...ytDlpPoTokenOperationalFlags(poContext),
+              operation: poContext.operation,
+              platform: poContext.platform ?? "youtube",
+              urlHost: poContext.urlHost,
+            },
+            "yt-dlp metadata failed"
+          );
+        }
         throw new YtdlpMetadataError(classification, (stderr ?? "").slice(-2000));
       }
     }
 
-    logger.warn(
-      { code, classification, stderrTail: (stderr ?? "").slice(-2000) },
-      "yt-dlp metadata failed after format fallbacks"
-    );
+    if (logFailures) {
+      logger.warn(
+        {
+          code,
+          classification,
+          stderrTail: (stderr ?? "").slice(-2000),
+          ...ytDlpPoTokenOperationalFlags(poContext),
+          operation: poContext.operation,
+          platform: poContext.platform ?? "youtube",
+          urlHost: poContext.urlHost,
+        },
+        "yt-dlp metadata failed after format fallbacks"
+      );
+    }
     throw new YtdlpMetadataError(classification, (stderr ?? "").slice(-2000));
   });
 }

@@ -20,6 +20,7 @@
     "diag:audio-edit": "tsx scripts/diag-audio-edit.ts",
     "diag:ytdlp-classify": "tsx scripts/diag-ytdlp-classify.ts",
     "diag:youtube-matrix": "tsx scripts/diag-youtube-matrix.ts",
+    "diag:youtube-pot": "tsx scripts/diag-youtube-pot.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
