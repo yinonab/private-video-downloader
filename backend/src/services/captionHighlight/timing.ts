@@ -1,5 +1,5 @@
 import type { CaptionCueWordResolved } from "../../modules/edit/edit.types";
-import { normalizeCaptionText, tokenizeCaptionText } from "./tokenize";
+import { normalizeCaptionText, tokenizeCaptionText, captionTokenMatchesWord } from "./tokenize";
 
 /**
  * Map segment-level word timestamps to a highlight chunk (multi-chunk segments, Whisper punctuation).
@@ -11,23 +11,22 @@ export function alignWordsForChunk(
   segmentWords: readonly CaptionCueWordResolved[] | undefined,
 ): readonly CaptionCueWordResolved[] | undefined {
   if (!segmentWords?.length) return undefined;
-  const chunkTokens = tokenizeCaptionText(chunkText).map((t) => t.text);
+  const chunkTokens = tokenizeCaptionText(chunkText);
   if (!chunkTokens.length) return undefined;
 
   const inWindow = segmentWords.filter(
     (w) => w.endSec > chunkStartSec + 1e-4 && w.startSec < chunkEndSec - 1e-4,
   );
-  const windowNorm = inWindow.map((w) => normalizeCaptionText(w.text));
   if (
-    windowNorm.length === chunkTokens.length &&
-    windowNorm.every((w, i) => w === chunkTokens[i])
+    inWindow.length === chunkTokens.length &&
+    inWindow.every((w, i) => captionTokenMatchesWord(chunkTokens[i]!, normalizeCaptionText(w.text)))
   ) {
     return inWindow;
   }
 
   const allNorm = segmentWords.map((w) => normalizeCaptionText(w.text));
   for (let off = 0; off <= allNorm.length - chunkTokens.length; off++) {
-    if (chunkTokens.every((t, i) => allNorm[off + i] === t)) {
+    if (chunkTokens.every((t, i) => captionTokenMatchesWord(t, allNorm[off + i]!))) {
       return segmentWords.slice(off, off + chunkTokens.length);
     }
   }
@@ -84,7 +83,7 @@ export function resolveWordTimingCues(
   const tokens = tokenizeCaptionText(segmentText);
   if (tokens.length < 1) return { cues: [], usedFallback: false };
 
-  const displayWords = tokens.map((t) => t.text);
+  const displayWords = tokens.map((t) => t.fullText);
   const fromPayload = normalizePayloadWords(payloadWords);
 
   if (!fromPayload?.length) {
@@ -94,10 +93,9 @@ export function resolveWordTimingCues(
     };
   }
 
-  const payloadNormalized = fromPayload.map((w) => w.word);
   const canReuse =
-    payloadNormalized.length === displayWords.length &&
-    payloadNormalized.every((w, i) => w === displayWords[i]);
+    fromPayload.length === tokens.length &&
+    fromPayload.every((w, i) => captionTokenMatchesWord(tokens[i]!, w.word));
 
   if (!canReuse) {
     return {

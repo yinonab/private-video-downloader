@@ -12,7 +12,14 @@ export type BoxShape = CaptionsBoxShape;
 
 export type CaptionToken = {
   readonly index: number;
+  /** Full display run (word + attached punctuation) — use for measure/layout/draw. */
   readonly text: string;
+  readonly fullText: string;
+  /** Word letters/digits without attached punctuation. */
+  readonly coreText: string;
+  readonly leadingPunctuation?: string;
+  readonly trailingPunctuation?: string;
+  readonly isWord: boolean;
 };
 
 export type CaptionLineLayout = {

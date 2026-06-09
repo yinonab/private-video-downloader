@@ -3,12 +3,12 @@ import type { CaptionLayoutResult, CaptionLineLayout, CaptionToken, RenderPlateI
 import { captionFontCss } from "./fonts";
 import type { CaptionCanvasSize } from "./dimensions";
 import { captionBlockTopBase } from "./dimensions";
-import { resolveTextDirection, tokenizeCaptionText } from "./tokenize";
+import { resolveTextDirection, tokenizeCaptionText, captionTokenDisplayText } from "./tokenize";
 
 type MeasureCtx = Pick<SKRSContext2D, "font" | "measureText">;
 
-function measureToken(ctx: MeasureCtx, token: string): { width: number; ascent: number; descent: number } {
-  const m = ctx.measureText(token);
+function measureToken(ctx: MeasureCtx, token: CaptionToken): { width: number; ascent: number; descent: number } {
+  const m = ctx.measureText(captionTokenDisplayText(token));
   const ascent = m.actualBoundingBoxAscent ?? m.emHeightAscent ?? 24;
   const descent = m.actualBoundingBoxDescent ?? m.emHeightDescent ?? 6;
   return { width: Math.ceil(m.width), ascent: Math.ceil(ascent), descent: Math.ceil(descent) };
@@ -28,7 +28,7 @@ function wrapTokensToLines(
     if (!line.length) return 0;
     let w = 0;
     for (let i = 0; i < line.length; i++) {
-      w += measureToken(ctx, line[i]!.text).width;
+      w += measureToken(ctx, line[i]!).width;
       if (i < line.length - 1) w += tokenGapPx;
     }
     return w;
@@ -42,7 +42,7 @@ function wrapTokensToLines(
   };
 
   for (const token of tokens) {
-    const tw = measureToken(ctx, token.text).width;
+    const tw = measureToken(ctx, token).width;
     const curW = lineWidth(current);
     const extra = current.length ? tokenGapPx + tw : tw;
     if (current.length && curW + extra > maxLineWidthPx) {
@@ -65,7 +65,7 @@ function layoutLine(
   originX: number,
   tokenGapPx: number,
 ): CaptionLineLayout {
-  const metrics = lineTokens.map((t) => ({ token: t, ...measureToken(ctx, t.text) }));
+  const metrics = lineTokens.map((t) => ({ token: t, ...measureToken(ctx, t) }));
 
   const boxes: {
     tokenIndex: number;
@@ -134,7 +134,7 @@ export function layoutCaptionBlock(
   const lineHeights = lineTokenGroups.map((group) => {
     let maxH = 0;
     for (const t of group) {
-      const m = measureToken(ctx, t.text);
+      const m = measureToken(ctx, t);
       maxH = Math.max(maxH, m.ascent + m.descent);
     }
     return maxH;
@@ -146,7 +146,7 @@ export function layoutCaptionBlock(
   const lineWidths = lineTokenGroups.map((group) => {
     let w = 0;
     for (let i = 0; i < group.length; i++) {
-      w += measureToken(ctx, group[i]!.text).width;
+      w += measureToken(ctx, group[i]!).width;
       if (i < group.length - 1) w += input.tokenGapPx;
     }
     return w;

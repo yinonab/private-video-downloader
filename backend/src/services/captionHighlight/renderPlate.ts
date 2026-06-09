@@ -1,8 +1,8 @@
 import { createCanvas, type SKRSContext2D } from "@napi-rs/canvas";
-import type { BoxShape, RenderPlateInput, RenderPlateResult } from "./types";
+import type { BoxShape, CaptionToken, RenderPlateInput, RenderPlateResult } from "./types";
 import { layoutCaptionBlock } from "./layout";
 import { ensureCaptionFont, captionFontCss } from "./fonts";
-import { tokenizeCaptionText } from "./tokenize";
+import { captionTokenDisplayText, tokenizeCaptionText } from "./tokenize";
 
 function drawHighlightBox(
   ctx: SKRSContext2D,
@@ -37,6 +37,23 @@ function drawHighlightBox(
   }
   ctx.fill();
   ctx.globalAlpha = 1;
+}
+
+function drawTokenText(
+  ctx: SKRSContext2D,
+  token: CaptionToken,
+  box: { x: number; y: number; width: number; height: number },
+  direction: "rtl" | "ltr",
+  fillStyle: string,
+  fontSize: number,
+): void {
+  const display = captionTokenDisplayText(token);
+  ctx.fillStyle = fillStyle;
+  ctx.direction = direction;
+  ctx.textAlign = "left";
+  const m = ctx.measureText(display);
+  const ascent = m.actualBoundingBoxAscent ?? m.emHeightAscent ?? fontSize;
+  ctx.fillText(display, box.x, box.y + ascent);
 }
 
 export async function renderCaptionHighlightPlate(input: RenderPlateInput): Promise<RenderPlateResult> {
@@ -86,11 +103,14 @@ export async function renderCaptionHighlightPlate(input: RenderPlateInput): Prom
       const token = tokens[box.tokenIndex];
       if (!token) continue;
       const isActive = box.tokenIndex === activeIdx;
-      ctx.fillStyle = isActive ? input.activeTextColor : input.normalTextColor;
-      ctx.direction = "ltr";
-      const m = ctx.measureText(token.text);
-      const ascent = m.actualBoundingBoxAscent ?? m.emHeightAscent ?? input.fontSize;
-      ctx.fillText(token.text, box.x, box.y + ascent);
+      drawTokenText(
+        ctx,
+        token,
+        box,
+        layout.direction,
+        isActive ? input.activeTextColor : input.normalTextColor,
+        input.fontSize,
+      );
       if (isActive) activeDrawn += 1;
     }
   }

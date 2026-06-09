@@ -23,6 +23,8 @@ import {
   resolveHighlightStyle,
   textColorToCss,
   tokenizeCaptionText,
+  captionTokenMatchesWord,
+  captionTokenDisplayText,
   validateOverlayFilterComplex,
   type TimedOverlayPlate,
 } from "../src/services/captionHighlight";
@@ -380,10 +382,146 @@ async function ffmpegAlphaCompositeSmoke(
   console.info(`diag:caption-highlight ok alpha composite ${label} plates=${planPlates.length} ${videoW}x${videoH}`);
 }
 
+function leftmostInkX(data: Uint8ClampedArray, width: number, height: number): number | null {
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      const i = (y * width + x) * 4;
+      if (data[i]! > 12 || data[i + 1]! > 12 || data[i + 2]! > 12) return x;
+    }
+  }
+  return null;
+}
+
+function rightmostInkX(data: Uint8ClampedArray, width: number, height: number): number | null {
+  for (let x = width - 1; x >= 0; x--) {
+    for (let y = 0; y < height; y++) {
+      const i = (y * width + x) * 4;
+      if (data[i]! > 12 || data[i + 1]! > 12 || data[i + 2]! > 12) return x;
+    }
+  }
+  return null;
+}
+
+async function assertRtlPunctuationBehavior(): Promise<void> {
+  const qaSamples = ["בלבנון,", "ברעיון,", "רביבי בוא נראה אותך:"];
+  for (const sample of qaSamples) {
+    const tokens = tokenizeCaptionText(sample);
+    assert.ok(tokens.length >= 1, `tokenize ${sample}`);
+    for (const t of tokens) {
+      assert.equal(captionTokenDisplayText(t), t.fullText);
+      if (t.trailingPunctuation) {
+        assert.ok(t.fullText.endsWith(t.trailingPunctuation), `trailing punct on ${t.fullText}`);
+        assert.ok(t.coreText.length > 0, `coreText for ${t.fullText}`);
+      }
+    }
+  }
+
+  const lebanon = tokenizeCaptionText("בלבנון,")[0]!;
+  assert.equal(lebanon.coreText, "בלבנון");
+  assert.equal(lebanon.trailingPunctuation, ",");
+  assert.ok(captionTokenMatchesWord(lebanon, "בלבנון"));
+
+  const idea = tokenizeCaptionText("ברעיון,")[0]!;
+  assert.equal(idea.coreText, "ברעיון");
+  assert.equal(idea.trailingPunctuation, ",");
+
+  const colonPhrase = tokenizeCaptionText("רביבי בוא נראה אותך:").pop()!;
+  assert.equal(colonPhrase?.coreText, "אותך");
+  assert.equal(colonPhrase?.trailingPunctuation, ":");
+
+  assert.ok(captionTokenMatchesWord(lebanon, "בלבנון,"));
+  assert.ok(captionTokenMatchesWord(idea, "ברעיון"));
+
+  const { ensureCaptionFont, captionFontCss } = await import("../src/services/captionHighlight/fonts");
+  const font = await ensureCaptionFont("heebo");
+  const canvas = createCanvas(320, 90);
+  const ctx = canvas.getContext("2d");
+  ctx.font = captionFontCss(font, 36, 700);
+  const anchor = 260;
+  const sample = "ברעיון,";
+
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, 320, 90);
+  ctx.fillStyle = "#fff";
+  ctx.direction = "rtl";
+  ctx.textAlign = "left";
+  ctx.fillText(sample, anchor, 58);
+  const rtlData = ctx.getImageData(0, 0, 320, 90).data;
+  const rtlLeft = leftmostInkX(rtlData, 320, 90);
+  const rtlRight = rightmostInkX(rtlData, 320, 90);
+  assert.ok(rtlLeft != null && rtlRight != null, "rtl ink");
+
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, 320, 90);
+  ctx.fillStyle = "#fff";
+  ctx.direction = "ltr";
+  ctx.textAlign = "left";
+  ctx.fillText(sample, anchor, 58);
+  const ltrData = ctx.getImageData(0, 0, 320, 90).data;
+  const ltrLeft = leftmostInkX(ltrData, 320, 90)!;
+  const ltrRight = rightmostInkX(ltrData, 320, 90)!;
+
+  assert.ok(rtlLeft! < ltrLeft, `RTL comma should be further left (rtlLeft=${rtlLeft} ltrLeft=${ltrLeft})`);
+  assert.ok(ltrRight > rtlRight!, `LTR comma should extend further right (ltrRight=${ltrRight} rtlRight=${rtlRight})`);
+
+  const plate = await renderCaptionHighlightPlate({
+    text: "בלבנון, ברעיון, רביבי בוא נראה אותך:",
+    activeWordIndex: 1,
+    direction: "rtl",
+    fontFamily: "heebo",
+    fontSize: 32,
+    fontWeight: 700,
+    normalTextColor: "#FFFFFF",
+    activeTextColor: "#FFD966",
+    boxColor: "rgba(255,217,102,0.92)",
+    boxShape: "pill",
+    drawBox: true,
+    maxLines: 2,
+    canvasWidth: 960,
+    canvasHeight: 540,
+    position: "bottom",
+    maxLineWidthPx: 780,
+    lineGapPx: 10,
+    tokenGapPx: 10,
+    boxPaddingXPx: 8,
+    boxPaddingYPx: 5,
+  });
+  assert.equal(plate.activeTokenCount, 1, "QA phrase one active token");
+  assert.equal(plate.layout.direction, "rtl");
+
+  const enPlate = await renderCaptionHighlightPlate({
+    text: "Hello, world.",
+    activeWordIndex: 0,
+    direction: "ltr",
+    fontFamily: "heebo",
+    fontSize: 32,
+    fontWeight: 700,
+    normalTextColor: "#FFFFFF",
+    activeTextColor: "#FFD966",
+    boxColor: "rgba(255,217,102,0.92)",
+    boxShape: "pill",
+    drawBox: false,
+    maxLines: 2,
+    canvasWidth: 960,
+    canvasHeight: 540,
+    position: "bottom",
+    maxLineWidthPx: 780,
+    lineGapPx: 10,
+    tokenGapPx: 10,
+    boxPaddingXPx: 8,
+    boxPaddingYPx: 5,
+  });
+  assert.equal(enPlate.activeTokenCount, 1, "English LTR one active token");
+  assert.equal(enPlate.layout.direction, "ltr");
+
+  console.info("diag:caption-highlight ok rtl-punctuation tokenize+draw");
+}
+
 async function main(): Promise<void> {
   assertKillSwitchStaticAss();
   assertFilterComplexLabels();
   assertColorPropagation();
+  await assertRtlPunctuationBehavior();
 
   const outRoot = mkdtempSync(path.join(os.tmpdir(), "linkclip-diag-cap-"));
   mkdirSync(outRoot, { recursive: true });

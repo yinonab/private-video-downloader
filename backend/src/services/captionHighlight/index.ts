@@ -20,5 +20,5 @@ export {
 } from "./ffmpegOverlay";
 export { resolveCaptionCanvasSize, CAPTION_PLAY_W, CAPTION_PLAY_H } from "./dimensions";
 export { renderCaptionHighlightPlate } from "./renderPlate";
-export { tokenizeCaptionText, resolveTextDirection } from "./tokenize";
+export { tokenizeCaptionText, resolveTextDirection, captionTokenDisplayText, captionTokenMatchesWord } from "./tokenize";
 export { resolveWordTimingCues, alignWordsForChunk } from "./timing";
