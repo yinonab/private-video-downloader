@@ -106,6 +106,7 @@ export function redactSensitiveDiagText(text: string): string {
   s = s.replace(/^[^\t]+\tTRUE\t[^\t]+\t(TRUE|FALSE)\t\d+\t[^\t]+\t[^\r\n]+$/gm, "[REDACTED_COOKIE_ROW]");
   s = s.replace(/(#(?:HttpOnly_)?[^\s]+\s+)[^\s]+(\s+[^\r\n]+)/g, "$1[REDACTED]$2");
   s = s.replace(/base_url=http[^\s;"]+/gi, "base_url=[REDACTED_PROVIDER_URL]");
+  s = s.replace(/--proxy\s+\S+/gi, "--proxy [REDACTED]");
   return s;
 }
 
@@ -126,6 +127,31 @@ export function printCompactTable(header: string[], rows: string[][]): void {
   for (const row of rows) {
     console.info(fmt(row));
   }
+}
+
+export type YoutubeDiagYtDlpMode = "env" | "direct" | "po" | "proxy" | "po_proxy";
+
+/** Override PO/proxy env for controlled before/after matrix runs. Call before importing config/services. */
+export function applyYoutubeDiagYtDlpMode(): YoutubeDiagYtDlpMode {
+  const raw = (process.env.YOUTUBE_DIAG_YTDLP_MODE ?? "env").trim().toLowerCase();
+  const mode: YoutubeDiagYtDlpMode =
+    raw === "direct" || raw === "po" || raw === "proxy" || raw === "po_proxy" ? raw : "env";
+
+  if (mode === "direct") {
+    process.env.YTDLP_PO_TOKEN_ENABLED = "false";
+    process.env.YTDLP_PROXY_ENABLED = "false";
+  } else if (mode === "po") {
+    process.env.YTDLP_PO_TOKEN_ENABLED = "true";
+    process.env.YTDLP_PROXY_ENABLED = "false";
+  } else if (mode === "proxy") {
+    process.env.YTDLP_PO_TOKEN_ENABLED = "false";
+    process.env.YTDLP_PROXY_ENABLED = "true";
+  } else if (mode === "po_proxy") {
+    process.env.YTDLP_PO_TOKEN_ENABLED = "true";
+    process.env.YTDLP_PROXY_ENABLED = "true";
+  }
+
+  return mode;
 }
 
 export function summarizeClassifications(

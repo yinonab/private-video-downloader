@@ -132,29 +132,50 @@ YOUTUBE_DIAG_URLS_FILE=./secrets/youtube-diag-urls.txt YOUTUBE_DIAG_VERBOSE=1 np
 
 ### Output columns
 
-`idx`, `host`, `videoId`, `mode` (`analyze`), `cookies`, `tempCookie`, `poEnabled`, `poUsed`, `poClient`, `providerOk`, `classification`, `code`, `durationMs`.
+`idx`, `host`, `videoId`, `mode`, `cookies`, `tempCookie`, `poEnabled`, `poUsed`, `poClient`, `providerOk`, `proxyEnabled`, `proxyUsed`, `proxyReason`, `proxyHost`, `classification`, `code`, `durationMs`.
 
-When **`YTDLP_PO_TOKEN_ENABLED=false`** (default), `poEnabled`/`poUsed` are `no` and no PO extractor args are added — behavior matches cookies-only production.
+When all flags are **disabled** (default), `poEnabled`/`proxyEnabled` are `no` — behavior matches cookies-only production.
+
+Optional mode override: **`YOUTUBE_DIAG_YTDLP_MODE`** = `env` (default) | `direct` | `po` | `proxy` | `po_proxy`.
 
 Classifications: `success`, `auth_required`, `geo_restricted`, `no_formats_found`, `format_unavailable`, `network_or_proxy`, `unknown`.
 
-### Before/after PO comparison
+### Measured production state (2026)
+
+| Mode | Result |
+|------|--------|
+| Cookies-only (`PO=false`, `PROXY=false`) | **1/5** success, **4/5** `auth_required` |
+| PO-enabled (`PO=true`, provider reachable) | **1/5** success, **4/5** `auth_required` — PO plumbing works but did **not** improve this sample |
+
+**Keep `YTDLP_PO_TOKEN_ENABLED=false`** unless future testing shows improvement. PO does not replace proxy/egress testing.
+
+### Comparison workflows (same 5-URL file)
 
 ```bash
-# Baseline (PO disabled)
-YTDLP_PO_TOKEN_ENABLED=false \
-YOUTUBE_DIAG_URLS_FILE=/tmp/youtube-diag-urls.txt \
-YOUTUBE_DIAG_MAX_URLS=5 YOUTUBE_DIAG_DELAY_MS=2500 \
+# 1. Baseline
+YOUTUBE_DIAG_YTDLP_MODE=direct \
+YOUTUBE_DIAG_URLS_FILE=/tmp/youtube-diag-urls.txt YOUTUBE_DIAG_MAX_URLS=5 YOUTUBE_DIAG_DELAY_MS=2500 \
 npm run diag:youtube-matrix
 
-# PO enabled (requires provider + plugin)
-YTDLP_PO_TOKEN_ENABLED=true \
-YOUTUBE_DIAG_URLS_FILE=/tmp/youtube-diag-urls.txt \
-YOUTUBE_DIAG_MAX_URLS=5 YOUTUBE_DIAG_DELAY_MS=2500 \
+# 2. PO only (start: docker compose -f docker-compose.prod.yml --profile pot up -d bgutil-pot)
+YOUTUBE_DIAG_YTDLP_MODE=po YTDLP_PO_TOKEN_PROVIDER_URL=http://bgutil-pot:4416 \
+YOUTUBE_DIAG_URLS_FILE=/tmp/youtube-diag-urls.txt YOUTUBE_DIAG_MAX_URLS=5 YOUTUBE_DIAG_DELAY_MS=2500 \
+npm run diag:youtube-matrix
+
+# 3. Proxy only (set YTDLP_PROXY_URL in server env only — never commit)
+YOUTUBE_DIAG_YTDLP_MODE=proxy YTDLP_PROXY_URL='<your-proxy-url>' \
+YOUTUBE_DIAG_URLS_FILE=/tmp/youtube-diag-urls.txt YOUTUBE_DIAG_MAX_URLS=5 YOUTUBE_DIAG_DELAY_MS=2500 \
+npm run diag:youtube-matrix
+
+# 4. PO + proxy
+YOUTUBE_DIAG_YTDLP_MODE=po_proxy YTDLP_PO_TOKEN_PROVIDER_URL=http://bgutil-pot:4416 YTDLP_PROXY_URL='<your-proxy-url>' \
+YOUTUBE_DIAG_URLS_FILE=/tmp/youtube-diag-urls.txt YOUTUBE_DIAG_MAX_URLS=5 YOUTUBE_DIAG_DELAY_MS=2500 \
 npm run diag:youtube-matrix
 ```
 
-Example URL list template: `backend/scripts/fixtures/youtube-diag-urls.example.txt`.
+Example URL list: `backend/scripts/fixtures/youtube-diag-urls.example.txt`.
+
+**Interpretation:** proxy improves `auth_required` → likely datacenter IP reputation; improves `geo_restricted` → egress region; neither PO nor proxy helps → hard block / session restriction.
 
 ### Security
 
@@ -201,6 +222,15 @@ docker compose -f docker-compose.prod.yml --profile pot up -d bgutil-pot
 
 Set `YTDLP_PO_TOKEN_PROVIDER_URL=http://bgutil-pot:4416` in `.env.production` when enabling.
 
+### PO provider log security warning
+
+The **bgutil-pot** container stdout may include generated **IntegrityToken / POT values** at default verbosity. The upstream **Node** server (`brainicism/bgutil-ytdlp-pot-provider`) does **not** expose a supported env var to fully suppress token payloads in logs.
+
+- **Do not** share `docker logs bgutil-pot` or Dozzle captures publicly.
+- **Do not** paste provider logs into tickets without redaction.
+- Prefer **`npm run diag:youtube-matrix`** / **`diag:youtube-pot`** for operator measurement.
+- Compose sets **json-file** log rotation (`max-size: 10m`, `max-file: 3`) on `bgutil-pot`.
+
 ### diag:youtube-pot behavior
 
 1. Prints config + plugin install + provider reachability.
@@ -208,11 +238,43 @@ Set `YTDLP_PO_TOKEN_PROVIDER_URL=http://bgutil-pot:4416` in `.env.production` wh
 3. Runs one smoke metadata test (or URL list when enabled).
 4. Reuses **`YOUTUBE_DIAG_*`** env vars for URL input.
 
+## CLI: YouTube proxy/egress spike (`npm run diag:youtube-proxy`)
+
+Optional **YouTube-only** `--proxy` support for measuring IP reputation / egress region (disabled by default).
+
+### Config (disabled by default)
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| **`YTDLP_PROXY_ENABLED`** | `false` | Master switch |
+| **`YTDLP_PROXY_URL`** | empty | Full proxy URL — **set only on server, never commit** |
+| **`YTDLP_PROXY_YOUTUBE_ONLY`** | `true` | Skip proxy for TikTok/Facebook/Instagram |
+| **`YTDLP_PROXY_ON_AUTH_REQUIRED`** | `false` | Production retry-with-proxy on auth (off by default) |
+| **`YTDLP_PROXY_ON_GEO_RESTRICTED`** | `true` | Production retry-with-proxy on geo (helper only; retries not enabled in analyze by default) |
+| **`YTDLP_PROXY_PROVIDER_LABEL`** | empty | Safe label for logs/diagnostics |
+| **`YTDLP_PROXY_TIMEOUT_MS`** | `15000` | Connectivity probe timeout |
+
+When enabled, yt-dlp receives: `--proxy <YTDLP_PROXY_URL>` (credentials never logged).
+
+### Redaction
+
+Logs and diagnostics show `proxyUrlRedacted` like `http://***:***@proxy.example.com:8080` — never raw `YTDLP_PROXY_URL`.
+
+### diag:youtube-proxy behavior
+
+1. Prints safe proxy config (redacted).
+2. Fails clearly if enabled but URL missing/invalid or connectivity probe fails.
+3. Metadata-only smoke / URL list (same `YOUTUBE_DIAG_*` vars).
+4. Does not log cookies, tokens, or proxy credentials.
+
+**Note:** LinkClip does not ship a proxy provider — operators supply their own egress proxy URL.
+
 ### Related CLI checks
 
 - **`npm run diag:runtime`** — yt-dlp/ffmpeg/node/cookies **presence** (no YouTube HTTP).
 - **`npm run diag:ytdlp-classify`** — offline stderr → classification regression (no network).
-- **`npm run diag:youtube-matrix`** — baseline matrix with optional PO columns.
+- **`npm run diag:youtube-matrix`** — baseline matrix with PO + proxy columns.
+- **`npm run diag:youtube-proxy`** — proxy-focused diagnostic.
 
 ## Related endpoints
 

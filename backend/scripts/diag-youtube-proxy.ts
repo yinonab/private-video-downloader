@@ -1,6 +1,6 @@
 /**
- * YouTube PO Token Provider spike diagnostic.
- * Run: npm run diag:youtube-pot
+ * YouTube proxy/egress diagnostic — metadata-only, rate-conscious probing.
+ * Run: npm run diag:youtube-proxy
  */
 import dotenv from "dotenv";
 import path from "node:path";
@@ -8,7 +8,6 @@ import { fileURLToPath } from "node:url";
 
 import {
   applyYoutubeDiagYtDlpMode,
-  DEFAULT_SMOKE_URL,
   printCompactTable,
   redactSensitiveDiagText,
   resolveYoutubeDiagDelayMs,
@@ -53,54 +52,58 @@ async function main(): Promise<void> {
     ytDlpCookiesOperationalFlags,
   } = await import("../src/services/ytdlp");
   const { mapYtdlpAnalyzeFailure } = await import("../src/services/ytdlpAnalyzeErrors");
+  const { probePotProviderReachable, ytDlpPoTokenOperationalFlags } = await import(
+    "../src/services/ytdlpPoToken"
+  );
   const {
-    detectBgutilPotPluginInstalled,
-    probePotProviderReachable,
-    resolveProviderBaseUrl,
-    validatePoTokenConfigWhenEnabled,
-    ytDlpPoTokenOperationalFlags,
-  } = await import("../src/services/ytdlpPoToken");
+    getRedactedProxyInfo,
+    probeProxyViaYtDlp,
+    validateProxyConfigWhenEnabled,
+    ytDlpProxyOperationalFlags,
+  } = await import("../src/services/ytdlpProxy");
   type YtdlpStderrKind = import("../src/services/ytdlp").YtdlpStderrKind;
 
+  const proxyInfo = getRedactedProxyInfo();
+  const proxyValidation = validateProxyConfigWhenEnabled();
+  const cookieFlags = ytDlpCookiesOperationalFlags();
   const poFlags = ytDlpPoTokenOperationalFlags({ isYouTube: true });
-  const plugin = detectBgutilPotPluginInstalled();
-  const providerUrl = resolveProviderBaseUrl();
-  const providerProbe = config.ytdlpPoTokenEnabled
-    ? await probePotProviderReachable(providerUrl)
+  const proxyFlags = ytDlpProxyOperationalFlags({ isYouTube: true, proxyReason: "diagnostic" });
+  const providerProbe = poFlags.poTokenEnabled
+    ? await probePotProviderReachable()
     : { ok: false, detail: "disabled" };
-  const validation = validatePoTokenConfigWhenEnabled();
 
-  console.info("LinkClip YouTube PO Token diagnostic\n");
+  console.info("LinkClip YouTube proxy/egress diagnostic\n");
   console.info("--- config ---");
   console.info(`diagMode: ${diagMode}`);
-  console.info(`poTokenEnabled: ${poFlags.poTokenEnabled}`);
-  console.info(`providerUrl configured: ${poFlags.providerConfigured ? "yes" : "no"}`);
-  console.info(`poTokenClient: ${poFlags.poTokenClient}`);
-  console.info(`providerMode: ${poFlags.providerMode}`);
-  console.info(`cacheEnabled: ${config.ytdlpPoTokenCacheEnabled}`);
-  console.info(`plugin installed: ${plugin.installed ? "yes" : "no"} (${plugin.detail})`);
-  console.info(
-    `provider reachable: ${providerProbe.ok ? "yes" : "no"}${config.ytdlpPoTokenEnabled ? ` (${providerProbe.detail})` : ""}`
-  );
+  console.info(`proxyEnabled: ${proxyFlags.proxyEnabled}`);
+  console.info(`proxyConfigured: ${proxyInfo.configured && proxyInfo.valid ? "yes" : "no"}`);
+  console.info(`proxyHost: ${proxyInfo.host ?? "-"}`);
+  console.info(`proxyUrlRedacted: ${proxyInfo.proxyUrlRedacted}`);
+  console.info(`proxyProviderLabel: ${proxyInfo.providerLabel ?? "-"}`);
+  console.info(`youtubeOnly: ${proxyFlags.youtubeOnly}`);
+  console.info(`proxyOnAuthRequired: ${config.ytdlpProxyOnAuthRequired}`);
+  console.info(`proxyOnGeoRestricted: ${config.ytdlpProxyOnGeoRestricted}`);
+  console.info(`poEnabled: ${poFlags.poTokenEnabled}`);
+  console.info(`poClient: ${poFlags.poTokenClient}`);
+  console.info(`providerOk: ${providerProbe.ok ? "yes" : "no"}`);
 
-  if (config.ytdlpPoTokenEnabled) {
-    if (!validation.ok) {
-      console.error("\nPO Token enabled but configuration incomplete:");
-      for (const issue of validation.issues) console.error(`  - ${issue}`);
+  if (config.ytdlpProxyEnabled) {
+    if (!proxyValidation.ok) {
+      console.error("\nProxy enabled but configuration invalid:");
+      for (const issue of proxyValidation.issues) console.error(`  - ${issue}`);
       process.exit(1);
     }
-    if (!providerProbe.ok) {
-      console.error("\nPO Token enabled but provider is not reachable.");
-      console.error("Start bgutil HTTP server or set YTDLP_PO_TOKEN_PROVIDER_URL correctly.");
+    const proxyProbe = await probeProxyViaYtDlp();
+    console.info(`proxyConnectivity: ${proxyProbe.ok ? "yes" : "no"} (${proxyProbe.detail})`);
+    if (!proxyProbe.ok) {
+      console.error("\nProxy enabled but connectivity probe failed.");
       process.exit(1);
     }
   } else {
-    console.info("\nPO Token is disabled (YTDLP_PO_TOKEN_ENABLED=false).");
-    console.info("Set YTDLP_PO_TOKEN_ENABLED=true to run an enabled smoke test.");
-    console.info(`Running metadata smoke with current config (${usedDefaultSmoke ? "default smoke URL" : `${urls.length} URL(s)`})...\n`);
+    console.info("\nProxy is disabled (YTDLP_PROXY_ENABLED=false).");
+    console.info("Set YTDLP_PROXY_ENABLED=true and YTDLP_PROXY_URL in server env to test egress.");
+    console.info(`Running metadata smoke (${usedDefaultSmoke ? "default URL" : `${urls.length} URL(s)`}) with current flags...\n`);
   }
-
-  const cookieFlags = ytDlpCookiesOperationalFlags();
 
   function resolveFailure(
     kind: YtdlpStderrKind,
@@ -137,11 +140,10 @@ async function main(): Promise<void> {
     }
   }
 
-  const testUrls = config.ytdlpPoTokenEnabled ? urls : [urls[0] ?? DEFAULT_SMOKE_URL];
+  const testUrls = config.ytdlpProxyEnabled ? urls : [urls[0]!];
   const rows: {
     outcome: "success" | "fail";
     classification: YoutubeDiagClassification;
-    code: string;
     cells: string[];
   }[] = [];
   let anyFail = false;
@@ -159,16 +161,18 @@ async function main(): Promise<void> {
       rows.push({
         outcome: "success",
         classification: "success",
-        code: "OK",
         cells: [
           String(i + 1),
           host,
           id,
           "analyze",
+          cookieFlags.hasCookiesConfigured ? "yes" : "no",
+          cookieFlags.tempCookieUsed ? "yes" : "no",
           poFlags.poTokenEnabled ? "yes" : "no",
           poFlags.poTokenUsed ? "yes" : "no",
-          poFlags.poTokenClient,
-          providerProbe.ok ? "yes" : "no",
+          proxyFlags.proxyEnabled ? "yes" : "no",
+          proxyFlags.proxyUsed ? "yes" : "no",
+          proxyFlags.proxyReason ?? "direct",
           "success",
           "OK",
           String(Date.now() - started),
@@ -197,16 +201,18 @@ async function main(): Promise<void> {
       rows.push({
         outcome: "fail",
         classification,
-        code,
         cells: [
           String(i + 1),
           host,
           videoId,
           "analyze",
+          cookieFlags.hasCookiesConfigured ? "yes" : "no",
+          cookieFlags.tempCookieUsed ? "yes" : "no",
           poFlags.poTokenEnabled ? "yes" : "no",
           poFlags.poTokenUsed ? "yes" : "no",
-          poFlags.poTokenClient,
-          providerProbe.ok ? "yes" : "no",
+          proxyFlags.proxyEnabled ? "yes" : "no",
+          proxyFlags.proxyUsed ? "yes" : "no",
+          proxyFlags.proxyReason ?? "direct",
           classification,
           code,
           String(Date.now() - started),
@@ -221,19 +227,18 @@ async function main(): Promise<void> {
     }
   }
 
-  console.info(
-    `\nURLs: ${testUrls.length} | cookiesConfigured=${cookieFlags.hasCookiesConfigured} | delayMs=${delayMs}\n`
-  );
-
   const header = [
     "idx",
     "host",
     "videoId",
     "mode",
+    "cookies",
+    "tempCookie",
     "poEnabled",
     "poUsed",
-    "poClient",
-    "providerOk",
+    "proxyEnabled",
+    "proxyUsed",
+    "proxyReason",
     "classification",
     "code",
     "durationMs",
@@ -248,7 +253,7 @@ async function main(): Promise<void> {
     `\nSummary: success=${summary.success} auth_required=${summary.auth_required} geo_restricted=${summary.geo_restricted} no_formats_found=${summary.no_formats_found} format_unavailable=${summary.format_unavailable} network_or_proxy=${summary.network_or_proxy} unknown=${summary.unknown}`
   );
 
-  if (anyFail && config.ytdlpPoTokenEnabled) process.exit(1);
+  if (anyFail && config.ytdlpProxyEnabled) process.exit(1);
 }
 
 main().catch((err) => {
