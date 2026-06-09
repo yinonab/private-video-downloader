@@ -40,7 +40,11 @@ import {
   withYtDlpCookiesArgs,
   type DownloadFormatKind,
 } from "../services/ytdlp";
-import { withYtDlpPoTokenArgs, ytdlpPoTokenContextFromUrl } from "../services/ytdlpPoToken";
+import { withYtDlpPoTokenArgs } from "../services/ytdlpPoToken";
+import {
+  applyYtDlpYouTubeTransportArgs,
+  ytdlpProxyContextFromUrl,
+} from "../services/ytdlpProxy";
 import { logger } from "../services/logger";
 import { notifyDownloadWorkerBullUncaught, notifyDownloadWorkerFailed } from "../services/operationalAlerts";
 
@@ -250,13 +254,13 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
         lastArgs = ["facebook_direct_fallback"];
       } else {
         code = await withYtDlpCookiesArgs(async (cookiesArgs) => {
-          const poContext = ytdlpPoTokenContextFromUrl(url, "download", {
+          const transportContext = ytdlpProxyContextFromUrl(url, "download", {
             platform: platformLabel,
             requestedFormat: format,
             requestedQuality: format,
           });
           const prefixArgs = (base: string[]) =>
-            withYtDlpPoTokenArgs([...cookiesArgs, ...base], poContext);
+            applyYtDlpYouTubeTransportArgs([...cookiesArgs, ...base], transportContext, withYtDlpPoTokenArgs);
 
           lastArgs = prefixArgs(primaryBuilt.args);
 

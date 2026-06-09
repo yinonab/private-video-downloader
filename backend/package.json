@@ -21,6 +21,7 @@
     "diag:ytdlp-classify": "tsx scripts/diag-ytdlp-classify.ts",
     "diag:youtube-matrix": "tsx scripts/diag-youtube-matrix.ts",
     "diag:youtube-pot": "tsx scripts/diag-youtube-pot.ts",
+    "diag:youtube-proxy": "tsx scripts/diag-youtube-proxy.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",

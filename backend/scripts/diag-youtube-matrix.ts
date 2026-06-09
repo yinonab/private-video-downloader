@@ -7,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  applyYoutubeDiagYtDlpMode,
   printCompactTable,
   redactSensitiveDiagText,
   resolveYoutubeDiagDelayMs,
@@ -37,6 +38,7 @@ function ensureDiagEnv(): void {
 async function main(): Promise<void> {
   dotenv.config({ path: path.join(backendRoot, ".env") });
   ensureDiagEnv();
+  const diagMode = applyYoutubeDiagYtDlpMode();
 
   const verbose = truthyEnv("YOUTUBE_DIAG_VERBOSE");
   const { urls, usedDefaultSmoke } = resolveYoutubeDiagUrls(backendRoot);
@@ -52,10 +54,13 @@ async function main(): Promise<void> {
   const { probePotProviderReachable, ytDlpPoTokenOperationalFlags } = await import(
     "../src/services/ytdlpPoToken"
   );
+  const { getRedactedProxyInfo, ytDlpProxyOperationalFlags } = await import("../src/services/ytdlpProxy");
   type YtdlpStderrKind = import("../src/services/ytdlp").YtdlpStderrKind;
 
   const cookieFlags = ytDlpCookiesOperationalFlags();
   const poFlags = ytDlpPoTokenOperationalFlags({ isYouTube: true });
+  const proxyFlags = ytDlpProxyOperationalFlags({ isYouTube: true });
+  const proxyInfo = getRedactedProxyInfo();
   const providerProbe = poFlags.poTokenEnabled
     ? await probePotProviderReachable()
     : { ok: false, detail: "disabled" };
@@ -99,7 +104,7 @@ async function main(): Promise<void> {
 
   console.info("LinkClip YouTube baseline matrix (analyze/metadata only)\n");
   console.info(
-    `URLs: ${urls.length}${usedDefaultSmoke ? " (default smoke)" : ""} | cookiesConfigured=${cookieFlags.hasCookiesConfigured} | tempCookieUsed=${cookieFlags.tempCookieUsed} | poEnabled=${poFlags.poTokenEnabled} | poClient=${poFlags.poTokenClient} | providerOk=${providerProbe.ok ? "yes" : "no"} | delayMs=${delayMs}\n`
+    `diagMode: ${diagMode} | URLs: ${urls.length}${usedDefaultSmoke ? " (default smoke)" : ""} | cookiesConfigured=${cookieFlags.hasCookiesConfigured} | tempCookieUsed=${cookieFlags.tempCookieUsed} | poEnabled=${poFlags.poTokenEnabled} | poClient=${poFlags.poTokenClient} | providerOk=${providerProbe.ok ? "yes" : "no"} | proxyEnabled=${proxyFlags.proxyEnabled} | proxyUsed=${proxyFlags.proxyUsed} | proxyHost=${proxyInfo.host ?? "-"} | delayMs=${delayMs}\n`
   );
 
   const rows: {
@@ -134,6 +139,10 @@ async function main(): Promise<void> {
           poFlags.poTokenUsed ? "yes" : "no",
           poFlags.poTokenClient,
           providerProbe.ok ? "yes" : "no",
+          proxyFlags.proxyEnabled ? "yes" : "no",
+          proxyFlags.proxyUsed ? "yes" : "no",
+          proxyFlags.proxyReason ?? "direct",
+          proxyInfo.host ?? "-",
           "success",
           "OK",
           String(Date.now() - started),
@@ -173,6 +182,10 @@ async function main(): Promise<void> {
           poFlags.poTokenUsed ? "yes" : "no",
           poFlags.poTokenClient,
           providerProbe.ok ? "yes" : "no",
+          proxyFlags.proxyEnabled ? "yes" : "no",
+          proxyFlags.proxyUsed ? "yes" : "no",
+          proxyFlags.proxyReason ?? "direct",
+          proxyInfo.host ?? "-",
           classification,
           code,
           String(Date.now() - started),
@@ -198,6 +211,10 @@ async function main(): Promise<void> {
     "poUsed",
     "poClient",
     "providerOk",
+    "proxyEnabled",
+    "proxyUsed",
+    "proxyReason",
+    "proxyHost",
     "classification",
     "code",
     "durationMs",

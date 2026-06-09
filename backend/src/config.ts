@@ -86,6 +86,24 @@ export const config = {
   ytdlpPoTokenMode: ((process.env.YTDLP_PO_TOKEN_MODE ?? "").trim() || "server") as "server" | "script",
   ytdlpPoTokenCacheEnabled: parseBooleanEnv(process.env.YTDLP_PO_TOKEN_CACHE_ENABLED, true),
   ytdlpPoTokenScriptHome: (process.env.YTDLP_PO_TOKEN_SCRIPT_HOME ?? "").trim(),
+
+  /**
+   * YouTube-only proxy/egress spike (disabled by default).
+   * Set YTDLP_PROXY_URL only in server env — never commit credentials.
+   */
+  ytdlpProxyEnabled: parseBooleanEnv(process.env.YTDLP_PROXY_ENABLED, false),
+  ytdlpProxyUrl: (process.env.YTDLP_PROXY_URL ?? "").trim(),
+  ytdlpProxyYoutubeOnly: parseBooleanEnv(process.env.YTDLP_PROXY_YOUTUBE_ONLY, true),
+  ytdlpProxyOnAuthRequired: parseBooleanEnv(process.env.YTDLP_PROXY_ON_AUTH_REQUIRED, false),
+  ytdlpProxyOnGeoRestricted: parseBooleanEnv(process.env.YTDLP_PROXY_ON_GEO_RESTRICTED, true),
+  ytdlpProxyProviderLabel: (process.env.YTDLP_PROXY_PROVIDER_LABEL ?? "").trim(),
+  ytdlpProxyTimeoutMs: (() => {
+    const n = Number(process.env.YTDLP_PROXY_TIMEOUT_MS ?? "15000");
+    if (!Number.isFinite(n)) return 15_000;
+    return Math.max(1000, Math.min(120_000, Math.floor(n)));
+  })(),
+  ytdlpProxyValidateEgress: parseBooleanEnv(process.env.YTDLP_PROXY_VALIDATE_EGRESS, false),
+  ytdlpProxyEgressCheckUrl: (process.env.YTDLP_PROXY_EGRESS_CHECK_URL ?? "").trim(),
 };
 
 export type AppConfig = typeof config;

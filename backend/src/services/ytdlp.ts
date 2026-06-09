@@ -12,6 +12,11 @@ import {
   ytdlpPoTokenContextFromUrl,
   ytDlpPoTokenOperationalFlags,
 } from "./ytdlpPoToken";
+import {
+  applyYtDlpYouTubeTransportArgs,
+  ytdlpProxyContextFromUrl,
+  ytDlpProxyOperationalFlags,
+} from "./ytdlpProxy";
 
 export interface YtdlpFormatRow {
   format_id?: string;
@@ -486,12 +491,12 @@ export async function fetchMetadataJson(
   options?: FetchMetadataJsonOptions
 ): Promise<YtdlpVideoInfo> {
   const logFailures = options?.logFailures !== false;
-  const poContext = ytdlpPoTokenContextFromUrl(url, "analyze");
+  const transportContext = ytdlpProxyContextFromUrl(url, "analyze");
 
   return withYtDlpCookiesArgs(async (cookiesArgs) => {
     const env = ytDlpMetadataEnv();
     /** `--skip-download`: metadata-only; avoids failing format merges that only matter when downloading. */
-    const metaCore = withYtDlpPoTokenArgs(
+    const metaCore = applyYtDlpYouTubeTransportArgs(
       [
         ...cookiesArgs,
         ...YTDLP_JS_RUNTIME_ARGS,
@@ -501,7 +506,8 @@ export async function fetchMetadataJson(
         "--no-playlist",
         "--no-warnings",
       ],
-      poContext
+      transportContext,
+      withYtDlpPoTokenArgs
     );
 
     const parseStdout = (stdout: string): YtdlpVideoInfo => {
@@ -535,10 +541,11 @@ export async function fetchMetadataJson(
             code,
             classification,
             stderrTail: (stderr ?? "").slice(-2000),
-            ...ytDlpPoTokenOperationalFlags(poContext),
-            operation: poContext.operation,
-            platform: poContext.platform ?? "youtube",
-            urlHost: poContext.urlHost,
+            ...ytDlpPoTokenOperationalFlags(transportContext),
+            ...ytDlpProxyOperationalFlags(transportContext),
+            operation: transportContext.operation,
+            platform: transportContext.platform ?? "youtube",
+            urlHost: transportContext.urlHost,
           },
           "yt-dlp metadata failed"
         );
@@ -561,10 +568,11 @@ export async function fetchMetadataJson(
               code,
               classification,
               stderrTail: (stderr ?? "").slice(-2000),
-              ...ytDlpPoTokenOperationalFlags(poContext),
-              operation: poContext.operation,
-              platform: poContext.platform ?? "youtube",
-              urlHost: poContext.urlHost,
+              ...ytDlpPoTokenOperationalFlags(transportContext),
+              ...ytDlpProxyOperationalFlags(transportContext),
+              operation: transportContext.operation,
+              platform: transportContext.platform ?? "youtube",
+              urlHost: transportContext.urlHost,
             },
             "yt-dlp metadata failed"
           );
@@ -579,10 +587,11 @@ export async function fetchMetadataJson(
           code,
           classification,
           stderrTail: (stderr ?? "").slice(-2000),
-          ...ytDlpPoTokenOperationalFlags(poContext),
-          operation: poContext.operation,
-          platform: poContext.platform ?? "youtube",
-          urlHost: poContext.urlHost,
+          ...ytDlpPoTokenOperationalFlags(transportContext),
+          ...ytDlpProxyOperationalFlags(transportContext),
+          operation: transportContext.operation,
+          platform: transportContext.platform ?? "youtube",
+          urlHost: transportContext.urlHost,
         },
         "yt-dlp metadata failed after format fallbacks"
       );
