@@ -1,0 +1,7 @@
+# Example YouTube baseline URL list for diag:youtube-matrix / diag:youtube-pot
+# Copy to a private path (e.g. /tmp/youtube-diag-urls.txt) on the server — do not commit real failing URLs.
+https://www.youtube.com/watch?v=dQw4w9WgXcQ
+https://youtu.be/H78s2_HxlSI
+https://youtu.be/eTQ1ATGQkmE
+https://youtu.be/sRjY6HMXdV8
+https://www.youtube.com/watch?v=jNQXAC9IVRw

@@ -27,10 +27,10 @@ RUN mkdir -p /usr/share/fonts/truetype/linkclip \
 
 RUN ffmpeg -version && ffprobe -version
 
-RUN python3 -m pip install --break-system-packages --no-cache-dir -U yt-dlp yt-dlp-ejs
+RUN python3 -m pip install --break-system-packages --no-cache-dir -U yt-dlp yt-dlp-ejs bgutil-ytdlp-pot-provider
 
 RUN yt-dlp --version \
-    && python3 -m pip show yt-dlp yt-dlp-ejs >/dev/null
+    && python3 -m pip show yt-dlp yt-dlp-ejs bgutil-ytdlp-pot-provider >/dev/null
 
 WORKDIR /app
 
