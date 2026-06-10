@@ -107,7 +107,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
 
     TextStyle baseStyle({Color? textColor, FontWeight? weight, bool stroke = false}) {
       final style = TextStyle(
-        color: stroke ? null : (textColor ?? accent),
+        color: stroke ? null : (textColor ?? normal),
         fontSize: fz,
         fontWeight: weight ?? boldStyle,
         height: 1.15,

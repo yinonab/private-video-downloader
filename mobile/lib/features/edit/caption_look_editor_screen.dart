@@ -208,7 +208,13 @@ class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
                   outlineWidth: _outlineWidth,
                   onFontFamily: (v) => setState(() => _fontFamily = v),
                   onFontSize: (v) => setState(() => _fontSize = v),
-                  onNormalColor: (v) => setState(() => _normalTextColor = v),
+                  onNormalColor: (v) => setState(() {
+                    _normalTextColor = v;
+                    // Static captions (highlight off) burn API `color`, not `normalTextColor`.
+                    if (_wordHighlight == QuickEditCaptionWordHighlight.none) {
+                      _color = v;
+                    }
+                  }),
                   onOutlineEnabled: (v) => setState(() => _outlineEnabled = v),
                   onOutlineColor: (v) => setState(() => _outlineColor = v),
                   onOutlineWidth: (v) => setState(() => _outlineWidth = v),

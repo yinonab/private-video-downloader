@@ -983,6 +983,21 @@ QuickEditCaptionColor effectiveCaptionNormalTextColor({
 }) =>
     normalTextColor ?? color;
 
+/// API `color` for burn when highlight is off (static ASS uses `color`, not `normalTextColor`).
+QuickEditCaptionColor captionBurnAccentColor({
+  required QuickEditCaptionColor color,
+  required QuickEditCaptionWordHighlight wordHighlight,
+  QuickEditCaptionColor? normalTextColor,
+}) {
+  if (wordHighlight == QuickEditCaptionWordHighlight.none) {
+    return effectiveCaptionNormalTextColor(
+      color: color,
+      normalTextColor: normalTextColor,
+    );
+  }
+  return color;
+}
+
 QuickEditCaptionColor effectiveCaptionActiveTextColor({
   required QuickEditCaptionColor color,
   required QuickEditCaptionWordHighlight wordHighlight,
@@ -1357,6 +1372,11 @@ Map<String, dynamic> quickEditCaptionsV22Operation({
   QuickEditCaptionColor? outlineColor,
   QuickEditCaptionOutlineWidth outlineWidth = QuickEditCaptionOutlineWidth.medium,
 }) {
+  final burnColor = captionBurnAccentColor(
+    color: color,
+    wordHighlight: wordHighlight,
+    normalTextColor: normalTextColor,
+  );
   final op = <String, dynamic>{
     "type": "captions",
     "mode": "auto",
@@ -1366,7 +1386,7 @@ Map<String, dynamic> quickEditCaptionsV22Operation({
     "fontSize": fontSize.apiValue,
     "fontFamily": fontFamily.apiValue,
     "position": position.apiValue,
-    "color": color.apiValue,
+    "color": burnColor.apiValue,
     "wordHighlight": wordHighlight.apiValue,
     "offsetX": clampQuickEditCaptionOffsetX(captionsOffsetX),
     "offsetY": clampQuickEditCaptionOffsetY(captionsOffsetY),
@@ -1374,7 +1394,7 @@ Map<String, dynamic> quickEditCaptionsV22Operation({
   applyCaptionHighlightFieldsToJson(
     op,
     wordHighlight: wordHighlight,
-    color: color,
+    color: burnColor,
     normalTextColor: normalTextColor,
     activeTextColor: activeTextColor,
     boxColor: boxColor,
@@ -1408,6 +1428,11 @@ Map<String, dynamic> quickEditCaptionsSegmentsV24Operation({
   QuickEditCaptionColor? outlineColor,
   QuickEditCaptionOutlineWidth outlineWidth = QuickEditCaptionOutlineWidth.medium,
 }) {
+  final burnColor = captionBurnAccentColor(
+    color: color,
+    wordHighlight: wordHighlight,
+    normalTextColor: normalTextColor,
+  );
   final op = <String, dynamic>{
     "type": "captions",
     "mode": "segments",
@@ -1417,7 +1442,7 @@ Map<String, dynamic> quickEditCaptionsSegmentsV24Operation({
     "fontSize": fontSize.apiValue,
     "fontFamily": fontFamily.apiValue,
     "position": position.apiValue,
-    "color": color.apiValue,
+    "color": burnColor.apiValue,
     "wordHighlight": wordHighlight.apiValue,
     "offsetX": clampQuickEditCaptionOffsetX(captionsOffsetX),
     "offsetY": clampQuickEditCaptionOffsetY(captionsOffsetY),
@@ -1426,7 +1451,7 @@ Map<String, dynamic> quickEditCaptionsSegmentsV24Operation({
   applyCaptionHighlightFieldsToJson(
     op,
     wordHighlight: wordHighlight,
-    color: color,
+    color: burnColor,
     normalTextColor: normalTextColor,
     activeTextColor: activeTextColor,
     boxColor: boxColor,
