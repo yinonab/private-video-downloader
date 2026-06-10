@@ -551,6 +551,30 @@ extension QuickEditCaptionBoxShapeApi on QuickEditCaptionBoxShape {
       };
 }
 
+/// Letter stroke/outline width for burned captions.
+enum QuickEditCaptionOutlineWidth { thin, medium, thick }
+
+extension QuickEditCaptionOutlineWidthApi on QuickEditCaptionOutlineWidth {
+  String get apiValue => switch (this) {
+        QuickEditCaptionOutlineWidth.thin => "thin",
+        QuickEditCaptionOutlineWidth.medium => "medium",
+        QuickEditCaptionOutlineWidth.thick => "thick",
+      };
+}
+
+/// Preview stroke width scaled to caption font size (approx ASS/canvas parity).
+double captionOutlineWidthPreviewPx(
+  QuickEditCaptionOutlineWidth width,
+  double fontSize,
+) {
+  final scale = fontSize / 12.6;
+  return switch (width) {
+    QuickEditCaptionOutlineWidth.thin => 1.4 * scale,
+    QuickEditCaptionOutlineWidth.medium => 2.4 * scale,
+    QuickEditCaptionOutlineWidth.thick => 3.6 * scale,
+  };
+}
+
 enum QuickEditCaptionFontFamily {
   defaultFamily,
   heebo,
@@ -616,6 +640,9 @@ final class CaptionLookSnapshot {
     this.activeTextColor,
     this.boxColor,
     this.boxShape = QuickEditCaptionBoxShape.pill,
+    this.outlineEnabled = false,
+    this.outlineColor,
+    this.outlineWidth = QuickEditCaptionOutlineWidth.medium,
   });
 
   final QuickEditCaptionsStylePreset style;
@@ -630,6 +657,9 @@ final class CaptionLookSnapshot {
   final QuickEditCaptionColor? activeTextColor;
   final QuickEditCaptionColor? boxColor;
   final QuickEditCaptionBoxShape boxShape;
+  final bool outlineEnabled;
+  final QuickEditCaptionColor? outlineColor;
+  final QuickEditCaptionOutlineWidth outlineWidth;
 }
 
 /// Field snapshot applied when user picks a built-in preset.
@@ -924,6 +954,9 @@ CaptionLookSnapshot captionLookSnapshotFrom({
   QuickEditCaptionColor? activeTextColor,
   QuickEditCaptionColor? boxColor,
   QuickEditCaptionBoxShape boxShape = QuickEditCaptionBoxShape.pill,
+  bool outlineEnabled = false,
+  QuickEditCaptionColor? outlineColor,
+  QuickEditCaptionOutlineWidth outlineWidth = QuickEditCaptionOutlineWidth.medium,
 }) =>
     CaptionLookSnapshot(
       style: style,
@@ -938,6 +971,9 @@ CaptionLookSnapshot captionLookSnapshotFrom({
       activeTextColor: activeTextColor,
       boxColor: boxColor,
       boxShape: boxShape,
+      outlineEnabled: outlineEnabled,
+      outlineColor: outlineColor,
+      outlineWidth: outlineWidth,
     );
 
 /// Effective normal text color for highlight burn (falls back to accent [color]).
@@ -1000,6 +1036,18 @@ QuickEditCaptionColor effectiveCaptionBoxColor({
     QuickEditCaptionColor.mint => QuickEditCaptionColor.mint,
     _ => QuickEditCaptionColor.yellow,
   };
+}
+
+void applyCaptionOutlineFieldsToJson(
+  Map<String, dynamic> op, {
+  required bool outlineEnabled,
+  QuickEditCaptionColor? outlineColor,
+  QuickEditCaptionOutlineWidth outlineWidth = QuickEditCaptionOutlineWidth.medium,
+}) {
+  if (!outlineEnabled) return;
+  op["outlineEnabled"] = true;
+  op["outlineColor"] = (outlineColor ?? QuickEditCaptionColor.white).apiValue;
+  op["outlineWidth"] = outlineWidth.apiValue;
 }
 
 void applyCaptionHighlightFieldsToJson(
@@ -1305,6 +1353,9 @@ Map<String, dynamic> quickEditCaptionsV22Operation({
   QuickEditCaptionColor? activeTextColor,
   QuickEditCaptionColor? boxColor,
   QuickEditCaptionBoxShape boxShape = QuickEditCaptionBoxShape.pill,
+  bool outlineEnabled = false,
+  QuickEditCaptionColor? outlineColor,
+  QuickEditCaptionOutlineWidth outlineWidth = QuickEditCaptionOutlineWidth.medium,
 }) {
   final op = <String, dynamic>{
     "type": "captions",
@@ -1329,6 +1380,12 @@ Map<String, dynamic> quickEditCaptionsV22Operation({
     boxColor: boxColor,
     boxShape: boxShape,
   );
+  applyCaptionOutlineFieldsToJson(
+    op,
+    outlineEnabled: outlineEnabled,
+    outlineColor: outlineColor,
+    outlineWidth: outlineWidth,
+  );
   return op;
 }
 
@@ -1347,6 +1404,9 @@ Map<String, dynamic> quickEditCaptionsSegmentsV24Operation({
   QuickEditCaptionColor? activeTextColor,
   QuickEditCaptionColor? boxColor,
   QuickEditCaptionBoxShape boxShape = QuickEditCaptionBoxShape.pill,
+  bool outlineEnabled = false,
+  QuickEditCaptionColor? outlineColor,
+  QuickEditCaptionOutlineWidth outlineWidth = QuickEditCaptionOutlineWidth.medium,
 }) {
   final op = <String, dynamic>{
     "type": "captions",
@@ -1371,6 +1431,12 @@ Map<String, dynamic> quickEditCaptionsSegmentsV24Operation({
     activeTextColor: activeTextColor,
     boxColor: boxColor,
     boxShape: boxShape,
+  );
+  applyCaptionOutlineFieldsToJson(
+    op,
+    outlineEnabled: outlineEnabled,
+    outlineColor: outlineColor,
+    outlineWidth: outlineWidth,
   );
   return op;
 }
@@ -1397,6 +1463,9 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   QuickEditCaptionColor? captionsActiveTextColor,
   QuickEditCaptionColor? captionsBoxColor,
   QuickEditCaptionBoxShape captionsBoxShape = QuickEditCaptionBoxShape.pill,
+  bool captionsOutlineEnabled = false,
+  QuickEditCaptionColor? captionsOutlineColor,
+  QuickEditCaptionOutlineWidth captionsOutlineWidth = QuickEditCaptionOutlineWidth.medium,
   List<CaptionDraftSegment>? captionsDraftForBurn,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
@@ -1455,6 +1524,9 @@ List<Map<String, dynamic>> buildQuickEditOperations({
         activeTextColor: captionsActiveTextColor,
         boxColor: captionsBoxColor,
         boxShape: captionsBoxShape,
+        outlineEnabled: captionsOutlineEnabled,
+        outlineColor: captionsOutlineColor,
+        outlineWidth: captionsOutlineWidth,
       ));
     } else {
       ops.add(quickEditCaptionsV22Operation(
@@ -1470,6 +1542,9 @@ List<Map<String, dynamic>> buildQuickEditOperations({
         activeTextColor: captionsActiveTextColor,
         boxColor: captionsBoxColor,
         boxShape: captionsBoxShape,
+        outlineEnabled: captionsOutlineEnabled,
+        outlineColor: captionsOutlineColor,
+        outlineWidth: captionsOutlineWidth,
       ));
     }
   }

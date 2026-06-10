@@ -32,6 +32,9 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
     this.activeTextColor,
     this.boxColor,
     this.boxShape = QuickEditCaptionBoxShape.pill,
+    this.outlineEnabled = false,
+    this.outlineColor,
+    this.outlineWidth = QuickEditCaptionOutlineWidth.medium,
     required this.offsetXAss,
     required this.offsetYAss,
     this.animateMotion = false,
@@ -52,6 +55,9 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
   final QuickEditCaptionColor? activeTextColor;
   final QuickEditCaptionColor? boxColor;
   final QuickEditCaptionBoxShape boxShape;
+  final bool outlineEnabled;
+  final QuickEditCaptionColor? outlineColor;
+  final QuickEditCaptionOutlineWidth outlineWidth;
   final int offsetXAss;
   final int offsetYAss;
 
@@ -99,14 +105,33 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
       _ => FontWeight.w500,
     };
 
-    TextStyle baseStyle({Color? textColor, FontWeight? weight}) {
+    TextStyle baseStyle({Color? textColor, FontWeight? weight, bool stroke = false}) {
       final style = TextStyle(
-        color: textColor ?? accent,
+        color: stroke ? null : (textColor ?? accent),
         fontSize: fz,
         fontWeight: weight ?? boldStyle,
         height: 1.15,
       );
-      return _applyPreviewFont(fontFamily, style);
+      final withFont = _applyPreviewFont(fontFamily, style);
+      if (!stroke || !outlineEnabled) return withFont;
+      final strokeColor = _accentColor(outlineColor ?? QuickEditCaptionColor.white);
+      return withFont.copyWith(
+        foreground: Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = captionOutlineWidthPreviewPx(outlineWidth, fz)
+          ..color = strokeColor,
+      );
+    }
+
+    Widget withOutlineLayer(Widget child, Widget Function({required bool stroke}) buildLayer) {
+      if (!outlineEnabled) return child;
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          buildLayer(stroke: true),
+          buildLayer(stroke: false),
+        ],
+      );
     }
 
     final sampleFull = l10n.editCaptionsSampleLabel;
@@ -114,12 +139,23 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
 
     Widget sampleText({Color? textColor, List<Shadow>? shadows, FontWeight? weight}) {
       if (wordHighlight == QuickEditCaptionWordHighlight.none) {
-        return Text(
-          sampleFull,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: baseStyle(textColor: textColor, weight: weight).copyWith(shadows: shadows),
+        return withOutlineLayer(
+          Text(
+            sampleFull,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: baseStyle(textColor: textColor, weight: weight).copyWith(shadows: shadows),
+          ),
+          ({required bool stroke}) => Text(
+            sampleFull,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: baseStyle(textColor: textColor, weight: weight, stroke: stroke).copyWith(
+              shadows: stroke ? null : shadows,
+            ),
+          ),
         );
       }
 
@@ -159,17 +195,67 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
             )
           : TextSpan(text: sampleParts.highlight, style: hiStyle);
 
-      return RichText(
-        textAlign: TextAlign.center,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        text: TextSpan(
-          children: [
-            if (sampleParts.before.isNotEmpty)
-              TextSpan(text: sampleParts.before, style: normalStyle),
-            highlightSpan,
-          ],
+      return withOutlineLayer(
+        RichText(
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          text: TextSpan(
+            children: [
+              if (sampleParts.before.isNotEmpty)
+                TextSpan(text: sampleParts.before, style: normalStyle),
+              highlightSpan,
+            ],
+          ),
         ),
+        ({required bool stroke}) {
+          final layerNormal = baseStyle(textColor: normal, weight: weight, stroke: stroke).copyWith(
+            shadows: stroke ? null : shadows,
+          );
+          final layerHi = switch (wordHighlight) {
+            QuickEditCaptionWordHighlight.color => layerNormal.copyWith(color: stroke ? null : active),
+            QuickEditCaptionWordHighlight.box => layerNormal.copyWith(
+                color: stroke ? null : active,
+                backgroundColor: stroke ? null : boxFill.withValues(alpha: 0.92),
+              ),
+            QuickEditCaptionWordHighlight.none => layerNormal,
+          };
+          final layerHighlightSpan = wordHighlight == QuickEditCaptionWordHighlight.box
+              ? WidgetSpan(
+                  alignment: PlaceholderAlignment.baseline,
+                  baseline: TextBaseline.alphabetic,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: stroke ? Colors.transparent : boxFill.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(
+                        switch (boxShape) {
+                          QuickEditCaptionBoxShape.pill => 999,
+                          QuickEditCaptionBoxShape.rounded => 8,
+                          QuickEditCaptionBoxShape.rectangle => 2,
+                        },
+                      ),
+                    ),
+                    child: Text(
+                      sampleParts.highlight,
+                      style: layerHi.copyWith(backgroundColor: Colors.transparent),
+                    ),
+                  ),
+                )
+              : TextSpan(text: sampleParts.highlight, style: layerHi);
+          return RichText(
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            text: TextSpan(
+              children: [
+                if (sampleParts.before.isNotEmpty)
+                  TextSpan(text: sampleParts.before, style: layerNormal),
+                layerHighlightSpan,
+              ],
+            ),
+          );
+        },
       );
     }
 
@@ -272,6 +358,9 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
         activeTextColor,
         boxColor,
         boxShape,
+        outlineEnabled,
+        outlineColor,
+        outlineWidth,
       ),
     );
 

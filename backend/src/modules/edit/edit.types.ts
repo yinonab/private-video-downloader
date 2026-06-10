@@ -63,6 +63,9 @@ export type CaptionsFontFamily =
 
 export type CaptionsWordHighlight = "none" | "color" | "box";
 
+/** Text stroke/outline width preset (ASS + canvas). */
+export type CaptionsOutlineWidth = "thin" | "medium" | "thick";
+
 /** Optional word-level cue timing. */
 export type CaptionCueWordResolved = {
   readonly startSec: number;
@@ -94,6 +97,10 @@ export type CaptionsBurnInV1Resolved = {
   readonly activeTextColor?: CaptionsTextColor;
   readonly boxColor?: CaptionsTextColor;
   readonly boxShape?: CaptionsBoxShape;
+  /** Optional letter stroke/outline (static ASS + highlight canvas). */
+  readonly outlineEnabled?: boolean;
+  readonly outlineColor?: CaptionsTextColor;
+  readonly outlineWidth?: CaptionsOutlineWidth;
   /** Horizontal offset in ASS script pixels (~PlayRes width); clamped −240…240 server-side. */
   readonly offsetX: number;
   /** Vertical offset in ASS script pixels; clamped −180…180. Positive moves down after anchor math. */

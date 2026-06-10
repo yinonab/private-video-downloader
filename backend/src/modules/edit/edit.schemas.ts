@@ -26,6 +26,7 @@ const UNSUPPORTED_CAPTIONS_OFFSET_EN = "This captions position is not supported.
 const UNSUPPORTED_CAPTIONS_FONT_SIZE_EN = "This captions size is not supported.";
 const UNSUPPORTED_CAPTIONS_FONT_FAMILY_EN = "This caption font is not supported.";
 const UNSUPPORTED_CAPTIONS_COLOR_EN = "This captions color is not supported.";
+const UNSUPPORTED_CAPTIONS_OUTLINE_WIDTH_EN = "This captions outline width is not supported.";
 const UNSUPPORTED_CAPTIONS_WORD_HIGHLIGHT_EN = "This word highlight option is not supported.";
 const UNSUPPORTED_CAPTIONS_BOX_SHAPE_EN = "This caption box shape is not supported.";
 const CANON_EDIT_SPEED_FACTORS = [0.5, 1.25, 1.5, 2] as const satisfies readonly EditSpeedFactor[];
@@ -150,6 +151,7 @@ const CAPTIONS_FONT_FAMILY = [
   "noto_sans_hebrew",
 ] as const;
 const CAPTIONS_WORD_HIGHLIGHT = ["none", "color", "box"] as const;
+const CAPTIONS_OUTLINE_WIDTH = ["thin", "medium", "thick"] as const;
 
 const captionSegmentWireSchema = z
   .object({
@@ -183,6 +185,9 @@ const captionsAutoOpSchema = z
     activeTextColor: z.enum(CAPTIONS_TEXT_COLOR).optional(),
     boxColor: z.enum(CAPTIONS_TEXT_COLOR).optional(),
     boxShape: z.enum(CAPTIONS_BOX_SHAPE).optional(),
+    outlineEnabled: z.boolean().optional(),
+    outlineColor: z.enum(CAPTIONS_TEXT_COLOR).optional(),
+    outlineWidth: z.enum(CAPTIONS_OUTLINE_WIDTH).optional(),
     offsetX: z.number().int().min(-240).max(240).optional(),
     offsetY: z.number().int().min(-180).max(180).optional(),
   })
@@ -204,6 +209,9 @@ const captionsSegmentsOpSchema = z
     activeTextColor: z.enum(CAPTIONS_TEXT_COLOR).optional(),
     boxColor: z.enum(CAPTIONS_TEXT_COLOR).optional(),
     boxShape: z.enum(CAPTIONS_BOX_SHAPE).optional(),
+    outlineEnabled: z.boolean().optional(),
+    outlineColor: z.enum(CAPTIONS_TEXT_COLOR).optional(),
+    outlineWidth: z.enum(CAPTIONS_OUTLINE_WIDTH).optional(),
     offsetX: z.number().int().min(-240).max(240).optional(),
     offsetY: z.number().int().min(-180).max(180).optional(),
     segments: z.array(captionSegmentWireSchema).min(1),
@@ -442,12 +450,29 @@ export function captionsFieldErrorsFromUnknownBody(body: unknown): AppError | nu
       }
     }
     const allowedTextCol = new Set<string>(CAPTIONS_TEXT_COLOR);
-    for (const key of ["normalTextColor", "activeTextColor", "boxColor"] as const) {
+    for (const key of ["normalTextColor", "activeTextColor", "boxColor", "outlineColor"] as const) {
       if (Object.prototype.hasOwnProperty.call(o, key)) {
         const v = o[key];
         if (v !== undefined && v !== null && (typeof v !== "string" || !allowedTextCol.has(v))) {
           return new AppError(codes.UNSUPPORTED_CAPTIONS_COLOR, UNSUPPORTED_CAPTIONS_COLOR_EN, 400);
         }
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(o, "outlineEnabled")) {
+      const oe = o.outlineEnabled;
+      if (oe !== undefined && oe !== null && typeof oe !== "boolean") {
+        return new AppError(codes.BAD_REQUEST, "Captions outlineEnabled must be a boolean.", 400);
+      }
+    }
+    const allowedOutlineWidth = new Set<string>(CAPTIONS_OUTLINE_WIDTH);
+    if (Object.prototype.hasOwnProperty.call(o, "outlineWidth")) {
+      const ow = o.outlineWidth;
+      if (ow !== undefined && ow !== null && (typeof ow !== "string" || !allowedOutlineWidth.has(ow))) {
+        return new AppError(
+          codes.UNSUPPORTED_CAPTIONS_OUTLINE_WIDTH,
+          UNSUPPORTED_CAPTIONS_OUTLINE_WIDTH_EN,
+          400,
+        );
       }
     }
     const allowedBoxShape = new Set<string>(CAPTIONS_BOX_SHAPE);
@@ -574,6 +599,9 @@ export function resolveEditOperations(ops: EditOperation[]): ResolvedEditPlan {
           activeTextColor: capOp.activeTextColor,
           boxColor: capOp.boxColor,
           boxShape: capOp.boxShape,
+          outlineEnabled: capOp.outlineEnabled,
+          outlineColor: capOp.outlineColor,
+          outlineWidth: capOp.outlineWidth,
           offsetX,
           offsetY,
         };

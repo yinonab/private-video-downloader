@@ -46,14 +46,27 @@ function drawTokenText(
   direction: "rtl" | "ltr",
   fillStyle: string,
   fontSize: number,
+  outline?: { enabled: boolean; color: string; widthPx: number },
 ): void {
   const display = captionTokenDisplayText(token);
-  ctx.fillStyle = fillStyle;
   ctx.direction = direction;
   ctx.textAlign = "left";
   const m = ctx.measureText(display);
   const ascent = m.actualBoundingBoxAscent ?? m.emHeightAscent ?? fontSize;
-  ctx.fillText(display, box.x, box.y + ascent);
+  const x = box.x;
+  const y = box.y + ascent;
+
+  if (outline?.enabled && outline.widthPx > 0) {
+    ctx.strokeStyle = outline.color;
+    ctx.lineWidth = outline.widthPx;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.miterLimit = 2;
+    ctx.strokeText(display, x, y);
+  }
+
+  ctx.fillStyle = fillStyle;
+  ctx.fillText(display, x, y);
 }
 
 export async function renderCaptionHighlightPlate(input: RenderPlateInput): Promise<RenderPlateResult> {
@@ -76,6 +89,15 @@ export async function renderCaptionHighlightPlate(input: RenderPlateInput): Prom
 
   ctx.font = captionFontCss(fontLabel, input.fontSize, input.fontWeight);
   ctx.textBaseline = "alphabetic";
+
+  const outline =
+    input.outlineEnabled && input.outlineColorCss
+      ? {
+          enabled: true,
+          color: input.outlineColorCss,
+          widthPx: input.outlineWidthPx ?? 0,
+        }
+      : undefined;
 
   let activeDrawn = 0;
 
@@ -110,6 +132,7 @@ export async function renderCaptionHighlightPlate(input: RenderPlateInput): Prom
         layout.direction,
         isActive ? input.activeTextColor : input.normalTextColor,
         input.fontSize,
+        outline,
       );
       if (isActive) activeDrawn += 1;
     }

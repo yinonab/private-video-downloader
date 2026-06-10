@@ -36,6 +36,9 @@ class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
   QuickEditCaptionColor? _activeTextColor;
   QuickEditCaptionColor? _boxColor;
   late QuickEditCaptionBoxShape _boxShape;
+  late bool _outlineEnabled;
+  QuickEditCaptionColor? _outlineColor;
+  late QuickEditCaptionOutlineWidth _outlineWidth;
 
   @override
   void initState() {
@@ -53,6 +56,9 @@ class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
     _activeTextColor = i.activeTextColor;
     _boxColor = i.boxColor;
     _boxShape = i.boxShape;
+    _outlineEnabled = i.outlineEnabled;
+    _outlineColor = i.outlineColor;
+    _outlineWidth = i.outlineWidth;
     _tabs = TabController(length: 4, vsync: this);
     _tabs.addListener(_onTabChanged);
   }
@@ -83,6 +89,9 @@ class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
         activeTextColor: _activeTextColor,
         boxColor: _boxColor,
         boxShape: _boxShape,
+        outlineEnabled: _outlineEnabled,
+        outlineColor: _outlineColor,
+        outlineWidth: _outlineWidth,
       );
 
   QuickEditCaptionPreset get _effectivePreset => inferQuickEditCaptionPreset(
@@ -194,9 +203,15 @@ class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
                     color: _color,
                     normalTextColor: _normalTextColor,
                   ),
+                  outlineEnabled: _outlineEnabled,
+                  outlineColor: _outlineColor ?? QuickEditCaptionColor.white,
+                  outlineWidth: _outlineWidth,
                   onFontFamily: (v) => setState(() => _fontFamily = v),
                   onFontSize: (v) => setState(() => _fontSize = v),
                   onNormalColor: (v) => setState(() => _normalTextColor = v),
+                  onOutlineEnabled: (v) => setState(() => _outlineEnabled = v),
+                  onOutlineColor: (v) => setState(() => _outlineColor = v),
+                  onOutlineWidth: (v) => setState(() => _outlineWidth = v),
                 ),
                 _HighlightTab(
                   l10n: l10n,
@@ -270,18 +285,30 @@ class _TextTab extends StatelessWidget {
     required this.fontFamily,
     required this.fontSize,
     required this.normalColor,
+    required this.outlineEnabled,
+    required this.outlineColor,
+    required this.outlineWidth,
     required this.onFontFamily,
     required this.onFontSize,
     required this.onNormalColor,
+    required this.onOutlineEnabled,
+    required this.onOutlineColor,
+    required this.onOutlineWidth,
   });
 
   final AppLocalizations l10n;
   final QuickEditCaptionFontFamily fontFamily;
   final QuickEditCaptionFontSize fontSize;
   final QuickEditCaptionColor normalColor;
+  final bool outlineEnabled;
+  final QuickEditCaptionColor outlineColor;
+  final QuickEditCaptionOutlineWidth outlineWidth;
   final ValueChanged<QuickEditCaptionFontFamily> onFontFamily;
   final ValueChanged<QuickEditCaptionFontSize> onFontSize;
   final ValueChanged<QuickEditCaptionColor> onNormalColor;
+  final ValueChanged<bool> onOutlineEnabled;
+  final ValueChanged<QuickEditCaptionColor> onOutlineColor;
+  final ValueChanged<QuickEditCaptionOutlineWidth> onOutlineWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -352,8 +379,85 @@ class _TextTab extends StatelessWidget {
             onSelected: onNormalColor,
           ),
         ),
+        const SizedBox(height: 12),
+        CaptionLookSectionCard(
+          dense: true,
+          title: l10n.editCaptionsV35OutlineLabel,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _SizeChip(
+                      label: l10n.editCaptionsV35OutlineOff,
+                      selected: !outlineEnabled,
+                      onTap: () => onOutlineEnabled(false),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _SizeChip(
+                      label: l10n.editCaptionsV35OutlineOn,
+                      selected: outlineEnabled,
+                      onTap: () => onOutlineEnabled(true),
+                    ),
+                  ),
+                ],
+              ),
+              if (outlineEnabled) ...[
+                const SizedBox(height: 12),
+                Text(
+                  l10n.editCaptionsV35OutlineColor,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                CaptionColorSwatchGrid(
+                  l10n: l10n,
+                  colors: kCaptionLookTextColors,
+                  selected: outlineColor,
+                  onSelected: onOutlineColor,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.editCaptionsV35OutlineWidth,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final w in const [
+                      QuickEditCaptionOutlineWidth.thin,
+                      QuickEditCaptionOutlineWidth.medium,
+                      QuickEditCaptionOutlineWidth.thick,
+                    ])
+                      _SizeChip(
+                        label: _outlineWidthLabel(l10n, w),
+                        selected: outlineWidth == w,
+                        onTap: () => onOutlineWidth(w),
+                      ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
       ],
     );
+  }
+
+  String _outlineWidthLabel(AppLocalizations l10n, QuickEditCaptionOutlineWidth w) {
+    return switch (w) {
+      QuickEditCaptionOutlineWidth.thin => l10n.editCaptionsV35OutlineWidthThin,
+      QuickEditCaptionOutlineWidth.medium => l10n.editCaptionsV35OutlineWidthMedium,
+      QuickEditCaptionOutlineWidth.thick => l10n.editCaptionsV35OutlineWidthThick,
+    };
   }
 
   String _sizeLabel(AppLocalizations l10n, QuickEditCaptionFontSize s) {

@@ -67,6 +67,9 @@ export type RenderPlateInput = {
   readonly boxPaddingXPx: number;
   readonly boxPaddingYPx: number;
   readonly offsetY?: number;
+  readonly outlineEnabled?: boolean;
+  readonly outlineColorCss?: string;
+  readonly outlineWidthPx?: number;
 };
 
 export type RenderPlateResult = {
@@ -103,6 +106,9 @@ export type ResolvedHighlightStyle = {
   readonly normalColor: CaptionsTextColor;
   readonly activeColor: CaptionsTextColor;
   readonly boxColor: CaptionsTextColor;
+  readonly outlineEnabled: boolean;
+  readonly outlineCss: string;
+  readonly outlineWidthPx: (fontSize: number) => number;
 };
 
 export type { CaptionsTextColor };

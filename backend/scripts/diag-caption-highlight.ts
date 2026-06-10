@@ -30,6 +30,7 @@ import {
 } from "../src/services/captionHighlight";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { segmentsToAssContent } from "../src/services/assSubtitles.service";
+import { textColorToAssColour } from "../src/services/captionOutline.util";
 import type { TranscriptSegment } from "../src/services/transcription.service";
 
 const baseCfg: CaptionsBurnInV1Resolved = {
@@ -517,11 +518,106 @@ async function assertRtlPunctuationBehavior(): Promise<void> {
   console.info("diag:caption-highlight ok rtl-punctuation tokenize+draw");
 }
 
+async function assertCaptionOutlineBehavior(): Promise<void> {
+  const outlineCfg: CaptionsBurnInV1Resolved = {
+    ...baseCfg,
+    wordHighlight: "none",
+    outlineEnabled: true,
+    outlineColor: "white",
+    outlineWidth: "medium",
+    normalTextColor: "yellow",
+  };
+
+  const ass = segmentsToAssContent(
+    [{ startSec: 0, endSec: 2, text: "Hello world" }],
+    outlineCfg,
+  );
+  assert.ok(ass.includes(textColorToAssColour("white")), "ASS custom outline colour");
+  assert.ok(ass.includes(",3.50,"), "ASS medium outline width");
+
+  const plateBase = {
+    text: "Hello world",
+    activeWordIndex: 0,
+    direction: "ltr" as const,
+    fontFamily: "heebo" as const,
+    fontSize: 32,
+    fontWeight: 700,
+    normalTextColor: "#FFD966",
+    activeTextColor: "#FFD966",
+    boxColor: "rgba(255,217,102,0.92)",
+    boxShape: "pill" as const,
+    drawBox: false,
+    maxLines: 2,
+    canvasWidth: 960,
+    canvasHeight: 540,
+    position: "bottom" as const,
+    maxLineWidthPx: 780,
+    lineGapPx: 10,
+    tokenGapPx: 10,
+    boxPaddingXPx: 8,
+    boxPaddingYPx: 5,
+  };
+
+  const without = await renderCaptionHighlightPlate(plateBase);
+  const withOutline = await renderCaptionHighlightPlate({
+    ...plateBase,
+    outlineEnabled: true,
+    outlineColorCss: "#FFFFFF",
+    outlineWidthPx: 4.5,
+  });
+  assert.ok(withOutline.png.length > without.png.length, "outline plate larger png");
+  assert.equal(withOutline.activeTokenCount, 1);
+
+  const heOutline = await renderCaptionHighlightPlate({
+    ...plateBase,
+    text: "בלבנון, ברעיון,",
+    activeWordIndex: 1,
+    direction: "rtl",
+    drawBox: true,
+    outlineEnabled: true,
+    outlineColorCss: "#FFFFFF",
+    outlineWidthPx: 4.5,
+  });
+  assert.equal(heOutline.layout.direction, "rtl");
+  assert.equal(heOutline.activeTokenCount, 1);
+
+  for (const mode of ["color", "box"] as const) {
+    const cfg: CaptionsBurnInV1Resolved = {
+      ...baseCfg,
+      wordHighlight: mode,
+      outlineEnabled: true,
+      outlineColor: "white",
+      outlineWidth: "thick",
+      normalTextColor: "yellow",
+      activeTextColor: "purple",
+      boxColor: "pink",
+    };
+    const style = resolveHighlightStyle(cfg);
+    assert.ok(style.outlineEnabled);
+    const plate = await renderCaptionHighlightPlate({
+      ...plateBase,
+      text: "Two line caption sample here",
+      activeWordIndex: 2,
+      drawBox: mode === "box",
+      normalTextColor: style.normalCss,
+      activeTextColor: style.activeCss,
+      boxColor: style.boxCss,
+      outlineEnabled: style.outlineEnabled,
+      outlineColorCss: style.outlineCss,
+      outlineWidthPx: style.outlineWidthPx(32),
+    });
+    assert.equal(plate.activeTokenCount, 1, `outline + ${mode}`);
+  }
+
+  console.info("diag:caption-highlight ok caption-outline ass+canvas");
+}
+
 async function main(): Promise<void> {
   assertKillSwitchStaticAss();
   assertFilterComplexLabels();
   assertColorPropagation();
   await assertRtlPunctuationBehavior();
+  await assertCaptionOutlineBehavior();
 
   const outRoot = mkdtempSync(path.join(os.tmpdir(), "linkclip-diag-cap-"));
   mkdirSync(outRoot, { recursive: true });

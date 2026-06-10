@@ -33,6 +33,9 @@ function plateCacheKey(
   h.update(style.boxCss);
   h.update(style.boxShape);
   h.update(String(style.drawBox));
+  h.update(String(style.outlineEnabled));
+  h.update(style.outlineCss);
+  h.update(String(style.outlineWidthPx(captionFontSizePx(cfg.fontSize, canvas))));
   h.update(cfg.fontFamily);
   h.update(cfg.fontSize);
   h.update(cfg.position);
@@ -73,6 +76,9 @@ function buildPlateInput(
     boxPaddingXPx: 8,
     boxPaddingYPx: 5,
     offsetY: cfg.offsetY,
+    outlineEnabled: style.outlineEnabled,
+    outlineColorCss: style.outlineEnabled ? style.outlineCss : undefined,
+    outlineWidthPx: style.outlineEnabled ? style.outlineWidthPx(captionFontSizePx(cfg.fontSize, canvas)) : undefined,
   };
 }
 

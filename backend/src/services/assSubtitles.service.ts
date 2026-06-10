@@ -1,5 +1,6 @@
 import type { CaptionsBurnInV1Resolved } from "../modules/edit/edit.types";
 import type { TranscriptSegment } from "./transcription.service";
+import { resolveCaptionOutline, type ResolvedCaptionOutline } from "./captionOutline.util";
 
 /**
  * ASS dialogue hard line break token (literal backslash + N in subtitle file).
@@ -70,6 +71,7 @@ export function segmentsToAssContentWithMeta(segments: TranscriptSegment[], opts
     color: opts.color,
     alignment: align,
     fontFamily: opts.fontFamily,
+    outline: resolveCaptionOutline(opts),
   });
 
   const header = `[Script Info]
@@ -190,8 +192,9 @@ function buildDefaultStyleRow(p: {
   color: CaptionsBurnInV1Resolved["color"];
   alignment: number;
   fontFamily: CaptionsBurnInV1Resolved["fontFamily"];
+  outline: ResolvedCaptionOutline;
 }): string {
-  const outlineBlack = "&H00101010";
+  let outlineColour = "&H00101010";
   let outline = 2.65;
   let shadow = 1.65;
   let bold = 0;
@@ -267,7 +270,11 @@ function buildDefaultStyleRow(p: {
     p.style === "bold" || p.style === "bold_social" || p.style === "yellow_headline" ? 101 : 100;
   const scaleY = scaleX;
   const fontName = captionAssFontName(p.fontFamily);
-  return `Style: Default,${fontName},${p.fontSize},${primary},${secondaryOrPlaceholder()},${outlineBlack},${back},${bold},0,0,0,${scaleX},${scaleY},0,0,${borderStyle},${outline.toFixed(2)},${shadow.toFixed(2)},${p.alignment},${MARGIN_H},${MARGIN_H},${MARGIN_V},1`;
+  if (p.outline.enabled) {
+    outlineColour = p.outline.assColour;
+    outline = p.outline.assWidth;
+  }
+  return `Style: Default,${fontName},${p.fontSize},${primary},${secondaryOrPlaceholder()},${outlineColour},${back},${bold},0,0,0,${scaleX},${scaleY},0,0,${borderStyle},${outline.toFixed(2)},${shadow.toFixed(2)},${p.alignment},${MARGIN_H},${MARGIN_H},${MARGIN_V},1`;
 }
 
 function secondaryOrPlaceholder(): string {

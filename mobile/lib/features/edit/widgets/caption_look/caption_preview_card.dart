@@ -66,6 +66,9 @@ class _CaptionPreviewCardState extends State<CaptionPreviewCard>
         s.activeTextColor,
         s.boxColor,
         s.boxShape,
+        s.outlineEnabled,
+        s.outlineColor,
+        s.outlineWidth,
       );
 
   @override
@@ -133,6 +136,9 @@ class _CaptionPreviewCardState extends State<CaptionPreviewCard>
                     activeTextColor: s.activeTextColor,
                     boxColor: s.boxColor,
                     boxShape: s.boxShape,
+                    outlineEnabled: s.outlineEnabled,
+                    outlineColor: s.outlineColor,
+                    outlineWidth: s.outlineWidth,
                     offsetXAss: s.offsetX,
                     offsetYAss: s.offsetY,
                   ),

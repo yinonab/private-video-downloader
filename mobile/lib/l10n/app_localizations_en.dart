@@ -1443,6 +1443,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCaptionsV34NormalTextColor => 'Normal text color';
 
   @override
+  String get editCaptionsV35OutlineLabel => 'Text outline';
+
+  @override
+  String get editCaptionsV35OutlineOn => 'On';
+
+  @override
+  String get editCaptionsV35OutlineOff => 'Off';
+
+  @override
+  String get editCaptionsV35OutlineColor => 'Outline color';
+
+  @override
+  String get editCaptionsV35OutlineWidth => 'Outline width';
+
+  @override
+  String get editCaptionsV35OutlineWidthThin => 'Thin';
+
+  @override
+  String get editCaptionsV35OutlineWidthMedium => 'Medium';
+
+  @override
+  String get editCaptionsV35OutlineWidthThick => 'Thick';
+
+  @override
   String get editCaptionsV34ActiveWordColor => 'Active word color';
 
   @override

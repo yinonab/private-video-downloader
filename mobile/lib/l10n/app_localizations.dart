@@ -2726,6 +2726,54 @@ abstract class AppLocalizations {
   /// **'Normal text color'**
   String get editCaptionsV34NormalTextColor;
 
+  /// No description provided for @editCaptionsV35OutlineLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Text outline'**
+  String get editCaptionsV35OutlineLabel;
+
+  /// No description provided for @editCaptionsV35OutlineOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get editCaptionsV35OutlineOn;
+
+  /// No description provided for @editCaptionsV35OutlineOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get editCaptionsV35OutlineOff;
+
+  /// No description provided for @editCaptionsV35OutlineColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Outline color'**
+  String get editCaptionsV35OutlineColor;
+
+  /// No description provided for @editCaptionsV35OutlineWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Outline width'**
+  String get editCaptionsV35OutlineWidth;
+
+  /// No description provided for @editCaptionsV35OutlineWidthThin.
+  ///
+  /// In en, this message translates to:
+  /// **'Thin'**
+  String get editCaptionsV35OutlineWidthThin;
+
+  /// No description provided for @editCaptionsV35OutlineWidthMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get editCaptionsV35OutlineWidthMedium;
+
+  /// No description provided for @editCaptionsV35OutlineWidthThick.
+  ///
+  /// In en, this message translates to:
+  /// **'Thick'**
+  String get editCaptionsV35OutlineWidthThick;
+
   /// No description provided for @editCaptionsV34ActiveWordColor.
   ///
   /// In en, this message translates to:

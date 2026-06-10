@@ -4,6 +4,7 @@ import type {
   CaptionsWordHighlight,
 } from "../../modules/edit/edit.types";
 import type { BoxShape, ResolvedHighlightStyle } from "./types";
+import { resolveCaptionOutline } from "../captionOutline.util";
 
 /** CSS colors for canvas fill (opaque). */
 export function textColorToCss(color: CaptionsTextColor): string {
@@ -70,6 +71,7 @@ export function resolveHighlightStyle(cfg: CaptionsBurnInV1Resolved): ResolvedHi
   const active =
     cfg.activeTextColor ?? defaultActiveTextColor(cfg.wordHighlight, normal, box);
   const boxShape: BoxShape = cfg.boxShape ?? "pill";
+  const outline = resolveCaptionOutline(cfg);
 
   return {
     normalCss: textColorToCss(normal),
@@ -81,5 +83,8 @@ export function resolveHighlightStyle(cfg: CaptionsBurnInV1Resolved): ResolvedHi
     normalColor: normal,
     activeColor: active,
     boxColor: box,
+    outlineEnabled: outline.enabled,
+    outlineCss: outline.css,
+    outlineWidthPx: outline.canvasWidthPx,
   };
 }

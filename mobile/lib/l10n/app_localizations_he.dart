@@ -1425,6 +1425,30 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editCaptionsV34NormalTextColor => 'צבע טקסט רגיל';
 
   @override
+  String get editCaptionsV35OutlineLabel => 'מסגרת טקסט';
+
+  @override
+  String get editCaptionsV35OutlineOn => 'פעיל';
+
+  @override
+  String get editCaptionsV35OutlineOff => 'כבוי';
+
+  @override
+  String get editCaptionsV35OutlineColor => 'צבע מסגרת';
+
+  @override
+  String get editCaptionsV35OutlineWidth => 'עובי מסגרת';
+
+  @override
+  String get editCaptionsV35OutlineWidthThin => 'דק';
+
+  @override
+  String get editCaptionsV35OutlineWidthMedium => 'בינוני';
+
+  @override
+  String get editCaptionsV35OutlineWidthThick => 'עבה';
+
+  @override
   String get editCaptionsV34ActiveWordColor => 'צבע המילה הפעילה';
 
   @override

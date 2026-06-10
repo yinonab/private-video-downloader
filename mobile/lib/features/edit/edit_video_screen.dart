@@ -139,6 +139,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   QuickEditCaptionColor? _captionsActiveTextColor;
   QuickEditCaptionColor? _captionsBoxColor;
   QuickEditCaptionBoxShape _captionsBoxShape = QuickEditCaptionBoxShape.pill;
+  bool _captionsOutlineEnabled = false;
+  QuickEditCaptionColor? _captionsOutlineColor;
+  QuickEditCaptionOutlineWidth _captionsOutlineWidth =
+      QuickEditCaptionOutlineWidth.medium;
   int _captionsOffsetX = 0;
   int _captionsOffsetY = 0;
 
@@ -394,6 +398,9 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       _captionsActiveTextColor = snapshot.activeTextColor;
       _captionsBoxColor = snapshot.boxColor;
       _captionsBoxShape = snapshot.boxShape;
+      _captionsOutlineEnabled = snapshot.outlineEnabled;
+      _captionsOutlineColor = snapshot.outlineColor;
+      _captionsOutlineWidth = snapshot.outlineWidth;
       _captionsOffsetX = clampQuickEditCaptionOffsetX(snapshot.offsetX);
       _captionsOffsetY = clampQuickEditCaptionOffsetY(snapshot.offsetY);
     });
@@ -413,6 +420,9 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       activeTextColor: _captionsActiveTextColor,
       boxColor: _captionsBoxColor,
       boxShape: _captionsBoxShape,
+      outlineEnabled: _captionsOutlineEnabled,
+      outlineColor: _captionsOutlineColor,
+      outlineWidth: _captionsOutlineWidth,
     );
     final result = await Navigator.of(context).push<CaptionLookSnapshot>(
       MaterialPageRoute(
@@ -671,6 +681,9 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         captionsActiveTextColor: _captionsActiveTextColor,
         captionsBoxColor: _captionsBoxColor,
         captionsBoxShape: _captionsBoxShape,
+        captionsOutlineEnabled: _captionsOutlineEnabled,
+        captionsOutlineColor: _captionsOutlineColor,
+        captionsOutlineWidth: _captionsOutlineWidth,
         captionsDraftForBurn: (_captionsDraftSegments != null && _captionsDraftSegments!.isNotEmpty)
             ? _captionsDraftSegments
             : null,
@@ -1062,6 +1075,9 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                       activeTextColor: _captionsActiveTextColor,
                       boxColor: _captionsBoxColor,
                       boxShape: _captionsBoxShape,
+                      outlineEnabled: _captionsOutlineEnabled,
+                      outlineColor: _captionsOutlineColor,
+                      outlineWidth: _captionsOutlineWidth,
                       offsetXAss: _captionsOffsetX,
                       offsetYAss: _captionsOffsetY,
                     )
