@@ -426,23 +426,35 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         outlineWidth: _captionsOutlineWidth,
       );
 
+  double get _captionEditTimelinePlaybackSec => captionPreviewPlaybackOnEditTimeline(
+        sourcePlaybackSec: _playbackSec,
+        trimStartSec: _startSec,
+        trimEndSec: _endSec,
+        videoDurationSec: _durationSec,
+        speedFactor: _speed,
+      );
+
   Widget? _buildCaptionsPreviewOverlay(AppLocalizations l10n) {
     if (!_captionsAuto) return null;
-    final captionText = captionPreviewDisplayText(
+    final editPlayback = _captionEditTimelinePlaybackSec;
+    final cue = resolveCaptionPreviewCue(
       l10n: l10n,
       draftSegments: _captionsDraftSegments,
-      playbackSec: _playbackSec,
+      playbackSec: editPlayback,
+      allowSampleFallback: false,
     );
+    if (!cue.hasText) return null;
     final highlightIdx = captionPreviewActiveWordIndex(
-      text: captionText,
+      text: cue.text!,
       draftSegments: _captionsDraftSegments,
-      playbackSec: _playbackSec,
+      playbackSec: editPlayback,
     );
     final s = _captionLookSnapshot;
     return EditCaptionsPreviewOverlay(
       l10n: l10n,
       layout: CaptionPreviewLayout.standard,
       showPreviewLabel: false,
+      allowSampleFallback: false,
       stylePreset: s.style,
       fontSize: s.fontSize,
       fontFamily: s.fontFamily,
@@ -458,7 +470,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       outlineWidth: s.outlineWidth,
       offsetXAss: s.offsetX,
       offsetYAss: s.offsetY,
-      sampleText: captionText,
+      sampleText: cue.text,
       highlightWordIndex: highlightIdx,
     );
   }
@@ -490,6 +502,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
           thumbnailUrl: thumb,
           draftSegments: _captionsDraftSegments,
           initialPlaybackSec: _playbackSec,
+          speedFactor: _speed,
         ),
       ),
     );
