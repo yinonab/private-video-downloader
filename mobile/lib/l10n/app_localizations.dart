@@ -2774,6 +2774,18 @@ abstract class AppLocalizations {
   /// **'Thick'**
   String get editCaptionsV35OutlineWidthThick;
 
+  /// No description provided for @editCaptionsV36FullscreenPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Fullscreen preview'**
+  String get editCaptionsV36FullscreenPreview;
+
+  /// No description provided for @editCaptionsV36FullscreenPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Caption preview'**
+  String get editCaptionsV36FullscreenPreviewTitle;
+
   /// No description provided for @editCaptionsV34ActiveWordColor.
   ///
   /// In en, this message translates to:

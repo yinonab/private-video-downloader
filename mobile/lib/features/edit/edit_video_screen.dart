@@ -17,7 +17,9 @@ import "../../core/l10n/media_export_display_path.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
 import "../../core/edit/caption_look_summary.dart";
+import "../../core/edit/caption_preview_layout.dart";
 import "../../core/models/quick_edit_models.dart";
+import "caption_fullscreen_preview_screen.dart";
 import "caption_look_editor_screen.dart";
 import "../../core/network/api_client.dart";
 import "../../core/theme/linkclip_palette.dart";
@@ -406,27 +408,101 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     });
   }
 
-  Future<void> _openCaptionLookEditor() async {
-    final initial = captionLookSnapshotFrom(
-      style: _captionsStyle,
-      fontSize: _captionsFontSize,
-      fontFamily: _captionsFontFamily,
-      position: _captionsPosition,
-      color: _captionsColor,
-      wordHighlight: _captionsWordHighlight,
-      offsetX: _captionsOffsetX,
-      offsetY: _captionsOffsetY,
-      normalTextColor: _captionsNormalTextColor,
-      activeTextColor: _captionsActiveTextColor,
-      boxColor: _captionsBoxColor,
-      boxShape: _captionsBoxShape,
-      outlineEnabled: _captionsOutlineEnabled,
-      outlineColor: _captionsOutlineColor,
-      outlineWidth: _captionsOutlineWidth,
+  CaptionLookSnapshot get _captionLookSnapshot => captionLookSnapshotFrom(
+        style: _captionsStyle,
+        fontSize: _captionsFontSize,
+        fontFamily: _captionsFontFamily,
+        position: _captionsPosition,
+        color: _captionsColor,
+        wordHighlight: _captionsWordHighlight,
+        offsetX: _captionsOffsetX,
+        offsetY: _captionsOffsetY,
+        normalTextColor: _captionsNormalTextColor,
+        activeTextColor: _captionsActiveTextColor,
+        boxColor: _captionsBoxColor,
+        boxShape: _captionsBoxShape,
+        outlineEnabled: _captionsOutlineEnabled,
+        outlineColor: _captionsOutlineColor,
+        outlineWidth: _captionsOutlineWidth,
+      );
+
+  Widget? _buildCaptionsPreviewOverlay(AppLocalizations l10n) {
+    if (!_captionsAuto) return null;
+    final captionText = captionPreviewDisplayText(
+      l10n: l10n,
+      draftSegments: _captionsDraftSegments,
+      playbackSec: _playbackSec,
     );
+    final highlightIdx = captionPreviewActiveWordIndex(
+      text: captionText,
+      draftSegments: _captionsDraftSegments,
+      playbackSec: _playbackSec,
+    );
+    final s = _captionLookSnapshot;
+    return EditCaptionsPreviewOverlay(
+      l10n: l10n,
+      layout: CaptionPreviewLayout.standard,
+      showPreviewLabel: false,
+      stylePreset: s.style,
+      fontSize: s.fontSize,
+      fontFamily: s.fontFamily,
+      position: s.position,
+      color: s.color,
+      wordHighlight: s.wordHighlight,
+      normalTextColor: s.normalTextColor,
+      activeTextColor: s.activeTextColor,
+      boxColor: s.boxColor,
+      boxShape: s.boxShape,
+      outlineEnabled: s.outlineEnabled,
+      outlineColor: s.outlineColor,
+      outlineWidth: s.outlineWidth,
+      offsetXAss: s.offsetX,
+      offsetYAss: s.offsetY,
+      sampleText: captionText,
+      highlightWordIndex: highlightIdx,
+    );
+  }
+
+  Future<void> _openCaptionFullscreenPreview(CaptionLookSnapshot look) async {
+    if (!_captionsAuto) return;
+    final scope = AppScope.read(context);
+    final thumb = widget.source.kind == EditVideoSourceKind.download
+        ? _detail?.thumbnail
+        : _resolveThumbnailUrl(widget.source.thumbnailUrl);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => CaptionFullscreenPreviewScreen(
+          previewSource: widget.source.kind == EditVideoSourceKind.download
+              ? EditVideoPreviewDownloadSource(
+                  jobId: widget.source.sourceDownloadJobId!,
+                )
+              : EditVideoPreviewUploadSource(
+                  uploadId: widget.source.sourceUploadId!,
+                  localPreviewPath: widget.source.localPreviewPath,
+                ),
+          session: scope.session,
+          apiBaseForUrl: scope.session.serverUrl,
+          look: look,
+          previewRotation: _rotation,
+          trimStartSec: _startSec,
+          trimEndSec: _endSec,
+          videoDurationSec: _durationSec,
+          thumbnailUrl: thumb,
+          draftSegments: _captionsDraftSegments,
+          initialPlaybackSec: _playbackSec,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openCaptionLookEditor() async {
+    final initial = _captionLookSnapshot;
     final result = await Navigator.of(context).push<CaptionLookSnapshot>(
       MaterialPageRoute(
-        builder: (_) => CaptionLookEditorScreen(initial: initial),
+        builder: (_) => CaptionLookEditorScreen(
+          initial: initial,
+          onOpenFullscreenPreview: _openCaptionFullscreenPreview,
+        ),
       ),
     );
     if (!mounted || result == null) return;
@@ -1007,10 +1083,6 @@ class _EditVideoScreenState extends State<EditVideoScreen>
             _crop != QuickEditCropAspect.original &&
             _formatFitMode == QuickEditFormatMode.fill;
 
-    /// Captions tab is index **3** (Trim, Speed, Format, Captions, …).
-    final showCaptionsOnVideoPreview =
-        _tabController.index == 3 && _captionsAuto;
-
     Widget previewStack;
     if (_detailLoading) {
       previewStack = AspectRatio(
@@ -1062,31 +1134,46 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                 if (!mounted) return;
                 setState(() => _playbackSec = pos);
               },
-              captionsPreviewOverlay: showCaptionsOnVideoPreview
-                  ? EditCaptionsPreviewOverlay(
-                      l10n: l10n,
-                      stylePreset: _captionsStyle,
-                      fontSize: _captionsFontSize,
-                      fontFamily: _captionsFontFamily,
-                      position: _captionsPosition,
-                      color: _captionsColor,
-                      wordHighlight: _captionsWordHighlight,
-                      normalTextColor: _captionsNormalTextColor,
-                      activeTextColor: _captionsActiveTextColor,
-                      boxColor: _captionsBoxColor,
-                      boxShape: _captionsBoxShape,
-                      outlineEnabled: _captionsOutlineEnabled,
-                      outlineColor: _captionsOutlineColor,
-                      outlineWidth: _captionsOutlineWidth,
-                      offsetXAss: _captionsOffsetX,
-                      offsetYAss: _captionsOffsetY,
-                    )
-                  : null,
+              captionsPreviewOverlay: _buildCaptionsPreviewOverlay(l10n),
             ),
             if (showCropOverlay)
               Positioned.fill(
                 child: CropPreviewOverlay(
                     aspect: _crop, primaryColor: scheme.primary),
+              ),
+            if (_captionsAuto)
+              PositionedDirectional(
+                top: 8,
+                end: 8,
+                child: Material(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(999),
+                  child: InkWell(
+                    onTap: () => _openCaptionFullscreenPreview(_captionLookSnapshot),
+                    borderRadius: BorderRadius.circular(999),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.fullscreen_rounded,
+                            size: 18,
+                            color: Colors.white.withValues(alpha: 0.92),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            l10n.editCaptionsV36FullscreenPreview,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: Colors.white.withValues(alpha: 0.92),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
           ],
         ),

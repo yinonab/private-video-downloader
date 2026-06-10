@@ -12,9 +12,13 @@ class CaptionLookEditorScreen extends StatefulWidget {
   const CaptionLookEditorScreen({
     super.key,
     required this.initial,
+    this.onOpenFullscreenPreview,
   });
 
   final CaptionLookSnapshot initial;
+
+  /// Opens fullscreen preview with the editor's current (possibly unsaved) look.
+  final void Function(CaptionLookSnapshot look)? onOpenFullscreenPreview;
 
   @override
   State<CaptionLookEditorScreen> createState() => _CaptionLookEditorScreenState();
@@ -185,6 +189,9 @@ class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
             snapshot: _snapshot,
             showSafeGuides: _tabIndex == 3,
             accentColor: scheme.primary,
+            onFullscreen: widget.onOpenFullscreenPreview != null
+                ? () => widget.onOpenFullscreenPreview!(_snapshot)
+                : null,
           ),
           Expanded(
             child: TabBarView(

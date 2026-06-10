@@ -3,25 +3,19 @@ import "dart:math" as math;
 import "package:flutter/material.dart";
 import "package:google_fonts/google_fonts.dart";
 
+import "../../../core/edit/caption_preview_layout.dart";
 import "../../../core/models/quick_edit_models.dart";
 import "../../../l10n/app_localizations.dart";
 
-/// Layout mode for caption preview positioning clamps.
-enum CaptionPreviewLayout {
-  /// Default overlay (e.g. main editor).
-  standard,
+export "../../../core/edit/caption_preview_layout.dart" show CaptionPreviewLayout;
 
-  /// Compact look-editor stage — tighter clamps, no built-in label chip.
-  stage,
-}
-
-/// Approximate captions on the editor video frame (upright; not rotated with preview).
-/// Rough ASS PlayRes parity via [kCaptionAssPlayResX] / [kCaptionAssPlayResY].
+/// Caption overlay aligned to ASS burn-in anchors (PlayRes 960×540 scaled to frame).
 class EditCaptionsPreviewOverlay extends StatelessWidget {
   const EditCaptionsPreviewOverlay({
     super.key,
     required this.l10n,
     this.layout = CaptionPreviewLayout.standard,
+    this.showPreviewLabel = true,
     required this.stylePreset,
     required this.fontSize,
     required this.fontFamily,
@@ -37,14 +31,15 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
     this.outlineWidth = QuickEditCaptionOutlineWidth.medium,
     required this.offsetXAss,
     required this.offsetYAss,
+    this.sampleText,
+    this.highlightWordIndex,
     this.animateMotion = false,
     this.motionDuration = const Duration(milliseconds: 180),
   });
 
   final AppLocalizations l10n;
   final CaptionPreviewLayout layout;
-  final bool animateMotion;
-  final Duration motionDuration;
+  final bool showPreviewLabel;
   final QuickEditCaptionsStylePreset stylePreset;
   final QuickEditCaptionFontSize fontSize;
   final QuickEditCaptionFontFamily fontFamily;
@@ -60,336 +55,350 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
   final QuickEditCaptionOutlineWidth outlineWidth;
   final int offsetXAss;
   final int offsetYAss;
+  final String? sampleText;
+  final int? highlightWordIndex;
+  final bool animateMotion;
+  final Duration motionDuration;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final accent = _accentColor(color);
-    final normal = _accentColor(
-      effectiveCaptionNormalTextColor(
-        color: color,
-        normalTextColor: normalTextColor,
-      ),
-    );
-    final active = _accentColor(
-      effectiveCaptionActiveTextColor(
-        color: color,
-        wordHighlight: wordHighlight,
-        normalTextColor: normalTextColor,
-        activeTextColor: activeTextColor,
-        boxColor: boxColor,
-      ),
-    );
-    final boxFill = _accentColor(
-      effectiveCaptionBoxColor(
-        color: color,
-        wordHighlight: wordHighlight,
-        boxColor: boxColor,
-      ),
-    );
-    final fz = switch (fontSize) {
-      QuickEditCaptionFontSize.extraSmall => 9.6,
-      QuickEditCaptionFontSize.small => 10.8,
-      QuickEditCaptionFontSize.medium => 12.6,
-      QuickEditCaptionFontSize.large => 14.8,
-      QuickEditCaptionFontSize.xLarge => 17.2,
-      QuickEditCaptionFontSize.xxLarge => 20.0,
-    };
-
-    final boldStyle = switch (stylePreset) {
-      QuickEditCaptionsStylePreset.bold ||
-      QuickEditCaptionsStylePreset.boldSocial ||
-      QuickEditCaptionsStylePreset.yellowHeadline ||
-      QuickEditCaptionsStylePreset.highlightBox =>
-        FontWeight.w700,
-      _ => FontWeight.w500,
-    };
-
-    TextStyle baseStyle({Color? textColor, FontWeight? weight, bool stroke = false}) {
-      final style = TextStyle(
-        color: stroke ? null : (textColor ?? normal),
-        fontSize: fz,
-        fontWeight: weight ?? boldStyle,
-        height: 1.15,
-      );
-      final withFont = _applyPreviewFont(fontFamily, style);
-      if (!stroke || !outlineEnabled) return withFont;
-      final strokeColor = _accentColor(outlineColor ?? QuickEditCaptionColor.white);
-      return withFont.copyWith(
-        foreground: Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = captionOutlineWidthPreviewPx(outlineWidth, fz)
-          ..color = strokeColor,
-      );
-    }
-
-    Widget withOutlineLayer(Widget child, Widget Function({required bool stroke}) buildLayer) {
-      if (!outlineEnabled) return child;
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          buildLayer(stroke: true),
-          buildLayer(stroke: false),
-        ],
-      );
-    }
-
-    final sampleFull = l10n.editCaptionsSampleLabel;
-    final sampleParts = _sampleHighlightParts(sampleFull);
-
-    Widget sampleText({Color? textColor, List<Shadow>? shadows, FontWeight? weight}) {
-      if (wordHighlight == QuickEditCaptionWordHighlight.none) {
-        return withOutlineLayer(
-          Text(
-            sampleFull,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: baseStyle(textColor: textColor, weight: weight).copyWith(shadows: shadows),
-          ),
-          ({required bool stroke}) => Text(
-            sampleFull,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: baseStyle(textColor: textColor, weight: weight, stroke: stroke).copyWith(
-              shadows: stroke ? null : shadows,
-            ),
-          ),
-        );
-      }
-
-      final normalStyle = baseStyle(textColor: normal, weight: weight).copyWith(shadows: shadows);
-      final hiStyle = switch (wordHighlight) {
-        QuickEditCaptionWordHighlight.color => normalStyle.copyWith(color: active),
-        QuickEditCaptionWordHighlight.box => normalStyle.copyWith(
-            color: active,
-            backgroundColor: boxFill.withValues(alpha: 0.92),
-          ).copyWith(
-            // Approximate box shape via padding + radius on highlight span only.
-          ),
-        QuickEditCaptionWordHighlight.none => normalStyle,
-      };
-
-      final highlightSpan = wordHighlight == QuickEditCaptionWordHighlight.box
-          ? WidgetSpan(
-              alignment: PlaceholderAlignment.baseline,
-              baseline: TextBaseline.alphabetic,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: boxFill.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(
-                    switch (boxShape) {
-                      QuickEditCaptionBoxShape.pill => 999,
-                      QuickEditCaptionBoxShape.rounded => 8,
-                      QuickEditCaptionBoxShape.rectangle => 2,
-                    },
-                  ),
-                ),
-                child: Text(
-                  sampleParts.highlight,
-                  style: hiStyle.copyWith(backgroundColor: Colors.transparent),
-                ),
-              ),
-            )
-          : TextSpan(text: sampleParts.highlight, style: hiStyle);
-
-      return withOutlineLayer(
-        RichText(
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          text: TextSpan(
-            children: [
-              if (sampleParts.before.isNotEmpty)
-                TextSpan(text: sampleParts.before, style: normalStyle),
-              highlightSpan,
-            ],
-          ),
-        ),
-        ({required bool stroke}) {
-          final layerNormal = baseStyle(textColor: normal, weight: weight, stroke: stroke).copyWith(
-            shadows: stroke ? null : shadows,
-          );
-          final layerHi = switch (wordHighlight) {
-            QuickEditCaptionWordHighlight.color => layerNormal.copyWith(color: stroke ? null : active),
-            QuickEditCaptionWordHighlight.box => layerNormal.copyWith(
-                color: stroke ? null : active,
-                backgroundColor: stroke ? null : boxFill.withValues(alpha: 0.92),
-              ),
-            QuickEditCaptionWordHighlight.none => layerNormal,
-          };
-          final layerHighlightSpan = wordHighlight == QuickEditCaptionWordHighlight.box
-              ? WidgetSpan(
-                  alignment: PlaceholderAlignment.baseline,
-                  baseline: TextBaseline.alphabetic,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: stroke ? Colors.transparent : boxFill.withValues(alpha: 0.92),
-                      borderRadius: BorderRadius.circular(
-                        switch (boxShape) {
-                          QuickEditCaptionBoxShape.pill => 999,
-                          QuickEditCaptionBoxShape.rounded => 8,
-                          QuickEditCaptionBoxShape.rectangle => 2,
-                        },
-                      ),
-                    ),
-                    child: Text(
-                      sampleParts.highlight,
-                      style: layerHi.copyWith(backgroundColor: Colors.transparent),
-                    ),
-                  ),
-                )
-              : TextSpan(text: sampleParts.highlight, style: layerHi);
-          return RichText(
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            text: TextSpan(
-              children: [
-                if (sampleParts.before.isNotEmpty)
-                  TextSpan(text: sampleParts.before, style: layerNormal),
-                layerHighlightSpan,
-              ],
-            ),
-          );
-        },
-      );
-    }
-
-    late final Widget captionBody;
-    switch (stylePreset) {
-      case QuickEditCaptionsStylePreset.darkBox:
-      case QuickEditCaptionsStylePreset.darkBubble:
-        captionBody = DecoratedBox(
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(
-              alpha: stylePreset == QuickEditCaptionsStylePreset.darkBubble ? 0.72 : 0.78,
-            ),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            child: sampleText(textColor: Colors.white),
-          ),
-        );
-        break;
-      case QuickEditCaptionsStylePreset.highlightBox:
-        captionBody = DecoratedBox(
-          decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.88),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            child: sampleText(
-              textColor: _highlightBoxTextColor(color),
-              weight: FontWeight.w700,
-            ),
-          ),
-        );
-        break;
-      case QuickEditCaptionsStylePreset.yellowHeadline:
-        captionBody = sampleText(
-          textColor: const Color(0xFFFFD966),
-          shadows: _strongShadows(),
-        );
-        break;
-      case QuickEditCaptionsStylePreset.bold:
-      case QuickEditCaptionsStylePreset.boldSocial:
-        captionBody = sampleText(shadows: _strongShadows());
-        break;
-      case QuickEditCaptionsStylePreset.cleanPro:
-        captionBody = sampleText(
-          shadows: [
-            Shadow(
-              blurRadius: 9,
-              color: Colors.black.withValues(alpha: 0.84),
-            ),
-            Shadow(
-              blurRadius: 0,
-              offset: const Offset(0, 0.5),
-              color: Colors.black.withValues(alpha: 0.55),
-            ),
-          ],
-        );
-        break;
-      case QuickEditCaptionsStylePreset.clean:
-        captionBody = sampleText(
-          shadows: [
-            Shadow(
-              blurRadius: 8,
-              color: Colors.black.withValues(alpha: 0.82),
-            ),
-          ],
-        );
-    }
-
-    final previewLabel = DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.42),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-        child: Text(
-          l10n.editCaptionsV3PreviewLabel,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: Colors.white.withValues(alpha: 0.88),
-            fontWeight: FontWeight.w600,
-            fontSize: 9.5,
-            letterSpacing: 0.1,
-          ),
-        ),
-      ),
-    );
-
-    final isStage = layout == CaptionPreviewLayout.stage;
-    final styleKey = ValueKey<Object>(
-      (
-        stylePreset,
-        fontSize,
-        fontFamily,
-        color,
-        wordHighlight,
-        normalTextColor,
-        activeTextColor,
-        boxColor,
-        boxShape,
-        outlineEnabled,
-        outlineColor,
-        outlineWidth,
-      ),
-    );
-
-    final captionColumn = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (!isStage && position != QuickEditCaptionPosition.bottom) ...[
-          previewLabel,
-          const SizedBox(height: 4),
-        ],
-        isStage && animateMotion
-            ? AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
-                child: KeyedSubtree(key: styleKey, child: captionBody),
-              )
-            : captionBody,
-        if (!isStage && position == QuickEditCaptionPosition.bottom) ...[
-          const SizedBox(height: 4),
-          previewLabel,
-        ],
-      ],
-    );
-
     return LayoutBuilder(
       builder: (context, c) {
         final w = math.max(c.maxWidth, 1.0);
         final h = math.max(c.maxHeight, 1.0);
+        final fz = captionPreviewFontSizePx(fontSize, h);
+        final hPad = captionPreviewHorizontalPadPx(w);
+        final displayText = sampleText ?? l10n.editCaptionsSampleLabel;
+        final rtl = captionPreviewIsRtl(displayText);
+        final parts = captionPreviewHighlightParts(
+          displayText,
+          highlightWordIndex: highlightWordIndex,
+        );
+
+        final theme = Theme.of(context);
+        final accent = _accentColor(color);
+        final normal = _accentColor(
+          effectiveCaptionNormalTextColor(
+            color: color,
+            normalTextColor: normalTextColor,
+          ),
+        );
+        final active = _accentColor(
+          effectiveCaptionActiveTextColor(
+            color: color,
+            wordHighlight: wordHighlight,
+            normalTextColor: normalTextColor,
+            activeTextColor: activeTextColor,
+            boxColor: boxColor,
+          ),
+        );
+        final boxFill = _accentColor(
+          effectiveCaptionBoxColor(
+            color: color,
+            wordHighlight: wordHighlight,
+            boxColor: boxColor,
+          ),
+        );
+
+        final boldStyle = switch (stylePreset) {
+          QuickEditCaptionsStylePreset.bold ||
+          QuickEditCaptionsStylePreset.boldSocial ||
+          QuickEditCaptionsStylePreset.yellowHeadline ||
+          QuickEditCaptionsStylePreset.highlightBox =>
+            FontWeight.w700,
+          _ => FontWeight.w600,
+        };
+
+        final useShadows = !outlineEnabled &&
+            stylePreset != QuickEditCaptionsStylePreset.darkBox &&
+            stylePreset != QuickEditCaptionsStylePreset.darkBubble &&
+            stylePreset != QuickEditCaptionsStylePreset.highlightBox;
+
+        TextStyle baseStyle({
+          Color? textColor,
+          FontWeight? weight,
+          bool stroke = false,
+        }) {
+          final style = TextStyle(
+            color: stroke ? null : (textColor ?? normal),
+            fontSize: fz,
+            fontWeight: weight ?? boldStyle,
+            height: 1.12,
+          );
+          final withFont = _applyPreviewFont(fontFamily, style);
+          if (!stroke || !outlineEnabled) return withFont;
+          final strokeColor = _accentColor(outlineColor ?? QuickEditCaptionColor.white);
+          return withFont.copyWith(
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = captionPreviewOutlineWidthPx(outlineWidth, fz)
+              ..color = strokeColor,
+          );
+        }
+
+        List<Shadow>? shadowsForPreset() {
+          if (!useShadows) return null;
+          return switch (stylePreset) {
+            QuickEditCaptionsStylePreset.yellowHeadline ||
+            QuickEditCaptionsStylePreset.bold ||
+            QuickEditCaptionsStylePreset.boldSocial =>
+              _strongShadows(fz),
+            QuickEditCaptionsStylePreset.cleanPro => [
+              Shadow(blurRadius: fz * 0.38, color: Colors.black.withValues(alpha: 0.84)),
+              Shadow(
+                blurRadius: 0,
+                offset: Offset(0, fz * 0.02),
+                color: Colors.black.withValues(alpha: 0.55),
+              ),
+            ],
+            QuickEditCaptionsStylePreset.clean => [
+              Shadow(blurRadius: fz * 0.34, color: Colors.black.withValues(alpha: 0.82)),
+            ],
+            _ => null,
+          };
+        }
+
+        Widget withOutlineLayer(
+          Widget child,
+          Widget Function({required bool stroke}) buildLayer,
+        ) {
+          if (!outlineEnabled) return child;
+          return Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              buildLayer(stroke: true),
+              buildLayer(stroke: false),
+            ],
+          );
+        }
+
+        final boxPadH = math.max(4.0, fz * 0.28);
+        final boxPadV = math.max(2.0, fz * 0.16);
+        final boxRadius = switch (boxShape) {
+          QuickEditCaptionBoxShape.pill => 999.0,
+          QuickEditCaptionBoxShape.rounded => math.min(12.0, fz * 0.35),
+          QuickEditCaptionBoxShape.rectangle => 2.0,
+        };
+
+        Widget captionTextWidget({
+          Color? textColor,
+          List<Shadow>? shadows,
+          FontWeight? weight,
+        }) {
+          if (wordHighlight == QuickEditCaptionWordHighlight.none ||
+              parts.highlight.isEmpty) {
+            return withOutlineLayer(
+              Text(
+                displayText,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: baseStyle(textColor: textColor, weight: weight)
+                    .copyWith(shadows: shadows),
+              ),
+              ({required bool stroke}) => Text(
+                displayText,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: baseStyle(textColor: textColor, weight: weight, stroke: stroke)
+                    .copyWith(shadows: stroke ? null : shadows),
+              ),
+            );
+          }
+
+          final normalStyle =
+              baseStyle(textColor: normal, weight: weight).copyWith(shadows: shadows);
+          final hiStyle = switch (wordHighlight) {
+            QuickEditCaptionWordHighlight.color => normalStyle.copyWith(color: active),
+            QuickEditCaptionWordHighlight.box => normalStyle.copyWith(color: active),
+            QuickEditCaptionWordHighlight.none => normalStyle,
+          };
+
+          final highlightSpan = wordHighlight == QuickEditCaptionWordHighlight.box
+              ? WidgetSpan(
+                  alignment: PlaceholderAlignment.baseline,
+                  baseline: TextBaseline.alphabetic,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: boxPadH, vertical: boxPadV),
+                    decoration: BoxDecoration(
+                      color: boxFill.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(boxRadius),
+                    ),
+                    child: Text(
+                      parts.highlight,
+                      style: hiStyle.copyWith(backgroundColor: Colors.transparent),
+                    ),
+                  ),
+                )
+              : TextSpan(text: parts.highlight, style: hiStyle);
+
+          return withOutlineLayer(
+            RichText(
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              text: TextSpan(
+                children: [
+                  if (parts.before.isNotEmpty)
+                    TextSpan(text: parts.before, style: normalStyle),
+                  highlightSpan,
+                ],
+              ),
+            ),
+            ({required bool stroke}) {
+              final layerNormal = baseStyle(textColor: normal, weight: weight, stroke: stroke)
+                  .copyWith(shadows: stroke ? null : shadows);
+              final layerHi = switch (wordHighlight) {
+                QuickEditCaptionWordHighlight.color =>
+                  layerNormal.copyWith(color: stroke ? null : active),
+                QuickEditCaptionWordHighlight.box => layerNormal.copyWith(color: stroke ? null : active),
+                QuickEditCaptionWordHighlight.none => layerNormal,
+              };
+              final layerHighlightSpan = wordHighlight == QuickEditCaptionWordHighlight.box
+                  ? WidgetSpan(
+                      alignment: PlaceholderAlignment.baseline,
+                      baseline: TextBaseline.alphabetic,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: boxPadH, vertical: boxPadV),
+                        decoration: BoxDecoration(
+                          color: stroke ? Colors.transparent : boxFill.withValues(alpha: 0.92),
+                          borderRadius: BorderRadius.circular(boxRadius),
+                        ),
+                        child: Text(
+                          parts.highlight,
+                          style: layerHi.copyWith(backgroundColor: Colors.transparent),
+                        ),
+                      ),
+                    )
+                  : TextSpan(text: parts.highlight, style: layerHi);
+              return RichText(
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  children: [
+                    if (parts.before.isNotEmpty)
+                      TextSpan(text: parts.before, style: layerNormal),
+                    layerHighlightSpan,
+                  ],
+                ),
+              );
+            },
+          );
+        }
+
+        late final Widget captionBody;
+        switch (stylePreset) {
+          case QuickEditCaptionsStylePreset.darkBox:
+          case QuickEditCaptionsStylePreset.darkBubble:
+            captionBody = DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(
+                  alpha: stylePreset == QuickEditCaptionsStylePreset.darkBubble ? 0.72 : 0.78,
+                ),
+                borderRadius: BorderRadius.circular(math.max(4, fz * 0.22)),
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: fz * 0.42, vertical: fz * 0.2),
+                child: captionTextWidget(textColor: Colors.white),
+              ),
+            );
+            break;
+          case QuickEditCaptionsStylePreset.highlightBox:
+            captionBody = DecoratedBox(
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.88),
+                borderRadius: BorderRadius.circular(math.max(4, fz * 0.22)),
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: fz * 0.42, vertical: fz * 0.2),
+                child: captionTextWidget(
+                  textColor: _highlightBoxTextColor(color),
+                  weight: FontWeight.w700,
+                ),
+              ),
+            );
+            break;
+          case QuickEditCaptionsStylePreset.yellowHeadline:
+            captionBody = captionTextWidget(
+              textColor: const Color(0xFFFFD966),
+              shadows: shadowsForPreset(),
+            );
+            break;
+          case QuickEditCaptionsStylePreset.bold:
+          case QuickEditCaptionsStylePreset.boldSocial:
+          case QuickEditCaptionsStylePreset.cleanPro:
+          case QuickEditCaptionsStylePreset.clean:
+            captionBody = captionTextWidget(shadows: shadowsForPreset());
+        }
+
+        final previewLabel = showPreviewLabel && layout == CaptionPreviewLayout.standard
+            ? DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.42),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  child: Text(
+                    l10n.editCaptionsV3PreviewLabel,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.88),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 9.5,
+                      letterSpacing: 0.1,
+                    ),
+                  ),
+                ),
+              )
+            : null;
+
+        final isStage = layout == CaptionPreviewLayout.stage;
+        final styleKey = ValueKey<Object>(
+          (
+            stylePreset,
+            fontSize,
+            fontFamily,
+            color,
+            wordHighlight,
+            normalTextColor,
+            activeTextColor,
+            boxColor,
+            boxShape,
+            outlineEnabled,
+            outlineColor,
+            outlineWidth,
+            sampleText,
+            highlightWordIndex,
+            offsetXAss,
+            offsetYAss,
+          ),
+        );
+
+        final captionColumn = Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (previewLabel != null && position != QuickEditCaptionPosition.bottom) ...[
+              previewLabel,
+              const SizedBox(height: 4),
+            ],
+            isStage && animateMotion
+                ? AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    child: KeyedSubtree(key: styleKey, child: captionBody),
+                  )
+                : captionBody,
+            if (previewLabel != null && position == QuickEditCaptionPosition.bottom) ...[
+              const SizedBox(height: 4),
+              previewLabel,
+            ],
+          ],
+        );
+
         final translate = computeCaptionPreviewTranslate(
           width: w,
           height: h,
@@ -398,12 +407,14 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
           offsetXAss: offsetXAss,
           offsetYAss: offsetYAss,
         );
-        final hPad = isStage ? 12.0 : 18.0;
         final bottom = position == QuickEditCaptionPosition.bottom;
 
         final positioned = Padding(
           padding: EdgeInsets.symmetric(horizontal: hPad),
-          child: captionColumn,
+          child: Directionality(
+            textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+            child: captionColumn,
+          ),
         );
 
         final aligned = Align(
@@ -425,38 +436,6 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
       },
     );
   }
-}
-
-/// Preview-only caption offset (ASS parity scaled to widget size).
-Offset computeCaptionPreviewTranslate({
-  required double width,
-  required double height,
-  required CaptionPreviewLayout layout,
-  required QuickEditCaptionPosition position,
-  required int offsetXAss,
-  required int offsetYAss,
-}) {
-  final w = math.max(width, 1.0);
-  final h = math.max(height, 1.0);
-  final isStage = layout == CaptionPreviewLayout.stage;
-  final sx = w / kCaptionAssPlayResX;
-  final sy = h / kCaptionAssPlayResY;
-  final dx = offsetXAss * sx;
-  final dy = offsetYAss * sy;
-  final bottom = position == QuickEditCaptionPosition.bottom;
-  final baseY = bottom
-      ? (isStage ? -h * 0.02 : -h * 0.068)
-      : (isStage ? h * 0.02 : h * 0.068);
-  final fxMax = isStage ? 0.16 : 0.36;
-  final fx = dx.clamp(-w * fxMax, w * fxMax).toDouble();
-  final fyMin = bottom
-      ? (isStage ? -h * 0.11 : -h * 0.34)
-      : (isStage ? -h * 0.04 : -h * 0.05);
-  final fyMax = bottom
-      ? (isStage ? h * 0.04 : h * 0.05)
-      : (isStage ? h * 0.11 : h * 0.34);
-  final fy = (baseY + dy).clamp(fyMin, fyMax).toDouble();
-  return Offset(fx, fy);
 }
 
 class _AnimatedCaptionTranslate extends StatefulWidget {
@@ -514,17 +493,6 @@ class _AnimatedCaptionTranslateState extends State<_AnimatedCaptionTranslate>
   }
 }
 
-({String before, String highlight}) _sampleHighlightParts(String full) {
-  final trimmed = full.trim();
-  final parts = trimmed.split(RegExp(r"\s+"));
-  if (parts.length < 2) {
-    return (before: "", highlight: trimmed);
-  }
-  final highlight = parts.last;
-  final before = "${parts.sublist(0, parts.length - 1).join(" ")} ";
-  return (before: before, highlight: highlight);
-}
-
 Color _accentColor(QuickEditCaptionColor color) {
   return switch (color) {
     QuickEditCaptionColor.white => Colors.white,
@@ -547,14 +515,14 @@ Color _highlightBoxTextColor(QuickEditCaptionColor color) {
   };
 }
 
-List<Shadow> _strongShadows() => [
+List<Shadow> _strongShadows(double fz) => [
       Shadow(
-        blurRadius: 10,
+        blurRadius: fz * 0.42,
         color: Colors.black.withValues(alpha: 0.9),
       ),
       Shadow(
         blurRadius: 0,
-        offset: const Offset(0, 1),
+        offset: Offset(0, fz * 0.04),
         color: Colors.black.withValues(alpha: 0.88),
       ),
     ];
