@@ -14,6 +14,7 @@ Future<void> showCaptionDraftSegmentEditSheet(
   required List<CaptionDraftSegment> allSegments,
   required double? videoDurationSec,
   required void Function(String text, double startSec, double endSec) onSave,
+  void Function(String text, double startSec, double endSec)? onLiveChanged,
 }) async {
   final l10n = AppLocalizations.of(context);
   final theme = Theme.of(context);
@@ -45,6 +46,10 @@ Future<void> showCaptionDraftSegmentEditSheet(
             final rangeLabel = captionDraftRangeClockLabel(startSec, endSec);
             final bounds = currentBounds();
 
+            void notifyLive() {
+              onLiveChanged?.call(controller.text, startSec, endSec);
+            }
+
             void nudgeStart(double delta) {
               setSheet(() {
                 startSec = nudgeCaptionDraftStartSec(
@@ -54,6 +59,7 @@ Future<void> showCaptionDraftSegmentEditSheet(
                   bounds: bounds,
                 );
               });
+              notifyLive();
             }
 
             void nudgeEnd(double delta) {
@@ -65,6 +71,7 @@ Future<void> showCaptionDraftSegmentEditSheet(
                   bounds: bounds,
                 );
               });
+              notifyLive();
             }
 
             void resetTiming() {
@@ -89,6 +96,7 @@ Future<void> showCaptionDraftSegmentEditSheet(
                   bounds: resetBounds,
                 );
               });
+              notifyLive();
             }
 
             return AnimatedPadding(
@@ -135,6 +143,7 @@ Future<void> showCaptionDraftSegmentEditSheet(
                               theme.textTheme.bodyLarge?.copyWith(height: 1.42),
                           onTapOutside: (_) =>
                               FocusScope.of(sheetCtx).unfocus(),
+                          onChanged: (_) => notifyLive(),
                           decoration: InputDecoration(
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -352,6 +361,7 @@ class CaptionDraftSegmentRow extends StatelessWidget {
     required this.clearSemanticsLabel,
     required this.adjustedLabel,
     required this.onSave,
+    this.onLiveChanged,
     required this.onClear,
   });
 
@@ -363,6 +373,7 @@ class CaptionDraftSegmentRow extends StatelessWidget {
   final String clearSemanticsLabel;
   final String adjustedLabel;
   final void Function(String text, double startSec, double endSec) onSave;
+  final void Function(String text, double startSec, double endSec)? onLiveChanged;
   final VoidCallback onClear;
 
   Future<void> _openEditSheet(BuildContext context) {
@@ -373,6 +384,7 @@ class CaptionDraftSegmentRow extends StatelessWidget {
       allSegments: allSegments,
       videoDurationSec: videoDurationSec > 0 ? videoDurationSec : null,
       onSave: onSave,
+      onLiveChanged: onLiveChanged,
     );
   }
 

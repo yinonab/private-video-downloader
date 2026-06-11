@@ -11,12 +11,16 @@ import "package:share_plus/share_plus.dart";
 
 import "../../core/app_scope.dart";
 import "../../core/config/media_export_constants.dart";
+import "../../core/edit_history/edit_history_thumbnail_cache.dart";
+import "../../core/media/media_output_preview_source.dart";
+import "../../core/media/media_output_preview_thumbnail.dart";
 import "../../core/l10n/api_error_localizations.dart";
 import "../../core/l10n/context_l10n.dart";
 import "../../core/l10n/media_export_display_path.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
 import "../../core/edit/caption_look_summary.dart";
+import "../../core/edit/edit_preview_state.dart";
 import "../../core/models/quick_edit_models.dart";
 import "caption_look_editor_screen.dart";
 import "../../core/network/api_client.dart";
@@ -33,7 +37,7 @@ import "edit_video_source_ref.dart";
 import "widgets/edit_processing_animation.dart";
 import "widgets/edit_video_preview.dart";
 import "widgets/edit_video_preview_source.dart";
-import "widgets/edit_captions_preview_overlay.dart";
+import "widgets/edit_preview_overlay_builder.dart";
 import "quick_edit_source_expired_sheet.dart";
 import "caption_draft_editor_screen.dart";
 import "widgets/captions_editor_panel.dart";
@@ -159,6 +163,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   Object? _lastError;
   bool _downloadingFile = false;
   String? _outputPath;
+  ResolvedMediaOutputPreview? _outputPreview;
 
   late final TabController _tabController;
   double _playbackSec = 0;
@@ -208,35 +213,9 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     });
   }
 
-  void _onCaptionDraftSegmentUpdated(
-    String id, {
-    required String text,
-    required double startSec,
-    required double endSec,
-  }) {
-    final list = _captionsDraftSegments;
-    if (list == null) return;
+  void _applyCaptionDraftWorkingCopy(List<CaptionDraftSegment> segments) {
     setState(() {
-      _captionsDraftSegments = [
-        for (final s in list)
-          s.id == id
-              ? s.copyWith(
-                  text: text,
-                  startSec: startSec,
-                  endSec: endSec,
-                )
-              : s,
-      ];
-    });
-  }
-
-  void _onClearCaptionDraftSegment(String id) {
-    final list = _captionsDraftSegments;
-    if (list == null) return;
-    setState(() {
-      _captionsDraftSegments = [
-        for (final s in list) s.id == id ? s.copyWith(text: '') : s,
-      ];
+      _captionsDraftSegments = List<CaptionDraftSegment>.from(segments);
     });
   }
 
@@ -325,15 +304,28 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       return;
     }
     FocusScope.of(context).unfocus();
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (ctx) => CaptionDraftEditorScreen(
-          initialSegments: segments,
-          videoDurationSec: _durationSec,
-          onSegmentUpdated: _onCaptionDraftSegmentUpdated,
-          onClearSegment: _onClearCaptionDraftSegment,
-        ),
-      ),
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.88,
+          minChildSize: 0.42,
+          maxChildSize: 0.94,
+          expand: false,
+          builder: (_, scrollController) {
+            return CaptionDraftEditorScreen(
+              embeddedInSheet: true,
+              scrollController: scrollController,
+              initialSegments: segments,
+              videoDurationSec: _durationSec,
+              onDraftChanged: _applyCaptionDraftWorkingCopy,
+            );
+          },
+        );
+      },
     );
   }
 
@@ -385,6 +377,24 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       });
     }
   }
+
+  CaptionLookSnapshot get _captionLookSnapshot => captionLookSnapshotFrom(
+        style: _captionsStyle,
+        fontSize: _captionsFontSize,
+        fontFamily: _captionsFontFamily,
+        position: _captionsPosition,
+        color: _captionsColor,
+        wordHighlight: _captionsWordHighlight,
+        offsetX: _captionsOffsetX,
+        offsetY: _captionsOffsetY,
+        normalTextColor: _captionsNormalTextColor,
+        activeTextColor: _captionsActiveTextColor,
+        boxColor: _captionsBoxColor,
+        boxShape: _captionsBoxShape,
+        outlineEnabled: _captionsOutlineEnabled,
+        outlineColor: _captionsOutlineColor,
+        outlineWidth: _captionsOutlineWidth,
+      );
 
   void _applyCaptionLookSnapshot(CaptionLookSnapshot snapshot) {
     setState(() {
@@ -605,7 +615,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       final sourceKindStr =
           widget.source.kind == EditVideoSourceKind.download ? "download" : "upload";
 
-      await AppScope.read(context).editHistory.recordCompletedEdit(
+      final scope = AppScope.read(context);
+      await scope.editHistory.recordCompletedEdit(
         editJobId: id,
         localFilePath: path,
         sourceKind: sourceKindStr,
@@ -619,9 +630,30 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         platform: widget.source.kind == EditVideoSourceKind.download ? _detail?.platform : null,
       );
 
+      String? outputThumb;
+      if (!path.toLowerCase().endsWith(".mp3")) {
+        outputThumb = await generateEditHistoryThumbnailFile(
+          videoPath: path,
+          editJobId: id,
+        );
+        if (outputThumb != null && outputThumb.isNotEmpty) {
+          await scope.editHistory.updateThumbnailPath(id, outputThumb);
+        }
+      }
+
+      final sourceThumb = widget.source.kind == EditVideoSourceKind.download
+          ? _detail?.thumbnail
+          : _resolveThumbnailUrl(widget.source.thumbnailUrl);
+      final outputPreview = await resolveMediaOutputPreview(
+        outputThumbnailPath: outputThumb,
+        outputVideoPath: path,
+        sourceThumbnailUrl: sourceThumb,
+      );
+
       if (!mounted) return;
       setState(() {
         _outputPath = path;
+        _outputPreview = outputPreview;
         _phase = _FlowPhase.done;
         _downloadingFile = false;
       });
@@ -658,6 +690,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       _downloadingFile = false;
       _editJobId = null;
       _outputPath = null;
+      _outputPreview = null;
     });
     try {
       final ops = buildQuickEditOperations(
@@ -1002,14 +1035,20 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       ThemeData theme, ColorScheme scheme, AppLocalizations l10n) {
     final scope = AppScope.read(context);
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
-    final showCropOverlay =
-        _tabController.index == 2 &&
-            _crop != QuickEditCropAspect.original &&
-            _formatFitMode == QuickEditFormatMode.fill;
-
-    /// Captions tab is index **3** (Trim, Speed, Format, Captions, …).
-    final showCaptionsOnVideoPreview =
-        _tabController.index == 3 && _captionsAuto;
+    final previewState = buildEditVideoPreviewState(
+      playbackSec: _playbackSec,
+      activeToolTabIndex: _tabController.index,
+      trimStartSec: _startSec,
+      trimEndSec: _endSec,
+      rotation: _rotation,
+      formatMode: _formatFitMode,
+      cropAspect: _crop,
+      speedFactor: _speed,
+      muted: _mute,
+      captionsAutoEnabled: _captionsAuto,
+      captionDraftSegments: _captionsDraftSegments,
+      captionStyle: _captionLookSnapshot,
+    );
 
     Widget previewStack;
     if (_detailLoading) {
@@ -1047,6 +1086,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
               trimStartSec: _startSec,
               trimEndSec: _endSec,
               videoDurationSec: _durationSec,
+              playbackSpeed: previewState.playbackSpeed,
+              muted: previewState.muted,
               thumbnailUrl: widget.source.kind == EditVideoSourceKind.download
                   ? _detail?.thumbnail
                   : _resolveThumbnailUrl(widget.source.thumbnailUrl),
@@ -1062,28 +1103,12 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                 if (!mounted) return;
                 setState(() => _playbackSec = pos);
               },
-              captionsPreviewOverlay: showCaptionsOnVideoPreview
-                  ? EditCaptionsPreviewOverlay(
-                      l10n: l10n,
-                      stylePreset: _captionsStyle,
-                      fontSize: _captionsFontSize,
-                      fontFamily: _captionsFontFamily,
-                      position: _captionsPosition,
-                      color: _captionsColor,
-                      wordHighlight: _captionsWordHighlight,
-                      normalTextColor: _captionsNormalTextColor,
-                      activeTextColor: _captionsActiveTextColor,
-                      boxColor: _captionsBoxColor,
-                      boxShape: _captionsBoxShape,
-                      outlineEnabled: _captionsOutlineEnabled,
-                      outlineColor: _captionsOutlineColor,
-                      outlineWidth: _captionsOutlineWidth,
-                      offsetXAss: _captionsOffsetX,
-                      offsetYAss: _captionsOffsetY,
-                    )
-                  : null,
+              captionsPreviewOverlay: buildEditCaptionPreviewOverlay(
+                l10n: l10n,
+                state: previewState.captionOnVideo,
+              ),
             ),
-            if (showCropOverlay)
+            if (previewState.showCropOverlay)
               Positioned.fill(
                 child: CropPreviewOverlay(
                     aspect: _crop, primaryColor: scheme.primary),
@@ -1399,11 +1424,39 @@ class _EditVideoScreenState extends State<EditVideoScreen>
 
   Widget _buildDoneBody(
       ThemeData theme, ColorScheme scheme, AppLocalizations l10n) {
+    final preview = _outputPreview;
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 16, 22, 22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (preview != null &&
+              preview.kind != MediaOutputPreviewKind.placeholder) ...[
+            MediaOutputPreviewThumbnail(
+              preview: preview,
+              editJobId: _editJobId,
+              borderRadius: BorderRadius.circular(16),
+              onThumbnailGenerated: (path) {
+                final id = _editJobId?.trim();
+                if (id != null && id.isNotEmpty) {
+                  unawaited(
+                    AppScope.read(context)
+                        .editHistory
+                        .updateThumbnailPath(id, path),
+                  );
+                }
+                if (mounted) {
+                  setState(() {
+                    _outputPreview = ResolvedMediaOutputPreview(
+                      kind: MediaOutputPreviewKind.localThumbnail,
+                      localThumbnailPath: path,
+                    );
+                  });
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
           const Spacer(),
           Icon(LucideIcons.circleCheck,
               size: 56, color: scheme.primary.withValues(alpha: 0.88)),

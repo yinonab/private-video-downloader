@@ -1590,6 +1590,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCaptionsV34SamplePreviewLabel => 'Sample captions';
 
   @override
+  String get editCaptionsPreviewDraftRequiredTitle =>
+      'Create a caption draft to preview real captions.';
+
+  @override
+  String get editCaptionsPreviewDraftRequiredBody =>
+      'The draft includes the caption text and timing. After it is created, style changes like color, outline, position, and word highlight will appear in the preview.';
+
+  @override
+  String get editCaptionsPreviewDraftRequiredCta => 'Create caption draft';
+
+  @override
   String get editAudioScreenTitle => 'Edit audio';
 
   @override

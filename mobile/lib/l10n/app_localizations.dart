@@ -3002,6 +3002,24 @@ abstract class AppLocalizations {
   /// **'Sample captions'**
   String get editCaptionsV34SamplePreviewLabel;
 
+  /// No description provided for @editCaptionsPreviewDraftRequiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a caption draft to preview real captions.'**
+  String get editCaptionsPreviewDraftRequiredTitle;
+
+  /// No description provided for @editCaptionsPreviewDraftRequiredBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The draft includes the caption text and timing. After it is created, style changes like color, outline, position, and word highlight will appear in the preview.'**
+  String get editCaptionsPreviewDraftRequiredBody;
+
+  /// No description provided for @editCaptionsPreviewDraftRequiredCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Create caption draft'**
+  String get editCaptionsPreviewDraftRequiredCta;
+
   /// No description provided for @editAudioScreenTitle.
   ///
   /// In en, this message translates to:

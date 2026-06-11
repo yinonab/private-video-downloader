@@ -89,6 +89,16 @@ class CaptionsEditorPanel extends StatelessWidget {
           l10n: l10n,
           onAutoCaptionsChanged: onAutoCaptionsChanged,
         ),
+        if ((captionDraftSegments == null || captionDraftSegments!.isEmpty) &&
+            !isCaptionDraftGenerating) ...[
+          const SizedBox(height: 12),
+          _CaptionsPreviewDraftRequiredCard(
+            theme: theme,
+            scheme: scheme,
+            l10n: l10n,
+            onCreateDraft: onGenerateCaptionsDraft,
+          ),
+        ],
         const SizedBox(height: 12),
         _CaptionsLookHeroCard(
           theme: theme,
@@ -485,6 +495,69 @@ class _CaptionsLookHeroCard extends StatelessWidget {
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Explains that a caption draft is required before real preview text appears.
+class _CaptionsPreviewDraftRequiredCard extends StatelessWidget {
+  const _CaptionsPreviewDraftRequiredCard({
+    required this.theme,
+    required this.scheme,
+    required this.l10n,
+    required this.onCreateDraft,
+  });
+
+  final ThemeData theme;
+  final ColorScheme scheme;
+  final AppLocalizations l10n;
+  final VoidCallback onCreateDraft;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = theme.brightness == Brightness.dark;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: dark ? 0.22 : 0.35),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: scheme.primary.withValues(alpha: 0.28),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.editCaptionsPreviewDraftRequiredTitle,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l10n.editCaptionsPreviewDraftRequiredBody,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.92),
+                height: 1.38,
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: onCreateDraft,
+              icon: const Icon(Icons.subtitles_outlined, size: 20),
+              label: Text(l10n.editCaptionsPreviewDraftRequiredCta),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               ),
             ),
           ],

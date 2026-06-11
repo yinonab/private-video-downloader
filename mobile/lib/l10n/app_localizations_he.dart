@@ -1571,6 +1571,17 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editCaptionsV34SamplePreviewLabel => 'כתוביות לדוגמה';
 
   @override
+  String get editCaptionsPreviewDraftRequiredTitle =>
+      'כדי לראות כתוביות בתצוגה המקדימה, יש ליצור טיוטת כתוביות.';
+
+  @override
+  String get editCaptionsPreviewDraftRequiredBody =>
+      'הטיוטה כוללת את הטקסט והתזמון של הכתוביות. אחרי יצירת הטיוטה, שינויי עיצוב כמו צבע, מסגרת, מיקום והדגשת מילים יוצגו בפריוויו.';
+
+  @override
+  String get editCaptionsPreviewDraftRequiredCta => 'צור טיוטת כתוביות';
+
+  @override
   String get editAudioScreenTitle => 'עריכת אודיו';
 
   @override
