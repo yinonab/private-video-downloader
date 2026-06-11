@@ -29,6 +29,8 @@ class EditVideoPreview extends StatefulWidget {
     required this.onPlaybackSeconds,
     this.thumbnailUrl,
     this.captionsPreviewOverlay,
+    this.playbackSpeed = 1.0,
+    this.muted = false,
   });
 
   final EditVideoPreviewSource previewSource;
@@ -46,6 +48,12 @@ class EditVideoPreview extends StatefulWidget {
 
   /// Upright captions mock (e.g. [EditCaptionsPreviewOverlay]); must be [IgnorePointer]-safe — inserted above video, below play controls.
   final Widget? captionsPreviewOverlay;
+
+  /// Preview-only playback speed (`VideoPlayerController.setPlaybackSpeed`).
+  final double playbackSpeed;
+
+  /// Preview-only mute (`VideoPlayerController.setVolume`).
+  final bool muted;
 
   @override
   State<EditVideoPreview> createState() => _EditVideoPreviewState();
@@ -100,6 +108,27 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
         oldWidget.trimEndSec != widget.trimEndSec) {
       unawaited(_seekToTrimStart());
       _enforceTrimWindow();
+    }
+    if (oldWidget.playbackSpeed != widget.playbackSpeed ||
+        oldWidget.muted != widget.muted) {
+      unawaited(_applyPlaybackSettings());
+    }
+  }
+
+  Future<void> _applyPlaybackSettings() async {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized) return;
+    try {
+      final speed = widget.playbackSpeed.clamp(0.25, 4.0);
+      if ((c.value.playbackSpeed - speed).abs() > 0.01) {
+        await c.setPlaybackSpeed(speed);
+      }
+      final vol = widget.muted ? 0.0 : 1.0;
+      if ((c.value.volume - vol).abs() > 0.01) {
+        await c.setVolume(vol);
+      }
+    } catch (_) {
+      // Best-effort; platform may reject some speed factors while paused.
     }
   }
 
@@ -195,6 +224,7 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
       await c.setLooping(false);
       await c.pause();
       await _seekToTrimStart();
+      await _applyPlaybackSettings();
       if (mounted) {
         setState(() {
           _initializing = false;
@@ -290,7 +320,7 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
     );
   }
 
-  /// **0°** — matches legacy preview: fixed 16:9 + cover.
+  /// **0°** — fixed 16:9 + contain (full frame, letterboxed when needed).
   Widget _previewZeroDegrees(VideoPlayerController c) {
     return AspectRatio(
       aspectRatio: 16 / 9,
@@ -300,12 +330,16 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
           fit: StackFit.expand,
           alignment: Alignment.center,
           children: [
-            FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: c.value.size.width,
-                height: c.value.size.height,
-                child: VideoPlayer(c),
+            const ColoredBox(color: Colors.black),
+            Center(
+              child: FittedBox(
+                fit: BoxFit.contain,
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: c.value.size.width,
+                  height: c.value.size.height,
+                  child: VideoPlayer(c),
+                ),
               ),
             ),
             ..._overlayAboveVideoUnderPlay(),
@@ -316,7 +350,7 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
     );
   }
 
-  /// **180°** — same framing as **0°**; video paint rotates inside cover (no stretched card).
+  /// **180°** — same framing as **0°**; video paint rotates inside contain.
   Widget _previewInverted(VideoPlayerController c) {
     return AspectRatio(
       aspectRatio: 16 / 9,
@@ -326,15 +360,19 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
           fit: StackFit.expand,
           alignment: Alignment.center,
           children: [
-            FittedBox(
-              fit: BoxFit.cover,
-              child: Transform.rotate(
-                angle: math.pi,
+            const ColoredBox(color: Colors.black),
+            Center(
+              child: FittedBox(
+                fit: BoxFit.contain,
                 alignment: Alignment.center,
-                child: SizedBox(
-                  width: c.value.size.width,
-                  height: c.value.size.height,
-                  child: VideoPlayer(c),
+                child: Transform.rotate(
+                  angle: math.pi,
+                  alignment: Alignment.center,
+                  child: SizedBox(
+                    width: c.value.size.width,
+                    height: c.value.size.height,
+                    child: VideoPlayer(c),
+                  ),
                 ),
               ),
             ),

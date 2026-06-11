@@ -37,6 +37,10 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
     this.outlineWidth = QuickEditCaptionOutlineWidth.medium,
     required this.offsetXAss,
     required this.offsetYAss,
+    this.displayText,
+    this.highlightWordIndex,
+    this.allowSampleFallback = true,
+    this.showPreviewLabel = true,
     this.animateMotion = false,
     this.motionDuration = const Duration(milliseconds: 180),
   });
@@ -60,6 +64,18 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
   final QuickEditCaptionOutlineWidth outlineWidth;
   final int offsetXAss;
   final int offsetYAss;
+
+  /// When set, shown instead of sample text. Empty/null hides the overlay.
+  final String? displayText;
+
+  /// Word index for highlight mode; defaults to last token when null.
+  final int? highlightWordIndex;
+
+  /// Sample label only when [displayText] is null (Look Editor stage card).
+  final bool allowSampleFallback;
+
+  /// "Preview" chip on standard layout (off for real video overlay).
+  final bool showPreviewLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -135,22 +151,32 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
     }
 
     final sampleFull = l10n.editCaptionsSampleLabel;
-    final sampleParts = _sampleHighlightParts(sampleFull);
+    final resolvedText = displayText ??
+        (allowSampleFallback ? sampleFull : null);
+    if (resolvedText == null || resolvedText.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final highlightParts = captionPreviewHighlightParts(
+      resolvedText,
+      highlightWordIndex: highlightWordIndex,
+    );
+    final maxLines = layout == CaptionPreviewLayout.stage ? 1 : 2;
+    final rtl = captionPreviewIsRtl(resolvedText);
 
-    Widget sampleText({Color? textColor, List<Shadow>? shadows, FontWeight? weight}) {
+    Widget buildCaptionText({Color? textColor, List<Shadow>? shadows, FontWeight? weight}) {
       if (wordHighlight == QuickEditCaptionWordHighlight.none) {
         return withOutlineLayer(
           Text(
-            sampleFull,
+            resolvedText,
             textAlign: TextAlign.center,
-            maxLines: 1,
+            maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
             style: baseStyle(textColor: textColor, weight: weight).copyWith(shadows: shadows),
           ),
           ({required bool stroke}) => Text(
-            sampleFull,
+            resolvedText,
             textAlign: TextAlign.center,
-            maxLines: 1,
+            maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
             style: baseStyle(textColor: textColor, weight: weight, stroke: stroke).copyWith(
               shadows: stroke ? null : shadows,
@@ -165,8 +191,6 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
         QuickEditCaptionWordHighlight.box => normalStyle.copyWith(
             color: active,
             backgroundColor: boxFill.withValues(alpha: 0.92),
-          ).copyWith(
-            // Approximate box shape via padding + radius on highlight span only.
           ),
         QuickEditCaptionWordHighlight.none => normalStyle,
       };
@@ -188,22 +212,22 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  sampleParts.highlight,
+                  highlightParts.highlight,
                   style: hiStyle.copyWith(backgroundColor: Colors.transparent),
                 ),
               ),
             )
-          : TextSpan(text: sampleParts.highlight, style: hiStyle);
+          : TextSpan(text: highlightParts.highlight, style: hiStyle);
 
       return withOutlineLayer(
         RichText(
           textAlign: TextAlign.center,
-          maxLines: 1,
+          maxLines: maxLines,
           overflow: TextOverflow.ellipsis,
           text: TextSpan(
             children: [
-              if (sampleParts.before.isNotEmpty)
-                TextSpan(text: sampleParts.before, style: normalStyle),
+              if (highlightParts.before.isNotEmpty)
+                TextSpan(text: highlightParts.before, style: normalStyle),
               highlightSpan,
             ],
           ),
@@ -237,20 +261,20 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      sampleParts.highlight,
+                      highlightParts.highlight,
                       style: layerHi.copyWith(backgroundColor: Colors.transparent),
                     ),
                   ),
                 )
-              : TextSpan(text: sampleParts.highlight, style: layerHi);
+              : TextSpan(text: highlightParts.highlight, style: layerHi);
           return RichText(
             textAlign: TextAlign.center,
-            maxLines: 1,
+            maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
             text: TextSpan(
               children: [
-                if (sampleParts.before.isNotEmpty)
-                  TextSpan(text: sampleParts.before, style: layerNormal),
+                if (highlightParts.before.isNotEmpty)
+                  TextSpan(text: highlightParts.before, style: layerNormal),
                 layerHighlightSpan,
               ],
             ),
@@ -272,7 +296,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            child: sampleText(textColor: Colors.white),
+            child: buildCaptionText(textColor: Colors.white),
           ),
         );
         break;
@@ -284,7 +308,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            child: sampleText(
+            child: buildCaptionText(
               textColor: _highlightBoxTextColor(color),
               weight: FontWeight.w700,
             ),
@@ -292,17 +316,17 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
         );
         break;
       case QuickEditCaptionsStylePreset.yellowHeadline:
-        captionBody = sampleText(
+        captionBody = buildCaptionText(
           textColor: const Color(0xFFFFD966),
           shadows: _strongShadows(),
         );
         break;
       case QuickEditCaptionsStylePreset.bold:
       case QuickEditCaptionsStylePreset.boldSocial:
-        captionBody = sampleText(shadows: _strongShadows());
+        captionBody = buildCaptionText(shadows: _strongShadows());
         break;
       case QuickEditCaptionsStylePreset.cleanPro:
-        captionBody = sampleText(
+        captionBody = buildCaptionText(
           shadows: [
             Shadow(
               blurRadius: 9,
@@ -317,7 +341,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
         );
         break;
       case QuickEditCaptionsStylePreset.clean:
-        captionBody = sampleText(
+        captionBody = buildCaptionText(
           shadows: [
             Shadow(
               blurRadius: 8,
@@ -367,7 +391,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
     final captionColumn = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (!isStage && position != QuickEditCaptionPosition.bottom) ...[
+        if (showPreviewLabel && !isStage && position != QuickEditCaptionPosition.bottom) ...[
           previewLabel,
           const SizedBox(height: 4),
         ],
@@ -379,7 +403,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
                 child: KeyedSubtree(key: styleKey, child: captionBody),
               )
             : captionBody,
-        if (!isStage && position == QuickEditCaptionPosition.bottom) ...[
+        if (showPreviewLabel && !isStage && position == QuickEditCaptionPosition.bottom) ...[
           const SizedBox(height: 4),
           previewLabel,
         ],
@@ -417,11 +441,15 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
               : Transform.translate(offset: translate, child: positioned),
         );
 
-        return Stack(
+        final body = Stack(
           fit: StackFit.expand,
           clipBehavior: Clip.hardEdge,
           children: [aligned],
         );
+        if (rtl) {
+          return Directionality(textDirection: TextDirection.rtl, child: body);
+        }
+        return body;
       },
     );
   }
@@ -514,14 +542,57 @@ class _AnimatedCaptionTranslateState extends State<_AnimatedCaptionTranslate>
   }
 }
 
-({String before, String highlight}) _sampleHighlightParts(String full) {
+/// Active draft segment at [playbackSec], or null between cues.
+CaptionDraftSegment? captionPreviewActiveSegment({
+  required List<CaptionDraftSegment>? draftSegments,
+  required double playbackSec,
+}) {
+  if (draftSegments == null || draftSegments.isEmpty) return null;
+  for (final seg in draftSegments) {
+    if (playbackSec >= seg.startSec && playbackSec < seg.endSec) return seg;
+  }
+  return null;
+}
+
+/// Word index for highlight preview; null when none / between word timings.
+int? captionPreviewActiveWordIndex({
+  required CaptionDraftSegment segment,
+  required double playbackSec,
+  required String text,
+}) {
+  final words = segment.words;
+  if (words != null && words.isNotEmpty) {
+    for (var i = 0; i < words.length; i++) {
+      final w = words[i];
+      if (playbackSec >= w.startSec && playbackSec < w.endSec) return i;
+    }
+    return null;
+  }
+  if (text.trim().isEmpty) return null;
+  final parts = text.trim().split(RegExp(r"\s+"));
+  if (parts.isEmpty) return null;
+  return parts.length - 1;
+}
+
+bool captionPreviewIsRtl(String text) {
+  for (final rune in text.runes) {
+    if (rune >= 0x0590 && rune <= 0x08FF) return true;
+  }
+  return false;
+}
+
+({String before, String highlight}) captionPreviewHighlightParts(
+  String full, {
+  int? highlightWordIndex,
+}) {
   final trimmed = full.trim();
   final parts = trimmed.split(RegExp(r"\s+"));
-  if (parts.length < 2) {
-    return (before: "", highlight: trimmed);
-  }
-  final highlight = parts.last;
-  final before = "${parts.sublist(0, parts.length - 1).join(" ")} ";
+  if (parts.isEmpty) return (before: "", highlight: "");
+  if (parts.length == 1) return (before: "", highlight: parts.first);
+  final idx = highlightWordIndex ?? parts.length - 1;
+  final safe = idx.clamp(0, parts.length - 1);
+  final highlight = parts[safe];
+  final before = safe > 0 ? "${parts.sublist(0, safe).join(" ")} " : "";
   return (before: before, highlight: highlight);
 }
 
