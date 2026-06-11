@@ -1467,12 +1467,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCaptionsV35OutlineWidthThick => 'Thick';
 
   @override
-  String get editCaptionsV36FullscreenPreview => 'Fullscreen preview';
-
-  @override
-  String get editCaptionsV36FullscreenPreviewTitle => 'Caption preview';
-
-  @override
   String get editCaptionsV34ActiveWordColor => 'Active word color';
 
   @override

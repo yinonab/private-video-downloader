@@ -12,16 +12,14 @@ class CaptionPreviewCard extends StatefulWidget {
     required this.snapshot,
     this.showSafeGuides = false,
     this.accentColor,
-    this.onFullscreen,
   });
 
   final AppLocalizations l10n;
   final CaptionLookSnapshot snapshot;
   final bool showSafeGuides;
   final Color? accentColor;
-  final VoidCallback? onFullscreen;
 
-  static const double stageHeight = 136;
+  static const double stageHeight = 120;
 
   @override
   State<CaptionPreviewCard> createState() => _CaptionPreviewCardState();
@@ -71,8 +69,6 @@ class _CaptionPreviewCardState extends State<CaptionPreviewCard>
         s.outlineEnabled,
         s.outlineColor,
         s.outlineWidth,
-        s.offsetX,
-        s.offsetY,
       );
 
   @override
@@ -80,6 +76,7 @@ class _CaptionPreviewCardState extends State<CaptionPreviewCard>
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final label = widget.l10n.editCaptionsV3PreviewLabel;
     final accent = widget.accentColor ?? scheme.primary;
     final s = widget.snapshot;
 
@@ -123,11 +120,10 @@ class _CaptionPreviewCardState extends State<CaptionPreviewCard>
                 if (widget.showSafeGuides)
                   CustomPaint(painter: _StageSafeGuidePainter()),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 28, 14, 12),
+                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
                   child: EditCaptionsPreviewOverlay(
                     l10n: widget.l10n,
                     layout: CaptionPreviewLayout.stage,
-                    showPreviewLabel: false,
                     animateMotion: true,
                     motionDuration: const Duration(milliseconds: 180),
                     stylePreset: s.style,
@@ -147,61 +143,13 @@ class _CaptionPreviewCardState extends State<CaptionPreviewCard>
                     offsetYAss: s.offsetY,
                   ),
                 ),
-                if (widget.onFullscreen != null)
-                  PositionedDirectional(
-                    top: 8,
-                    end: 8,
-                    child: _FullscreenPreviewButton(
-                      label: widget.l10n.editCaptionsV36FullscreenPreview,
-                      onTap: widget.onFullscreen!,
-                    ),
-                  ),
+                PositionedDirectional(
+                  top: 10,
+                  start: 12,
+                  child: _PreviewLabelChip(text: label),
+                ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FullscreenPreviewButton extends StatelessWidget {
-  const _FullscreenPreviewButton({
-    required this.label,
-    required this.onTap,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black.withValues(alpha: 0.5),
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.fullscreen_rounded,
-                size: 16,
-                color: Colors.white.withValues(alpha: 0.92),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.92),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 10.5,
-                    ),
-              ),
-            ],
           ),
         ),
       ),
@@ -267,4 +215,35 @@ class _StageSafeGuidePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _PreviewLabelChip extends StatelessWidget {
+  const _PreviewLabelChip({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        child: Text(
+          text,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Colors.white.withValues(alpha: 0.88),
+                fontWeight: FontWeight.w600,
+                fontSize: 10,
+                letterSpacing: 0.2,
+              ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
 }

@@ -562,16 +562,16 @@ extension QuickEditCaptionOutlineWidthApi on QuickEditCaptionOutlineWidth {
       };
 }
 
-/// Preview stroke width scaled to caption font size (ASS/canvas parity).
+/// Preview stroke width scaled to caption font size (approx ASS/canvas parity).
 double captionOutlineWidthPreviewPx(
   QuickEditCaptionOutlineWidth width,
   double fontSize,
 ) {
-  final scale = fontSize / 24.0;
+  final scale = fontSize / 12.6;
   return switch (width) {
-    QuickEditCaptionOutlineWidth.thin => 2.0 * scale,
-    QuickEditCaptionOutlineWidth.medium => 3.5 * scale,
-    QuickEditCaptionOutlineWidth.thick => 5.5 * scale,
+    QuickEditCaptionOutlineWidth.thin => 1.4 * scale,
+    QuickEditCaptionOutlineWidth.medium => 2.4 * scale,
+    QuickEditCaptionOutlineWidth.thick => 3.6 * scale,
   };
 }
 

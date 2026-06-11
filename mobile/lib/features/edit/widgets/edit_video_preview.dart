@@ -29,7 +29,6 @@ class EditVideoPreview extends StatefulWidget {
     required this.onPlaybackSeconds,
     this.thumbnailUrl,
     this.captionsPreviewOverlay,
-    this.minimalPlayChrome = false,
   });
 
   final EditVideoPreviewSource previewSource;
@@ -47,9 +46,6 @@ class EditVideoPreview extends StatefulWidget {
 
   /// Upright captions mock (e.g. [EditCaptionsPreviewOverlay]); must be [IgnorePointer]-safe — inserted above video, below play controls.
   final Widget? captionsPreviewOverlay;
-
-  /// When true, hide play chrome while playing so captions stay visible.
-  final bool minimalPlayChrome;
 
   @override
   State<EditVideoPreview> createState() => _EditVideoPreviewState();
@@ -257,42 +253,38 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
   }
 
   Widget _playOverlayInk(VideoPlayerController c) {
-    final playing = c.value.isPlaying;
-    final minimal = widget.minimalPlayChrome;
     return Material(
-      color: minimal && playing
-          ? Colors.transparent
-          : Colors.black.withValues(alpha: minimal ? 0.08 : 0.22),
+      color: Colors.black.withValues(alpha: 0.22),
       type: MaterialType.transparency,
       child: InkWell(
         onTap: _togglePlay,
         child: Center(
-          child: (!minimal || !playing)
-              ? DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: minimal ? 0.45 : 0.38),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.14),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.35),
-                        blurRadius: 18,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(minimal ? 12 : 14),
-                    child: Icon(
-                      playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                      size: minimal ? 32 : 36,
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-                )
-              : const SizedBox.expand(),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.38),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.14),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Icon(
+                c.value.isPlaying
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded,
+                size: 36,
+                color: Colors.white.withValues(alpha: 0.9),
+              ),
+            ),
+          ),
         ),
       ),
     );
