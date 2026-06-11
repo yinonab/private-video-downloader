@@ -1,7 +1,4 @@
-import "dart:async";
-
 import "package:flutter/material.dart";
-import "package:flutter/services.dart";
 
 import "../../core/edit/caption_preview_layout.dart";
 import "../../core/models/quick_edit_models.dart";
@@ -23,7 +20,6 @@ class CaptionFullscreenPreviewScreen extends StatefulWidget {
     required this.trimStartSec,
     required this.trimEndSec,
     required this.videoDurationSec,
-    required this.speedFactor,
     this.thumbnailUrl,
     this.draftSegments,
     this.initialPlaybackSec = 0,
@@ -37,7 +33,6 @@ class CaptionFullscreenPreviewScreen extends StatefulWidget {
   final double trimStartSec;
   final double trimEndSec;
   final double videoDurationSec;
-  final QuickEditSpeedFactor speedFactor;
   final String? thumbnailUrl;
   final List<CaptionDraftSegment>? draftSegments;
   final double initialPlaybackSec;
@@ -49,101 +44,48 @@ class CaptionFullscreenPreviewScreen extends StatefulWidget {
 
 class _CaptionFullscreenPreviewScreenState
     extends State<CaptionFullscreenPreviewScreen> {
-  double _sourcePlaybackSec = 0;
+  double _playbackSec = 0;
 
   @override
   void initState() {
     super.initState();
-    _sourcePlaybackSec = widget.initialPlaybackSec;
-    unawaited(
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]),
-    );
-  }
-
-  @override
-  void dispose() {
-    unawaited(
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
-    );
-    super.dispose();
-  }
-
-  double get _editTimelinePlaybackSec => captionPreviewPlaybackOnEditTimeline(
-        sourcePlaybackSec: _sourcePlaybackSec,
-        trimStartSec: widget.trimStartSec,
-        trimEndSec: widget.trimEndSec,
-        videoDurationSec: widget.videoDurationSec,
-        speedFactor: widget.speedFactor,
-      );
-
-  Widget? _buildCaptionOverlay(AppLocalizations l10n) {
-    final cue = resolveCaptionPreviewCue(
-      l10n: l10n,
-      draftSegments: widget.draftSegments,
-      playbackSec: _editTimelinePlaybackSec,
-      allowSampleFallback: false,
-    );
-    if (!cue.hasText) return null;
-    final highlightIdx = captionPreviewActiveWordIndex(
-      text: cue.text!,
-      draftSegments: widget.draftSegments,
-      playbackSec: _editTimelinePlaybackSec,
-    );
-    final s = widget.look;
-    return EditCaptionsPreviewOverlay(
-      l10n: l10n,
-      layout: CaptionPreviewLayout.fullscreen,
-      showPreviewLabel: false,
-      allowSampleFallback: false,
-      stylePreset: s.style,
-      fontSize: s.fontSize,
-      fontFamily: s.fontFamily,
-      position: s.position,
-      color: s.color,
-      wordHighlight: s.wordHighlight,
-      normalTextColor: s.normalTextColor,
-      activeTextColor: s.activeTextColor,
-      boxColor: s.boxColor,
-      boxShape: s.boxShape,
-      outlineEnabled: s.outlineEnabled,
-      outlineColor: s.outlineColor,
-      outlineWidth: s.outlineWidth,
-      offsetXAss: s.offsetX,
-      offsetYAss: s.offsetY,
-      sampleText: cue.text,
-      highlightWordIndex: highlightIdx,
-    );
+    _playbackSec = widget.initialPlaybackSec;
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final captionText = captionPreviewDisplayText(
+      l10n: l10n,
+      draftSegments: widget.draftSegments,
+      playbackSec: _playbackSec,
+    );
+    final highlightIdx = captionPreviewActiveWordIndex(
+      text: captionText,
+      draftSegments: widget.draftSegments,
+      playbackSec: _playbackSec,
+    );
+    final s = widget.look;
 
-    return PopScope(
-      canPop: true,
-      child: Scaffold(
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
         backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: Colors.black,
-          foregroundColor: Colors.white,
-          title: Text(l10n.editCaptionsV36FullscreenPreviewTitle),
-          leading: IconButton(
-            icon: const Icon(Icons.close_rounded),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
+        foregroundColor: Colors.white,
+        title: Text(l10n.editCaptionsV36FullscreenPreviewTitle),
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () => Navigator.of(context).pop(),
         ),
-        body: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return Center(
+      ),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: SizedBox(
                   width: constraints.maxWidth,
-                  height: constraints.maxHeight,
                   child: EditVideoPreview(
                     key: ValueKey<String>("fs-${widget.previewSource.identityTag}"),
                     previewSource: widget.previewSource,
@@ -155,19 +97,38 @@ class _CaptionFullscreenPreviewScreenState
                     videoDurationSec: widget.videoDurationSec,
                     thumbnailUrl: widget.thumbnailUrl,
                     minimalPlayChrome: true,
-                    fit: EditVideoPreviewFit.expand,
-                    clipBorderRadius: 0,
                     onDurationResolved: (_) {},
                     onPlaybackSeconds: (sec) {
                       if (!mounted) return;
-                      setState(() => _sourcePlaybackSec = sec);
+                      setState(() => _playbackSec = sec);
                     },
-                    captionsPreviewOverlay: _buildCaptionOverlay(l10n),
+                    captionsPreviewOverlay: EditCaptionsPreviewOverlay(
+                      l10n: l10n,
+                      layout: CaptionPreviewLayout.fullscreen,
+                      showPreviewLabel: false,
+                      stylePreset: s.style,
+                      fontSize: s.fontSize,
+                      fontFamily: s.fontFamily,
+                      position: s.position,
+                      color: s.color,
+                      wordHighlight: s.wordHighlight,
+                      normalTextColor: s.normalTextColor,
+                      activeTextColor: s.activeTextColor,
+                      boxColor: s.boxColor,
+                      boxShape: s.boxShape,
+                      outlineEnabled: s.outlineEnabled,
+                      outlineColor: s.outlineColor,
+                      outlineWidth: s.outlineWidth,
+                      offsetXAss: s.offsetX,
+                      offsetYAss: s.offsetY,
+                      sampleText: captionText,
+                      highlightWordIndex: highlightIdx,
+                    ),
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

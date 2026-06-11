@@ -33,7 +33,6 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
     required this.offsetYAss,
     this.sampleText,
     this.highlightWordIndex,
-    this.allowSampleFallback = true,
     this.animateMotion = false,
     this.motionDuration = const Duration(milliseconds: 180),
   });
@@ -58,7 +57,6 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
   final int offsetYAss;
   final String? sampleText;
   final int? highlightWordIndex;
-  final bool allowSampleFallback;
   final bool animateMotion;
   final Duration motionDuration;
 
@@ -70,11 +68,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
         final h = math.max(c.maxHeight, 1.0);
         final fz = captionPreviewFontSizePx(fontSize, h);
         final hPad = captionPreviewHorizontalPadPx(w);
-        final displayText = sampleText ??
-            (allowSampleFallback ? l10n.editCaptionsSampleLabel : null);
-        if (displayText == null || displayText.trim().isEmpty) {
-          return const SizedBox.shrink();
-        }
+        final displayText = sampleText ?? l10n.editCaptionsSampleLabel;
         final rtl = captionPreviewIsRtl(displayText);
         final parts = captionPreviewHighlightParts(
           displayText,

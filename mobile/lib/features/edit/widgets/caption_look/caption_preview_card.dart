@@ -128,7 +128,6 @@ class _CaptionPreviewCardState extends State<CaptionPreviewCard>
                     l10n: widget.l10n,
                     layout: CaptionPreviewLayout.stage,
                     showPreviewLabel: false,
-                    allowSampleFallback: true,
                     animateMotion: true,
                     motionDuration: const Duration(milliseconds: 180),
                     stylePreset: s.style,
