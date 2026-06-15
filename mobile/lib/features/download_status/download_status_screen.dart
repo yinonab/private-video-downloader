@@ -8,6 +8,7 @@ import "package:flutter_animate/flutter_animate.dart";
 import "package:lucide_icons_flutter/lucide_icons.dart";
 
 import "../../core/app_scope.dart";
+import "../../core/operation_wakelock.dart";
 import "../../core/downloads/redownload_request_resolution.dart";
 import "../../core/config/media_export_constants.dart";
 import "../../core/config/build_flags.dart";
@@ -81,6 +82,36 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   int _totalBytes = 0;
   bool _localSaved = false;
   bool _localLookupDone = false;
+  bool _downloadWakelockHeld = false;
+
+  bool _wantsDownloadWakelock() {
+    if (_fileBusy) return true;
+    final pollId = _pollJobId;
+    if (pollId.isEmpty) {
+      return widget.pendingCreateRequest != null && _err == null;
+    }
+    final d = _detail;
+    if (d == null) return true;
+    return !d.terminal;
+  }
+
+  Future<void> _syncDownloadWakelock() async {
+    final want = _wantsDownloadWakelock();
+    if (want == _downloadWakelockHeld) return;
+    if (want) {
+      await OperationWakelock.acquire();
+      _downloadWakelockHeld = true;
+    } else {
+      await OperationWakelock.release();
+      _downloadWakelockHeld = false;
+    }
+  }
+
+  Future<void> _releaseDownloadWakelockIfHeld() async {
+    if (!_downloadWakelockHeld) return;
+    _downloadWakelockHeld = false;
+    await OperationWakelock.release();
+  }
 
   bool get _pendingCreateMinHoldActive =>
       widget.pendingCreateRequest != null && _pendingCreateRevealHeld;
@@ -118,12 +149,14 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       _pendingCreateMinLoadingTimer = Timer(_minimumInitialLoadingDuration, () {
         if (!mounted) return;
         setState(() => _pendingCreateRevealHeld = false);
+        unawaited(_syncDownloadWakelock());
       });
       WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrapPendingCreate());
     } else {
       _startPollingTimer();
       WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_syncDownloadWakelock()));
   }
 
   @override
@@ -134,6 +167,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
     }());
     _pendingCreateMinLoadingTimer?.cancel();
     _timer?.cancel();
+    unawaited(_releaseDownloadWakelockIfHeld());
     super.dispose();
   }
 
@@ -175,9 +209,11 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         _resolvedJobId = res.jobId.trim();
         _err = null;
       });
+      unawaited(_syncDownloadWakelock());
       if (_pollJobId.isEmpty) {
         if (!mounted) return;
         setState(() => _err = ApiError(code: "MISSING_JOB", message: "empty job id"));
+        unawaited(_syncDownloadWakelock());
         return;
       }
       await AppScope.read(context).session.rememberDownloadCreateRequest(_pollJobId, req);
@@ -211,12 +247,14 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
             _resolvedJobId = existingId;
             _err = null;
           });
+          unawaited(_syncDownloadWakelock());
           _startPollingTimer();
           WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
           return;
         }
       }
       setState(() => _err = e is ApiError ? e : ApiError.fromUnknown(e));
+      unawaited(_syncDownloadWakelock());
     }
   }
 
@@ -300,6 +338,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       return false;
     } finally {
       if (mounted) setState(() => _fileBusy = false);
+      unawaited(_syncDownloadWakelock());
     }
   }
 
@@ -316,6 +355,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         _detail = next;
         _err = null;
       });
+      unawaited(_syncDownloadWakelock());
       unawaited(
         tryBackfillStoredRequestFromDetail(AppScope.read(context).session, next),
       );
@@ -345,6 +385,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _err = e is ApiError ? e : ApiError.fromUnknown(e));
+      unawaited(_syncDownloadWakelock());
       _timer?.cancel();
     } finally {
       _polling = false;
@@ -366,6 +407,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       _receiveBytes = 0;
       _totalBytes = 0;
     });
+    unawaited(_syncDownloadWakelock());
     try {
       final files = scope.files;
       final outcome = await files.downloadJobMedia(
@@ -419,6 +461,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } finally {
       if (mounted) setState(() => _fileBusy = false);
+      unawaited(_syncDownloadWakelock());
     }
   }
 
@@ -446,6 +489,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   Future<void> _retry() async {
     final l10n = context.l10n;
     setState(() => _err = null);
+    unawaited(_syncDownloadWakelock());
     if (widget.pendingCreateRequest != null && _pollJobId.isEmpty) {
       await _bootstrapPendingCreate();
       return;
@@ -454,6 +498,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       await AppScope.read(context).downloadService.retry(_pollJobId);
       if (!mounted) return;
       _startPollingTimer();
+      unawaited(_syncDownloadWakelock());
     } catch (e) {
       if (!mounted) return;
       final msg = e is ApiError ? localizedApiErrorMessage(l10n, e) : "$e";

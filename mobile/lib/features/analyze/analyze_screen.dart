@@ -1,8 +1,11 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter_animate/flutter_animate.dart";
 import "package:lucide_icons_flutter/lucide_icons.dart";
 
 import "../../core/app_scope.dart";
+import "../../core/operation_wakelock.dart";
 import "../../core/config/build_flags.dart";
 import "../../core/l10n/api_error_localizations.dart";
 import "../../core/l10n/context_l10n.dart";
@@ -36,6 +39,24 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
   ApiError? _err;
   bool _loading = true;
   int _fmtIndex = 0;
+  bool _analyzeWakelockHeld = false;
+
+  Future<void> _setAnalyzeWakelock(bool want) async {
+    if (want == _analyzeWakelockHeld) return;
+    if (want) {
+      await OperationWakelock.acquire();
+      _analyzeWakelockHeld = true;
+    } else {
+      await OperationWakelock.release();
+      _analyzeWakelockHeld = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    unawaited(_setAnalyzeWakelock(false));
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -64,6 +85,11 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       return;
     }
     shareDebugPrint("auto analyze triggered url=$u");
+    await _setAnalyzeWakelock(true);
+    if (!mounted) {
+      await _setAnalyzeWakelock(false);
+      return;
+    }
     setState(() {
       _loading = true;
       _err = null;
@@ -81,6 +107,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       setState(() => _err = e is ApiError ? e : ApiError.fromUnknown(e));
     } finally {
       if (mounted) setState(() => _loading = false);
+      await _setAnalyzeWakelock(false);
     }
   }
 

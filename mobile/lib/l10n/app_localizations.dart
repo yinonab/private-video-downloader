@@ -1934,6 +1934,54 @@ abstract class AppLocalizations {
   /// **'Downloading edited file…'**
   String get editProcessingDownloading;
 
+  /// No description provided for @editProgressStagePreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing your video...'**
+  String get editProgressStagePreparing;
+
+  /// No description provided for @editProgressStageProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing the video...'**
+  String get editProgressStageProcessing;
+
+  /// No description provided for @editProgressStageApplyingEdits.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying edits...'**
+  String get editProgressStageApplyingEdits;
+
+  /// No description provided for @editProgressStageBurningCaptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Burning captions into the video...'**
+  String get editProgressStageBurningCaptions;
+
+  /// No description provided for @editProgressStageFinalizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating the final file...'**
+  String get editProgressStageFinalizing;
+
+  /// No description provided for @editProgressStagePreparingPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing preview...'**
+  String get editProgressStagePreparingPreview;
+
+  /// No description provided for @editProgressStageAlmostDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Almost done...'**
+  String get editProgressStageAlmostDone;
+
+  /// No description provided for @editProgressEstimatedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress is approximate while your edit runs.'**
+  String get editProgressEstimatedNote;
+
   /// No description provided for @editDoneTitle.
   ///
   /// In en, this message translates to:

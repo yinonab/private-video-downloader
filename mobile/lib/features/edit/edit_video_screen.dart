@@ -21,6 +21,8 @@ import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
 import "../../core/edit/caption_look_summary.dart";
 import "../../core/edit/edit_preview_state.dart";
+import "../../core/edit/edit_progress_display.dart";
+import "../../core/operation_wakelock.dart";
 import "../../core/models/quick_edit_models.dart";
 import "caption_look_editor_screen.dart";
 import "../../core/network/api_client.dart";
@@ -152,9 +154,12 @@ class _EditVideoScreenState extends State<EditVideoScreen>
 
   List<CaptionDraftSegment>? _captionsDraftSegments;
   bool _captionsDraftGenerating = false;
+  bool _workingWakelockHeld = false;
+  bool _captionDraftWakelockHeld = false;
   bool _captionsDraftRegenHint = false;
 
   _FlowPhase _phase = _FlowPhase.composing;
+  DateTime? _workingStartedAt;
   Timer? _pollTimer;
   bool _pollBusy = false;
 
@@ -185,8 +190,30 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   @override
   void dispose() {
     _pollTimer?.cancel();
+    unawaited(_endWorkingPhase());
+    unawaited(_releaseCaptionDraftWakelockIfHeld());
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _beginWorkingPhase() {
+    _workingStartedAt = DateTime.now();
+    if (_workingWakelockHeld) return;
+    _workingWakelockHeld = true;
+    unawaited(OperationWakelock.acquire());
+  }
+
+  Future<void> _endWorkingPhase() async {
+    _workingStartedAt = null;
+    if (!_workingWakelockHeld) return;
+    _workingWakelockHeld = false;
+    await OperationWakelock.release();
+  }
+
+  Future<void> _releaseCaptionDraftWakelockIfHeld() async {
+    if (!_captionDraftWakelockHeld) return;
+    _captionDraftWakelockHeld = false;
+    await OperationWakelock.release();
   }
 
   @override
@@ -199,6 +226,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         _captionsDraftGenerating = false;
         if (had) _captionsDraftRegenHint = true;
       });
+      unawaited(_releaseCaptionDraftWakelockIfHeld());
     }
   }
 
@@ -224,6 +252,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     final l10n = context.l10n;
     final api = AppScope.read(context).api;
     FocusScope.of(context).unfocus();
+    if (!_captionDraftWakelockHeld) {
+      _captionDraftWakelockHeld = true;
+      await OperationWakelock.acquire();
+    }
     setState(() {
       _captionsDraftGenerating = true;
       _captionsDraftRegenHint = false;
@@ -264,6 +296,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       setState(() => _captionsDraftGenerating = false);
       final msg = e is ApiError ? localizedApiErrorMessage(l10n, e) : l10n.errorUnexpected;
       messenger.showSnackBar(SnackBar(content: Text(msg)));
+    } finally {
+      await _releaseCaptionDraftWakelockIfHeld();
     }
   }
 
@@ -569,6 +603,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         await _finalizeDownload(d);
       } else if (d.isTerminalFailed) {
         _pollTimer?.cancel();
+        await _endWorkingPhase();
+        if (!mounted) return;
         setState(() {
           _phase = _FlowPhase.failed;
           _lastError = null;
@@ -577,6 +613,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     } catch (e) {
       if (!mounted) return;
       _pollTimer?.cancel();
+      await _endWorkingPhase();
+      if (!mounted) return;
       setState(() {
         _phase = _FlowPhase.failed;
         _lastError = e;
@@ -651,6 +689,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       );
 
       if (!mounted) return;
+      await _endWorkingPhase();
+      if (!mounted) return;
       setState(() {
         _outputPath = path;
         _outputPreview = outputPreview;
@@ -658,6 +698,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         _downloadingFile = false;
       });
     } catch (e) {
+      if (!mounted) return;
+      await _endWorkingPhase();
       if (!mounted) return;
       final mapped = e is ApiError && isMissingBackendBinaryError(e)
           ? ApiError(
@@ -683,6 +725,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       return;
     }
     FocusScope.of(context).unfocus();
+    _beginWorkingPhase();
     setState(() {
       _phase = _FlowPhase.working;
       _lastError = null;
@@ -748,6 +791,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       setState(() => _editJobId = id);
       _startPolling();
     } catch (e) {
+      await _endWorkingPhase();
       if (!mounted) return;
       if (e is ApiError && e.code == "EDIT_INVALID_SOURCE") {
         if (widget.source.kind == EditVideoSourceKind.download) {
@@ -798,6 +842,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     }
 
     if (_latestJob?.isTerminalDone == true) {
+      _beginWorkingPhase();
       setState(() {
         _phase = _FlowPhase.working;
         _lastError = null;
@@ -808,6 +853,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       return;
     }
 
+    _beginWorkingPhase();
     setState(() {
       _phase = _FlowPhase.working;
       _lastError = null;
@@ -819,6 +865,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       if (!mounted) return;
       _startPolling();
     } catch (e) {
+      await _endWorkingPhase();
       if (!mounted) return;
       setState(() {
         _phase = _FlowPhase.failed;
@@ -921,13 +968,17 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     return PopScope(
       canPop: _phase != _FlowPhase.working,
       onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
+        if (didPop) {
+          await _endWorkingPhase();
+          return;
+        }
         if (_phase != _FlowPhase.working || !context.mounted) return;
         final leave = await _confirmLeaveWorking(context);
         if (!context.mounted) return;
         if (leave) {
           _pollTimer?.cancel();
-          Navigator.of(context).pop();
+          await _endWorkingPhase();
+          if (context.mounted) Navigator.of(context).pop();
         }
       },
       child: DecoratedBox(
@@ -1244,20 +1295,23 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                         onEditCaptionsDraft: _openCaptionDraftEditor,
                         isCaptionDraftGenerating: _captionsDraftGenerating,
                         showCaptionDraftTimingStaleHint: _captionsDraftRegenHint,
-                        onAutoCaptionsChanged: (v) => setState(() {
-                          _captionsAuto = v;
-                          if (!v) {
-                            _captionsOffsetX = 0;
-                            _captionsOffsetY = 0;
-                            _captionsWordHighlight = QuickEditCaptionWordHighlight.none;
-                            _captionsNormalTextColor = null;
-                            _captionsActiveTextColor = null;
-                            _captionsBoxColor = null;
-                            _captionsDraftSegments = null;
-                            _captionsDraftRegenHint = false;
-                            _captionsDraftGenerating = false;
-                          }
-                        }),
+                        onAutoCaptionsChanged: (v) {
+                          setState(() {
+                            _captionsAuto = v;
+                            if (!v) {
+                              _captionsOffsetX = 0;
+                              _captionsOffsetY = 0;
+                              _captionsWordHighlight = QuickEditCaptionWordHighlight.none;
+                              _captionsNormalTextColor = null;
+                              _captionsActiveTextColor = null;
+                              _captionsBoxColor = null;
+                              _captionsDraftSegments = null;
+                              _captionsDraftRegenHint = false;
+                              _captionsDraftGenerating = false;
+                            }
+                          });
+                          if (!v) unawaited(_releaseCaptionDraftWakelockIfHeld());
+                        },
                       ),
                     ),
                     _composerPanelShell(
@@ -1347,16 +1401,17 @@ class _EditVideoScreenState extends State<EditVideoScreen>
 
   Widget _buildWorkingBody(
       ThemeData theme, ColorScheme scheme, AppLocalizations l10n) {
-    final pct = _latestJob?.progressPercent;
     final palette = context.lcPalette;
-    final headline = _downloadingFile
-        ? l10n.editProcessingDownloading
-        : l10n.editCreatingEdit;
-    final showCaptionsNote =
-        !_downloadingFile && _captionsAuto;
-    final subtitle = _downloadingFile
-        ? l10n.editProcessingSubtitle
-        : l10n.editCreatingEditKeepOpen;
+    final hasCaptions = _captionsAuto &&
+        _captionsDraftSegments != null &&
+        _captionsDraftSegments!.isNotEmpty;
+    final display = resolveEditProgressDisplay(
+      l10n: l10n,
+      downloadingFile: _downloadingFile,
+      hasCaptions: hasCaptions,
+      job: _latestJob,
+      workingStartedAt: _workingStartedAt,
+    );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
@@ -1386,37 +1441,41 @@ class _EditVideoScreenState extends State<EditVideoScreen>
           ),
           const SizedBox(height: 28),
           Text(
-            headline,
+            display.headline,
             textAlign: TextAlign.center,
             style: theme.textTheme.titleMedium
                 ?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
-          if (showCaptionsNote) ...[
+          if (display.subtitle != null) ...[
             Text(
-              l10n.editCaptionsProcessingNoteLine,
+              display.subtitle!,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
             ),
             const SizedBox(height: 8),
           ],
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
-          ),
-          if (_downloadingFile)
-            KeepAppOpenHint(l10n.keepAppOpenUntilDownloadFinished),
+          KeepAppOpenHint(l10n.keepAppOpenUntilDownloadFinished),
           const SizedBox(height: 18),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
               minHeight: 5,
-              value: pct != null ? (pct.clamp(0, 100) / 100.0) : null,
+              value: display.progress.clamp(0.0, 1.0),
             ),
           ),
+          if (display.isEstimated) ...[
+            const SizedBox(height: 8),
+            Text(
+              l10n.editProgressEstimatedNote,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
+                height: 1.3,
+              ),
+            ),
+          ],
         ],
       ),
     );

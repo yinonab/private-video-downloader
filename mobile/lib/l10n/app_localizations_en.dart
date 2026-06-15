@@ -1012,6 +1012,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editProcessingDownloading => 'Downloading edited file…';
 
   @override
+  String get editProgressStagePreparing => 'Preparing your video...';
+
+  @override
+  String get editProgressStageProcessing => 'Processing the video...';
+
+  @override
+  String get editProgressStageApplyingEdits => 'Applying edits...';
+
+  @override
+  String get editProgressStageBurningCaptions =>
+      'Burning captions into the video...';
+
+  @override
+  String get editProgressStageFinalizing => 'Creating the final file...';
+
+  @override
+  String get editProgressStagePreparingPreview => 'Preparing preview...';
+
+  @override
+  String get editProgressStageAlmostDone => 'Almost done...';
+
+  @override
+  String get editProgressEstimatedNote =>
+      'Progress is approximate while your edit runs.';
+
+  @override
   String get editDoneTitle => 'Your edit is ready';
 
   @override

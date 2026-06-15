@@ -999,6 +999,30 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editProcessingDownloading => 'מוריד את הקובץ הערוך…';
 
   @override
+  String get editProgressStagePreparing => 'מכין את הסרטון לעריכה...';
+
+  @override
+  String get editProgressStageProcessing => 'מעבד את הווידאו...';
+
+  @override
+  String get editProgressStageApplyingEdits => 'מוסיף את העריכות...';
+
+  @override
+  String get editProgressStageBurningCaptions => 'שורף כתוביות לתוך הסרטון...';
+
+  @override
+  String get editProgressStageFinalizing => 'מייצר קובץ סופי...';
+
+  @override
+  String get editProgressStagePreparingPreview => 'מכין תצוגה מקדימה...';
+
+  @override
+  String get editProgressStageAlmostDone => 'כמעט סיימנו...';
+
+  @override
+  String get editProgressEstimatedNote => 'ההתקדמות משוערת בזמן שהעריכה רצה.';
+
+  @override
   String get editDoneTitle => 'העריכה מוכנה';
 
   @override
