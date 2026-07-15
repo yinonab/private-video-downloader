@@ -1,6 +1,7 @@
 import "package:flutter/widgets.dart";
 import "package:private_video_downloader/core/edit_history/local_edit_history_store.dart";
 import "package:private_video_downloader/core/network/api_client.dart";
+import "package:private_video_downloader/core/operations/operation_controller.dart";
 import "package:private_video_downloader/core/storage/local_session.dart";
 import "package:private_video_downloader/services/analyze_service.dart";
 import "package:private_video_downloader/services/device_service.dart";
@@ -18,6 +19,7 @@ final class AppScope extends InheritedWidget {
     required this.analyzeService,
     required this.files,
     required this.editHistory,
+    required this.operations,
     required super.child,
   });
 
@@ -28,6 +30,7 @@ final class AppScope extends InheritedWidget {
   final AnalyzeService analyzeService;
   final FileDownloadService files;
   final LocalEditHistoryStore editHistory;
+  final OperationController operations;
 
   static AppScope read(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppScope>()!;
@@ -36,6 +39,7 @@ final class AppScope extends InheritedWidget {
   bool updateShouldNotify(AppScope oldWidget) {
     return identical(oldWidget.session, session) == false ||
         identical(oldWidget.api, api) == false ||
-        identical(oldWidget.editHistory, editHistory) == false;
+        identical(oldWidget.editHistory, editHistory) == false ||
+        identical(oldWidget.operations, operations) == false;
   }
 }

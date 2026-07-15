@@ -9,6 +9,7 @@ import "package:lucide_icons_flutter/lucide_icons.dart";
 
 import "../../core/app_scope.dart";
 import "../../core/operation_wakelock.dart";
+import "../../core/operations/operation_controller.dart";
 import "../../core/downloads/redownload_request_resolution.dart";
 import "../../core/config/media_export_constants.dart";
 import "../../core/config/build_flags.dart";
@@ -63,11 +64,13 @@ class DownloadStatusScreen extends StatefulWidget {
   State<DownloadStatusScreen> createState() => _DownloadStatusScreenState();
 }
 
-class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
+class _DownloadStatusScreenState extends State<DownloadStatusScreen>
+    with WidgetsBindingObserver {
   static const Duration _minimumInitialLoadingDuration = Duration(seconds: 3);
 
   Timer? _timer;
   Timer? _pendingCreateMinLoadingTimer;
+  OperationController? _operations;
   /// While true (pending-create only), UI keeps [InitialDownloadLoadingAnimation] even if [_detail]/[_err] already arrived.
   bool _pendingCreateRevealHeld = false;
 
@@ -144,6 +147,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (widget.pendingCreateRequest != null) {
       _pendingCreateRevealHeld = true;
       _pendingCreateMinLoadingTimer = Timer(_minimumInitialLoadingDuration, () {
@@ -156,7 +160,69 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       _startPollingTimer();
       WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_syncDownloadWakelock()));
+    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_onDownloadScreenReady()));
+  }
+
+  Future<void> _onDownloadScreenReady() async {
+    if (!mounted) return;
+    final ops = AppScope.read(context).operations;
+    _operations = ops;
+    ops.addListener(_onOperationsChanged);
+    ops.pauseBackgroundPolling();
+    final id = _pollJobId;
+    if (id.isNotEmpty) {
+      await ops.attachExistingDownloadJob(
+        jobId: id,
+        sourceTitle: _detail?.title,
+        sourceThumbnailUrl: _detail?.thumbnail,
+        payload: widget.pendingCreateRequest?.toJson(),
+      );
+    }
+    unawaited(_syncDownloadWakelock());
+  }
+
+  void _onOperationsChanged() {
+    if (!mounted) return;
+    final active = _operations?.active;
+    final id = _pollJobId;
+    if (id.isEmpty || active == null || active.backendJobId != id) return;
+    final cached = _operations?.lastDownloadDetail;
+    if (cached != null && cached.id == id) {
+      _applyDownloadDetail(cached);
+      return;
+    }
+    unawaited(_tickOnce(force: true));
+  }
+
+  void _applyDownloadDetail(DownloadDetailResponse detail) {
+    if (!mounted || detail.id != _pollJobId) return;
+    setState(() {
+      _detail = detail;
+      _err = null;
+    });
+    unawaited(_syncDownloadWakelock());
+    if (detail.terminal) {
+      _timer?.cancel();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshUiAfterForegroundReturn();
+    }
+  }
+
+  void _refreshUiAfterForegroundReturn() {
+    if (!mounted) return;
+    final id = _pollJobId;
+    if (id.isEmpty) return;
+    final terminal = _detail?.terminal ?? false;
+    if (terminal && !_fileBusy) return;
+    _polling = false;
+    unawaited(_operations?.pollNow(force: true));
+    _startPollingTimer();
+    unawaited(_syncDownloadWakelock());
   }
 
   @override
@@ -165,9 +231,15 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       if (kDebugMode) debugPrint("### JOB_STATUS_DEBUG ### polling dispose jobId=$_pollJobId");
       return true;
     }());
+    WidgetsBinding.instance.removeObserver(this);
+    _operations?.removeListener(_onOperationsChanged);
+    _operations = null;
     _pendingCreateMinLoadingTimer?.cancel();
     _timer?.cancel();
     unawaited(_releaseDownloadWakelockIfHeld());
+    if (mounted) {
+      unawaited(AppScope.read(context).operations.ensureBackgroundPolling());
+    }
     super.dispose();
   }
 
@@ -183,6 +255,23 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       return true;
     }());
     final svc = AppScope.read(context).downloadService;
+    final ops = AppScope.read(context).operations;
+    final existingId = await ops.activeDownloadJobIdMatching(req);
+    if (existingId != null && existingId.isNotEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _resolvedJobId = existingId;
+        _err = null;
+      });
+      await AppScope.read(context).session.rememberDownloadCreateRequest(existingId, req);
+      unawaited(_syncDownloadWakelock());
+      _startPollingTimer();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
+      return;
+    }
+    if (existingId == null) {
+      await ops.registerPendingDownloadCreate(req);
+    }
     downloadDebugPrint("POST /downloads (pending screen) body=${req.toJson()}");
     try {
       final res = await svc.create(req);
@@ -217,6 +306,10 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         return;
       }
       await AppScope.read(context).session.rememberDownloadCreateRequest(_pollJobId, req);
+      await ops.registerDownloadJob(
+        jobId: _pollJobId,
+        payload: req.toJson(),
+      );
       _startPollingTimer();
       WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
     } catch (e, st) {
@@ -248,6 +341,10 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
             _err = null;
           });
           unawaited(_syncDownloadWakelock());
+          await ops.registerDownloadJob(
+            jobId: existingId,
+            payload: req.toJson(),
+          );
           _startPollingTimer();
           WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
           return;
@@ -300,6 +397,8 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       _receiveBytes = 0;
       _totalBytes = 0;
     });
+    unawaited(AppScope.read(context).operations.markClientDownloadingResult());
+    final operations = AppScope.read(context).operations;
     try {
       final scope = AppScope.read(context);
       await scope.files.downloadJobMedia(
@@ -315,6 +414,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       );
       if (!mounted) return false;
       await _refreshLocalSaved();
+      await operations.markSuccess();
       return _localSaved;
     } catch (e, st) {
       downloadDebugPrint(
@@ -342,8 +442,8 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
     }
   }
 
-  Future<void> _tickOnce() async {
-    if (_polling) return;
+  Future<void> _tickOnce({bool force = false}) async {
+    if (!force && _polling) return;
     final id = _pollJobId;
     if (id.isEmpty) return;
     _polling = true;
@@ -351,11 +451,8 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       final svc = AppScope.read(context).downloadService;
       final next = await svc.detail(id);
       if (!mounted) return;
-      setState(() {
-        _detail = next;
-        _err = null;
-      });
-      unawaited(_syncDownloadWakelock());
+      _applyDownloadDetail(next);
+      unawaited(AppScope.read(context).operations.updateFromDownloadDetail(next));
       unawaited(
         tryBackfillStoredRequestFromDetail(AppScope.read(context).session, next),
       );
@@ -368,25 +465,19 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         }
         return true;
       }());
-      if (next.terminal) {
-        assert(() {
-          if (kDebugMode) {
-            debugPrint(
-              "### JOB_STATUS_DEBUG ### polling stop jobId=$id reason=terminal status=${next.status}",
-            );
-          }
-          return true;
-        }());
-        _timer?.cancel();
-      }
       if (next.status == "done") {
         await _refreshLocalSaved();
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() => _err = e is ApiError ? e : ApiError.fromUnknown(e));
-      unawaited(_syncDownloadWakelock());
-      _timer?.cancel();
+      assert(() {
+        if (kDebugMode) {
+          debugPrint(
+            "### JOB_STATUS_DEBUG ### poll tick error jobId=$id type=${e.runtimeType}",
+          );
+        }
+        return true;
+      }());
     } finally {
       _polling = false;
     }
@@ -408,6 +499,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       _totalBytes = 0;
     });
     unawaited(_syncDownloadWakelock());
+    unawaited(scope.operations.markClientDownloadingResult());
     try {
       final files = scope.files;
       final outcome = await files.downloadJobMedia(
@@ -427,6 +519,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         "mediaStorePublished=${outcome.mediaStorePublished} publicUri=${outcome.publicUri}",
       );
       await _refreshLocalSaved();
+      await scope.operations.markSuccess();
       final displayPath = MediaExportDisplayPath.downloadsThenFolder(
           l10n, kLinkClipMediaStoreFolderName);
       final msg = outcome.mediaStorePublished == true && outcome.publicUri != null
@@ -459,6 +552,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
       }
       final msg = e is ApiError ? localizedApiErrorMessage(l10n, e) : "$e";
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      unawaited(scope.operations.markFailed(errorCode: e is ApiError ? e.code : null));
     } finally {
       if (mounted) setState(() => _fileBusy = false);
       unawaited(_syncDownloadWakelock());
@@ -550,7 +644,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen> {
         backgroundColor: Colors.transparent,
         appBar: LinkClipPremiumAppBar(title: Text(l10n.downloadStatusTitle)),
       body: RefreshIndicator(
-        onRefresh: _tickOnce,
+        onRefresh: () => _tickOnce(force: true),
         child: ListView(
           padding: const EdgeInsets.all(18),
           physics: const AlwaysScrollableScrollPhysics(),

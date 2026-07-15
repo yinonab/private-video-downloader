@@ -2018,6 +2018,12 @@ abstract class AppLocalizations {
   /// **'Editing failed'**
   String get editFailedTitle;
 
+  /// No description provided for @operationEditAlreadyInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'An edit is already in progress. Wait for it to finish or reopen it from your history.'**
+  String get operationEditAlreadyInProgress;
+
   /// No description provided for @editTryAgain.
   ///
   /// In en, this message translates to:

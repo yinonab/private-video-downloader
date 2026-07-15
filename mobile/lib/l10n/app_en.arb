@@ -385,6 +385,7 @@
   "editExportShare": "Share",
   "editExportSave": "Save to device",
   "editFailedTitle": "Editing failed",
+  "operationEditAlreadyInProgress": "An edit is already in progress. Wait for it to finish or reopen it from your history.",
   "editTryAgain": "Try again",
   "editSavedToDownloads": "The video was saved to:\n{path}",
   "@editSavedToDownloads": {

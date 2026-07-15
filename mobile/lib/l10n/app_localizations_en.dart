@@ -1058,6 +1058,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editFailedTitle => 'Editing failed';
 
   @override
+  String get operationEditAlreadyInProgress =>
+      'An edit is already in progress. Wait for it to finish or reopen it from your history.';
+
+  @override
   String get editTryAgain => 'Try again';
 
   @override

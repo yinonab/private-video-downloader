@@ -1,9 +1,13 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 
 import "core/app_scope.dart";
 import "core/config/build_flags.dart";
 import "core/edit_history/local_edit_history_store.dart";
 import "core/network/api_client.dart";
+import "core/operations/active_operation_store.dart";
+import "core/operations/operation_controller.dart";
 import "core/storage/local_session.dart";
 import "core/theme/app_theme.dart";
 import "core/widgets/bootstrap_gate.dart";
@@ -25,12 +29,19 @@ final class BootstrapCoordinator {
   final LocalSession session = LocalSession();
   late final ApiClient api = ApiClient(session: session);
   final LocalEditHistoryStore editHistory = LocalEditHistoryStore();
+  late final OperationController operations = OperationController(
+    store: ActiveOperationStore(),
+    downloadService: DownloadService(api),
+    api: api,
+  );
 
   ShareIntentService? _shareBridge;
 
   Future<void> bootstrap() async {
     await session.bootstrap();
     await editHistory.hydrate();
+    await operations.hydrate();
+    await operations.resumeActiveOperation();
 
     _shareBridge = ShareIntentService(
       navigatorKey: navigatorKey,
@@ -71,7 +82,7 @@ class PrivateDownloaderApp extends StatefulWidget {
   State<PrivateDownloaderApp> createState() => _PrivateDownloaderAppState();
 }
 
-class _PrivateDownloaderAppState extends State<PrivateDownloaderApp> {
+class _PrivateDownloaderAppState extends State<PrivateDownloaderApp> with WidgetsBindingObserver {
   BootstrapCoordinator get c => widget.controller;
 
   bool _coordinatorBootstrapped = false;
@@ -79,6 +90,7 @@ class _PrivateDownloaderAppState extends State<PrivateDownloaderApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     c.session.addListener(_onSessionChange);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!_coordinatorBootstrapped) {
@@ -92,9 +104,18 @@ class _PrivateDownloaderAppState extends State<PrivateDownloaderApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     c.session.removeListener(_onSessionChange);
+    c.operations.dispose();
     c.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(c.operations.resumeActiveOperation());
+    }
   }
 
   void _onSessionChange() {
@@ -140,6 +161,7 @@ class _PrivateDownloaderAppState extends State<PrivateDownloaderApp> {
           analyzeService: AnalyzeService(c.api),
           files: fileSvc,
           editHistory: c.editHistory,
+          operations: c.operations,
           child: MaterialApp(
             navigatorKey: c.navigatorKey,
             debugShowCheckedModeBanner: false,

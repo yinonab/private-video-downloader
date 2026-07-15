@@ -385,6 +385,7 @@
   "editExportShare": "שתף",
   "editExportSave": "שמור למכשיר",
   "editFailedTitle": "העריכה נכשלה",
+  "operationEditAlreadyInProgress": "עריכה כבר מתבצעת. המתן לסיום או פתח אותה מחדש מההיסטוריה.",
   "editTryAgain": "נסה שוב",
   "editSavedToDownloads": "הסרטון נשמר בתיקייה:\n{path}",
   "@editSavedToDownloads": {

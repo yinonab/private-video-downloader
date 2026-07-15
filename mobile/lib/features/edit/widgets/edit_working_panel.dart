@@ -84,7 +84,7 @@ class EditWorkingPanel extends StatelessWidget {
             ),
           ),
           if (showKeepOpenHint)
-            KeepAppOpenHint(context.l10n.keepAppOpenUntilDownloadFinished),
+            KeepAppOpenHint(context.l10n.keepAppOpenUntilEditFinished),
           const SizedBox(height: 18),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),

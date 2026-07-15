@@ -23,6 +23,8 @@ import "../../core/edit/caption_look_summary.dart";
 import "../../core/edit/edit_preview_state.dart";
 import "../../core/edit/edit_progress_display.dart";
 import "../../core/operation_wakelock.dart";
+import "../../core/operations/active_operation.dart";
+import "../../core/operations/operation_controller.dart";
 import "../../core/models/quick_edit_models.dart";
 import "caption_look_editor_screen.dart";
 import "../../core/network/api_client.dart";
@@ -115,7 +117,7 @@ class EditVideoScreen extends StatefulWidget {
 }
 
 class _EditVideoScreenState extends State<EditVideoScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static const double _kFallback = EditVideoScreen.fallbackDurationSec;
 
   DownloadDetailResponse? _detail;
@@ -165,6 +167,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
 
   String? _editJobId;
   EditJobDetailResponse? _latestJob;
+  OperationController? _operations;
   Object? _lastError;
   bool _downloadingFile = false;
   String? _outputPath;
@@ -176,6 +179,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: 6, vsync: this)
       ..addListener(() {
         if (mounted) setState(() {});
@@ -184,12 +188,145 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         widget.source.durationSeconds?.toDouble() ??
         _kFallback;
     _endSec = _durationSec;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadDetail());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final ops = AppScope.read(context).operations;
+      _operations = ops;
+      ops.addListener(_onOperationsChanged);
+      ops.pauseBackgroundPolling();
+      await _loadDetail();
+      await _tryResumeActiveEdit();
+    });
+  }
+
+  void _onOperationsChanged() {
+    if (!mounted) return;
+    final active = _operations?.active;
+    final id = _editJobId?.trim();
+    if (id == null || id.isEmpty || active == null || active.backendJobId != id) {
+      return;
+    }
+    final cached = _operations?.lastEditDetail;
+    if (cached == null || cached.id != id) return;
+    if (_phase != _FlowPhase.working) return;
+    setState(() => _latestJob = cached);
+    if (cached.isTerminalDone && !_downloadingFile) {
+      _pollTimer?.cancel();
+      unawaited(_finalizeDownload(cached));
+    } else if (cached.isTerminalFailed) {
+      _pollTimer?.cancel();
+      unawaited(_handleEditTerminalFailed(cached));
+    }
+  }
+
+  Future<void> _handleEditTerminalFailed(EditJobDetailResponse d) async {
+    await _endWorkingPhase();
+    if (!mounted) return;
+    unawaited(_operations?.markFailed(errorCode: d.errorCode));
+    setState(() {
+      _phase = _FlowPhase.failed;
+      _lastError = null;
+    });
+  }
+
+  Future<void> _tryResumeActiveEdit() async {
+    if (!mounted || _phase != _FlowPhase.composing) return;
+    final ops = AppScope.read(context).operations;
+    final active = ops.active;
+    if (active == null || active.type != OperationType.editExport) return;
+    if (!ops.editPayloadMatchesSource(
+      payload: active.payload,
+      sourceKind: widget.source.kind.name,
+      sourceDownloadJobId: widget.source.sourceDownloadJobId,
+      sourceUploadId: widget.source.sourceUploadId,
+    )) {
+      return;
+    }
+
+    final jobId = active.backendJobId?.trim();
+    if (jobId == null || jobId.isEmpty) return;
+
+    if (active.status == OperationStatus.downloadingResult ||
+        active.payload?["serverStatus"] == "done") {
+      _beginWorkingPhase();
+      setState(() {
+        _editJobId = jobId;
+        _phase = _FlowPhase.working;
+        _downloadingFile = false;
+      });
+      ops.pauseBackgroundPolling();
+      try {
+        final d = await AppScope.read(context).api.getEditJob(jobId);
+        if (!mounted) return;
+        setState(() => _latestJob = d);
+        await _finalizeDownload(d);
+      } catch (e) {
+        if (!mounted) return;
+        await _endWorkingPhase();
+        setState(() {
+          _phase = _FlowPhase.failed;
+          _lastError = e;
+        });
+        unawaited(ops.markFailed(errorCode: e is ApiError ? e.code : null));
+      }
+      return;
+    }
+
+    if (!active.isNonTerminal) return;
+
+    _beginWorkingPhase();
+    setState(() {
+      _editJobId = jobId;
+      _phase = _FlowPhase.working;
+      _lastError = null;
+      _downloadingFile = false;
+    });
+    ops.pauseBackgroundPolling();
+    _startPolling();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    unawaited(_resumeEditAfterForeground());
+  }
+
+  Future<void> _resumeEditAfterForeground() async {
+    if (!mounted) return;
+    _pollBusy = false;
+    if (_phase == _FlowPhase.working && (_editJobId?.trim().isNotEmpty ?? false)) {
+      await _operations?.pollNow(force: true);
+      final cached = _operations?.lastEditDetail;
+      final id = _editJobId?.trim();
+      if (cached != null && id != null && cached.id == id) {
+        setState(() => _latestJob = cached);
+        if (cached.isTerminalDone && !_downloadingFile) {
+          _pollTimer?.cancel();
+          await _finalizeDownload(cached);
+          return;
+        }
+        if (cached.isTerminalFailed) {
+          _pollTimer?.cancel();
+          await _handleEditTerminalFailed(cached);
+          return;
+        }
+      }
+      _startPolling();
+      return;
+    }
+    if (_phase == _FlowPhase.composing) {
+      await _tryResumeActiveEdit();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _operations?.removeListener(_onOperationsChanged);
+    _operations = null;
     _pollTimer?.cancel();
+    if (_phase == _FlowPhase.working && (_editJobId?.trim().isNotEmpty ?? false)) {
+      unawaited(AppScope.read(context).operations.ensureBackgroundPolling());
+    }
     unawaited(_endWorkingPhase());
     unawaited(_releaseCaptionDraftWakelockIfHeld());
     _tabController.dispose();
@@ -598,27 +735,22 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       final d = await AppScope.read(context).api.getEditJob(id);
       if (!mounted || _phase != _FlowPhase.working) return;
       setState(() => _latestJob = d);
+      unawaited(AppScope.read(context).operations.updateFromEditDetail(d));
       if (d.isTerminalDone) {
         _pollTimer?.cancel();
         await _finalizeDownload(d);
       } else if (d.isTerminalFailed) {
         _pollTimer?.cancel();
-        await _endWorkingPhase();
-        if (!mounted) return;
-        setState(() {
-          _phase = _FlowPhase.failed;
-          _lastError = null;
-        });
+        await _handleEditTerminalFailed(d);
       }
     } catch (e) {
       if (!mounted) return;
-      _pollTimer?.cancel();
-      await _endWorkingPhase();
-      if (!mounted) return;
-      setState(() {
-        _phase = _FlowPhase.failed;
-        _lastError = e;
-      });
+      assert(() {
+        debugPrint(
+          "### EDIT_POLL ### transient error editJobId=$id type=${e.runtimeType}",
+        );
+        return true;
+      }());
     } finally {
       _pollBusy = false;
     }
@@ -628,6 +760,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     final id = _editJobId;
     if (!mounted || id == null) return;
     setState(() => _downloadingFile = true);
+    unawaited(AppScope.read(context).operations.markClientDownloadingResult());
     try {
       final path = await AppScope.read(context).files.downloadEditedOutput(
             editJobId: id,
@@ -691,6 +824,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       if (!mounted) return;
       await _endWorkingPhase();
       if (!mounted) return;
+      await AppScope.read(context).operations.markSuccess();
       setState(() {
         _outputPath = path;
         _outputPreview = outputPreview;
@@ -701,6 +835,9 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       if (!mounted) return;
       await _endWorkingPhase();
       if (!mounted) return;
+      unawaited(AppScope.read(context).operations.markFailed(
+            errorCode: e is ApiError ? e.code : null,
+          ));
       final mapped = e is ApiError && isMissingBackendBinaryError(e)
           ? ApiError(
               code: "EDIT_OUTPUT_UNAVAILABLE",
@@ -725,6 +862,16 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       return;
     }
     FocusScope.of(context).unfocus();
+    final operationCtrl = AppScope.read(context).operations;
+    if (operationCtrl.hasActiveNonTerminalEdit) {
+      final activeId = operationCtrl.active?.backendJobId?.trim();
+      if (activeId != null && activeId.isNotEmpty && activeId != _editJobId) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.operationEditAlreadyInProgress)),
+        );
+        return;
+      }
+    }
     _beginWorkingPhase();
     setState(() {
       _phase = _FlowPhase.working;
@@ -736,7 +883,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       _outputPreview = null;
     });
     try {
-      final ops = buildQuickEditOperations(
+      final editOps = buildQuickEditOperations(
         videoDurationSec: _durationSec,
         trimStartSec: _startSec,
         trimEndSec: _endSec,
@@ -772,14 +919,14 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         created = await api.createEditJob(
           CreateEditJobRequest.download(
             sourceDownloadJobId: widget.source.sourceDownloadJobId!,
-            operations: ops,
+            operations: editOps,
           ),
         );
       } else {
         created = await api.createEditJob(
           CreateEditJobRequest.upload(
             sourceUploadId: widget.source.sourceUploadId!,
-            operations: ops,
+            operations: editOps,
           ),
         );
       }
@@ -789,9 +936,27 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       }
       if (!mounted) return;
       setState(() => _editJobId = id);
+      await operationCtrl.registerEditJob(
+        editJobId: id,
+        sourceTitle: _firstNonEmptyTrimmed(_detail?.title, widget.source.title),
+        sourceThumbnailUrl: widget.source.kind == EditVideoSourceKind.download
+            ? _detail?.thumbnail
+            : widget.source.thumbnailUrl,
+        payload: {
+          "sourceKind": widget.source.kind.name,
+          if (widget.source.kind == EditVideoSourceKind.download)
+            "sourceDownloadJobId": widget.source.sourceDownloadJobId,
+          if (widget.source.kind == EditVideoSourceKind.upload)
+            "sourceUploadId": widget.source.sourceUploadId,
+        },
+      );
+      operationCtrl.pauseBackgroundPolling();
       _startPolling();
     } catch (e) {
       await _endWorkingPhase();
+      if (_editJobId != null) {
+        unawaited(operationCtrl.markFailed(errorCode: e is ApiError ? e.code : null));
+      }
       if (!mounted) return;
       if (e is ApiError && e.code == "EDIT_INVALID_SOURCE") {
         if (widget.source.kind == EditVideoSourceKind.download) {
@@ -1456,7 +1621,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
             ),
             const SizedBox(height: 8),
           ],
-          KeepAppOpenHint(l10n.keepAppOpenUntilDownloadFinished),
+          KeepAppOpenHint(l10n.keepAppOpenUntilEditFinished),
           const SizedBox(height: 18),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),

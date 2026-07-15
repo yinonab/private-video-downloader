@@ -1043,6 +1043,10 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editFailedTitle => 'העריכה נכשלה';
 
   @override
+  String get operationEditAlreadyInProgress =>
+      'עריכה כבר מתבצעת. המתן לסיום או פתח אותה מחדש מההיסטוריה.';
+
+  @override
   String get editTryAgain => 'נסה שוב';
 
   @override
