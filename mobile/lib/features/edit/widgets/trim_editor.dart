@@ -3,6 +3,7 @@ import "dart:math" as math;
 import "package:flutter/material.dart";
 
 import "../../../core/l10n/context_l10n.dart";
+import "../../../core/theme/linkclip_design_system.dart";
 import "../../../core/utils/trim_time_parse.dart";
 import "trim_labeled_thumb_shape.dart";
 import "trim_mm_ss_input.dart";
@@ -370,36 +371,27 @@ class _TrimEditorState extends State<TrimEditor> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                l10n.editTrimSectionTitle,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w600),
-              ),
+        LinkClipSectionHeader(
+          title: l10n.editTrimSectionTitle,
+          trailing: TextButton(
+            onPressed: widget.onReset,
+            style: TextButton.styleFrom(
+              foregroundColor: scheme.onSurfaceVariant,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            TextButton(
-              onPressed: widget.onReset,
-              style: TextButton.styleFrom(
-                foregroundColor: scheme.onSurfaceVariant,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(l10n.editTrimReset),
-            ),
-          ],
+            child: Text(l10n.editTrimReset),
+          ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: LcSpace.md),
         Align(
           alignment: Alignment.center,
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Text(
               l10n.editTrimSelectedRange(startStr, endStr),
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: scheme.onSurfaceVariant.withValues(alpha: 0.92),
               ),
               textAlign: TextAlign.center,
@@ -407,16 +399,16 @@ class _TrimEditorState extends State<TrimEditor> {
           ),
         ),
         if (removed > 0.05) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: LcSpace.sm),
           Text(
             l10n.editTrimRemovedLine(formatTrimDurationUi(removed)),
             textAlign: TextAlign.center,
-            style: theme.textTheme.labelSmall?.copyWith(
+            style: theme.textTheme.bodySmall?.copyWith(
               color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
             ),
           ),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: LcSpace.xl),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -425,11 +417,10 @@ class _TrimEditorState extends State<TrimEditor> {
                 focused: startTileFocused,
                 label: l10n.editTrimFieldStart,
                 value: startStr,
-                onTap: () =>
-                    _openTimeSheet(editedThumb: Thumb.start),
+                onTap: () => _openTimeSheet(editedThumb: Thumb.start),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: LcSpace.md),
             Expanded(
               child: _TrimTimeTapTile(
                 focused: endTileFocused,
@@ -440,7 +431,7 @@ class _TrimEditorState extends State<TrimEditor> {
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: LcSpace.xl),
         Theme(
           data: theme.copyWith(
             sliderTheme: theme.sliderTheme.copyWith(
@@ -451,16 +442,19 @@ class _TrimEditorState extends State<TrimEditor> {
               overlayShape: SliderComponentShape.noOverlay,
               activeTrackColor: scheme.primary.withValues(alpha: 0.5),
               inactiveTrackColor: scheme.outline.withValues(alpha: 0.22),
-              trackHeight: 4,
+              trackHeight: 6,
             ),
           ),
-          child: RangeSlider(
-            values: RangeValues(lo, hi),
-            min: 0,
-            max: dur,
-            labels: RangeLabels(startStr, endStr),
-            onChanged: _rangeChanged,
-            onChangeEnd: (_) => _finishRangeGesture(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: LcSpace.sm),
+            child: RangeSlider(
+              values: RangeValues(lo, hi),
+              min: 0,
+              max: dur,
+              labels: RangeLabels(startStr, endStr),
+              onChanged: _rangeChanged,
+              onChangeEnd: (_) => _finishRangeGesture(),
+            ),
           ),
         ),
       ],
@@ -498,14 +492,17 @@ class _TrimTimeTapTile extends StatelessWidget {
       color:
           scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.4 : 0.55),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(LcRadius.medium),
         side: borderSide,
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(LcRadius.medium),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          padding: const EdgeInsets.symmetric(
+            horizontal: LcSpace.lg,
+            vertical: LcSpace.lg,
+          ),
           child: Row(
             children: [
               Expanded(
@@ -519,11 +516,11 @@ class _TrimTimeTapTile extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: LcSpace.sm),
                     Text(
                       value,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
                         color: scheme.onSurface.withValues(
                           alpha: focused ? 1.0 : 0.95,
                         ),
@@ -534,7 +531,7 @@ class _TrimTimeTapTile extends StatelessWidget {
               ),
               Icon(
                 Icons.edit_outlined,
-                size: 18,
+                size: 20,
                 color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
               ),
             ],

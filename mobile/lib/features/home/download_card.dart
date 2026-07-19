@@ -11,6 +11,7 @@ import "../../core/l10n/context_l10n.dart";
 import "../../core/l10n/download_job_ui_state.dart";
 import "../../core/models/download_models.dart";
 import "../../core/models/quick_edit_models.dart";
+import "../../core/theme/linkclip_design_system.dart";
 import "../../core/theme/linkclip_palette.dart";
 import "../../core/widgets/branded_progress.dart";
 import "../../core/widgets/linkclip_chips.dart";
@@ -59,7 +60,7 @@ class DownloadCard extends StatelessWidget {
     return "$s ${u[i]}";
   }
 
-  static const double _thumbW = 92;
+  static const double _thumbW = 96;
 
   /// Restrained swipe pane (~0.24–0.32 of card width depending on icon count).
   static double _swipeExtentRatio(int actionCount) {
@@ -114,8 +115,8 @@ class DownloadCard extends StatelessWidget {
       color: scheme.surface.withValues(alpha: dark ? 0.88 : 1),
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: scheme.outline.withValues(alpha: dark ? 0.38 : 0.28)),
+        borderRadius: BorderRadius.circular(LcRadius.card),
+        side: BorderSide(color: scheme.outline.withValues(alpha: dark ? 0.38 : 0.26)),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -123,7 +124,7 @@ class DownloadCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 10, 2, 0),
+            padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.lg, LcSpace.sm, 0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -133,12 +134,12 @@ class DownloadCard extends StatelessWidget {
                   onFallback: onOpenStatus,
                   child: _thumb(context),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: LcSpace.md),
                 Expanded(
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(LcRadius.small),
                       onTap: () {
                         HapticFeedback.lightImpact();
                         onOpenStatus();
@@ -153,7 +154,7 @@ class DownloadCard extends StatelessWidget {
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: scheme.onSurface,
-                            height: 1.25,
+                            height: 1.3,
                             letterSpacing: -0.15,
                           ),
                         ),
@@ -193,13 +194,13 @@ class DownloadCard extends StatelessWidget {
           ),
           Padding(
             padding: EdgeInsetsDirectional.only(
-              start: 10 + _thumbW + 10,
-              end: 10,
-              top: 8,
+              start: LcSpace.lg + _thumbW + LcSpace.md,
+              end: LcSpace.lg,
+              top: LcSpace.md,
             ),
             child: Material(
               color: Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(LcRadius.small),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: () {
@@ -241,12 +242,12 @@ class DownloadCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: LcSpace.sm),
                           LinkClipStatusChip(label: statusLabel, semantic: item.statusParsed.label),
                         ],
                       ),
                       if (done && isAudioOnly) ...[
-                        const SizedBox(height: 5),
+                        const SizedBox(height: LcSpace.sm),
                         Text(
                           l10n.downloadCardMp3Badge,
                           style: theme.textTheme.labelSmall?.copyWith(
@@ -256,7 +257,7 @@ class DownloadCard extends StatelessWidget {
                         ),
                       ],
                       if (done && isTikTokJob) ...[
-                        const SizedBox(height: 5),
+                        const SizedBox(height: LcSpace.sm),
                         Text(
                           l10n.downloadChipTikTokReady,
                           style: theme.textTheme.labelSmall?.copyWith(
@@ -267,7 +268,7 @@ class DownloadCard extends StatelessWidget {
                         ),
                       ],
                       if (item.active) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: LcSpace.md),
                         Builder(
                           builder: (context) {
                             final pct = ui.determinatePercent ?? 0;
@@ -282,7 +283,7 @@ class DownloadCard extends StatelessWidget {
                           },
                         ),
                       ],
-                      const SizedBox(height: 6),
+                      const SizedBox(height: LcSpace.sm),
                       Text(
                         [if (sizeStr != null) sizeStr, dateStr].join(" · "),
                         style: theme.textTheme.labelSmall?.copyWith(
@@ -298,7 +299,7 @@ class DownloadCard extends StatelessWidget {
           ),
           if (primary != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+              padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.sm, LcSpace.lg, LcSpace.lg),
               child: _PrimaryCta(
                 label: primary.label,
                 icon: primary.icon,

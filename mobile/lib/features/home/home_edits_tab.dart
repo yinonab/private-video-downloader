@@ -19,6 +19,7 @@ import "../../core/l10n/context_l10n.dart";
 import "../../core/edit_history/audio_edit_summary.dart";
 import "../../core/media/media_mime.dart";
 import "../../core/l10n/media_export_display_path.dart";
+import "../../core/theme/linkclip_design_system.dart";
 import "../../core/theme/linkclip_palette.dart";
 import "../../l10n/app_localizations.dart";
 import "widgets/edit_history_thumbnail.dart";
@@ -315,12 +316,12 @@ class _EditHistoryCard extends StatelessWidget {
     final card = DecoratedBox(
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outline.withValues(alpha: exists ? 0.4 : 0.26)),
+        borderRadius: BorderRadius.circular(LcRadius.card),
+        border: Border.all(color: scheme.outline.withValues(alpha: exists ? 0.36 : 0.24)),
         boxShadow: Theme.of(context).brightness == Brightness.dark ? const <BoxShadow>[] : palette.cardShadows,
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
+        padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.lg, LcSpace.sm, LcSpace.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -331,10 +332,10 @@ class _EditHistoryCard extends StatelessWidget {
                   item: item,
                   fileExists: exists,
                   editHistory: editHistory,
-                  borderRadius: BorderRadius.circular(12),
-                  size: 68,
+                  borderRadius: BorderRadius.circular(LcRadius.medium),
+                  size: 76,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: LcSpace.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,20 +344,20 @@ class _EditHistoryCard extends StatelessWidget {
                         displayTitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, height: 1.22),
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, height: 1.3),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: LcSpace.sm),
                       Text(
                         df.format(item.savedAt),
                         style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant.withValues(alpha: 0.9)),
                       ),
                       if (!exists)
                         Padding(
-                          padding: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.only(top: LcSpace.md),
                           child: DecoratedBox(
                             decoration: BoxDecoration(
                               color: palette.dangerMutedBg.withValues(alpha: theme.brightness == Brightness.dark ? 0.5 : 0.55),
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(LcRadius.small),
                               border: Border.all(color: scheme.error.withValues(alpha: 0.22)),
                             ),
                             child: Padding(

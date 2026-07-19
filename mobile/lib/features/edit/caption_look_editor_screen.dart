@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 
 import "../../core/edit/caption_look_summary.dart";
 import "../../core/models/quick_edit_models.dart";
+import "../../core/theme/linkclip_design_system.dart";
 import "../../l10n/app_localizations.dart";
 import "widgets/caption_look/caption_look_fine_tune_section.dart";
 import "widgets/caption_look/caption_look_widgets.dart";
@@ -320,7 +321,7 @@ class _TextTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: const EdgeInsets.fromLTRB(LcSpace.xl, LcSpace.lg, LcSpace.xl, LcSpace.xl),
       children: [
         CaptionLookSectionCard(
           dense: true,
@@ -558,7 +559,7 @@ class _HighlightTab extends StatelessWidget {
     );
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: const EdgeInsets.fromLTRB(LcSpace.xl, LcSpace.lg, LcSpace.xl, LcSpace.xl),
       children: [
         CaptionLookSectionCard(
           dense: true,
@@ -739,7 +740,7 @@ class _PositionTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: const EdgeInsets.fromLTRB(LcSpace.xl, LcSpace.lg, LcSpace.xl, LcSpace.xl),
       children: [
         Text(
           l10n.editCaptionsPositionLabel,

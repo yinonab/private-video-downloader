@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:lucide_icons_flutter/lucide_icons.dart";
 
 import "../../../core/l10n/context_l10n.dart";
+import "../../../core/theme/linkclip_design_system.dart";
 import "../../../core/theme/linkclip_palette.dart";
 import "../../../core/widgets/keep_app_open_hint.dart";
 import "edit_processing_animation.dart";
@@ -33,7 +34,7 @@ class EditWorkingPanel extends StatelessWidget {
     final pct = progressPercent;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      padding: const EdgeInsets.fromLTRB(LcSpace.xl, LcSpace.lg, LcSpace.xl, LcSpace.xl),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -41,12 +42,12 @@ class EditWorkingPanel extends StatelessWidget {
           Center(
             child: DecoratedBox(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(26),
+                borderRadius: BorderRadius.circular(LcRadius.card),
                 border: Border.all(color: scheme.outline.withValues(alpha: 0.22)),
                 color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                padding: const EdgeInsets.symmetric(vertical: LcSpace.md, horizontal: LcSpace.sm),
                 child: leadingIcon == LucideIcons.clapperboard
                     ? EditProcessingAnimation(
                         size: 220,
@@ -57,39 +58,39 @@ class EditWorkingPanel extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: LcSpace.xxl),
           Text(
             headline,
             textAlign: TextAlign.center,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: LcSpace.md),
           if (extraNote != null && extraNote!.trim().isNotEmpty) ...[
             Text(
               extraNote!,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: scheme.onSurfaceVariant,
-                height: 1.35,
+                height: 1.4,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: LcSpace.sm),
           ],
           Text(
             subtitle,
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall?.copyWith(
               color: scheme.onSurfaceVariant,
-              height: 1.35,
+              height: 1.4,
             ),
           ),
           if (showKeepOpenHint)
             KeepAppOpenHint(context.l10n.keepAppOpenUntilEditFinished),
-          const SizedBox(height: 18),
+          const SizedBox(height: LcSpace.xl),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
-              minHeight: 5,
+              minHeight: 6,
               value: pct != null ? (pct.clamp(0, 100) / 100.0) : null,
             ),
           ),

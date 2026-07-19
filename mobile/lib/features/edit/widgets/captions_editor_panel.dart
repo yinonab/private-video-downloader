@@ -4,6 +4,7 @@ import "package:google_fonts/google_fonts.dart";
 import "../../../core/edit/caption_draft_summary.dart";
 import "../../../core/edit/caption_look_summary.dart";
 import "../../../core/models/quick_edit_models.dart";
+import "../../../core/theme/linkclip_design_system.dart";
 import "../../../l10n/app_localizations.dart";
 import "caption_look/caption_look_widgets.dart";
 
@@ -91,15 +92,13 @@ class CaptionsEditorPanel extends StatelessWidget {
         ),
         if ((captionDraftSegments == null || captionDraftSegments!.isEmpty) &&
             !isCaptionDraftGenerating) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: LcSpace.lg),
           _CaptionsPreviewDraftRequiredCard(
-            theme: theme,
-            scheme: scheme,
             l10n: l10n,
             onCreateDraft: onGenerateCaptionsDraft,
           ),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: LcSpace.lg),
         _CaptionsLookHeroCard(
           theme: theme,
           scheme: scheme,
@@ -109,7 +108,7 @@ class CaptionsEditorPanel extends StatelessWidget {
           lookFields: _lookFields,
           onCustomizeLook: onCustomizeLook,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: LcSpace.lg),
         _CaptionsDraftSecondaryCard(
           theme: theme,
           scheme: scheme,
@@ -122,7 +121,7 @@ class CaptionsEditorPanel extends StatelessWidget {
           onRegenerate: onRegenerateCaptionsDraftRequested,
           onEditCaptions: onEditCaptionsDraft,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: LcSpace.lg),
       ],
     );
   }
@@ -148,7 +147,7 @@ class _CaptionsOffInviteCard extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(LcRadius.card),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -167,7 +166,7 @@ class _CaptionsOffInviteCard extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+        padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.xl, LcSpace.lg, LcSpace.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -177,18 +176,18 @@ class _CaptionsOffInviteCard extends StatelessWidget {
                 DecoratedBox(
                   decoration: BoxDecoration(
                     color: scheme.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(LcRadius.medium),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(LcSpace.md),
                     child: Icon(
                       Icons.subtitles_rounded,
-                      size: 26,
+                      size: 28,
                       color: scheme.primary.withValues(alpha: 0.92),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: LcSpace.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,12 +198,12 @@ class _CaptionsOffInviteCard extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: LcSpace.sm),
                       Text(
                         l10n.editCaptionsV34OffInviteSubtitle,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant.withValues(alpha: 0.92),
-                          height: 1.35,
+                          height: 1.4,
                         ),
                       ),
                     ],
@@ -212,17 +211,17 @@ class _CaptionsOffInviteCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: LcSpace.lg),
             Wrap(
-              spacing: 6,
-              runSpacing: 6,
+              spacing: LcSpace.sm,
+              runSpacing: LcSpace.sm,
               children: [
                 _BenefitChip(label: l10n.editCaptionsV34BenefitDraft, scheme: scheme),
                 _BenefitChip(label: l10n.editCaptionsV34BenefitStyles, scheme: scheme),
                 _BenefitChip(label: l10n.editCaptionsV34BenefitHighlight, scheme: scheme),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: LcSpace.xl),
             Row(
               children: [
                 Expanded(
@@ -296,19 +295,19 @@ class _CaptionsActiveStatusBar extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: scheme.primaryContainer.withValues(alpha: dark ? 0.28 : 0.38),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(LcRadius.medium),
         border: Border.all(color: scheme.primary.withValues(alpha: 0.22)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: LcSpace.lg, vertical: LcSpace.md),
         child: Row(
           children: [
             Icon(
               Icons.subtitles_rounded,
-              size: 20,
+              size: 22,
               color: scheme.primary.withValues(alpha: 0.9),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: LcSpace.md),
             Expanded(
               child: Text(
                 l10n.editCaptionsV34PanelActiveStatus,
@@ -373,18 +372,18 @@ class _CaptionsLookHeroCard extends StatelessWidget {
             scheme.surfaceContainerHigh.withValues(alpha: dark ? 0.4 : 0.55),
           ],
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(LcRadius.card),
         border: Border.all(color: scheme.primary.withValues(alpha: 0.35)),
         boxShadow: [
           BoxShadow(
-            color: scheme.primary.withValues(alpha: 0.16),
+            color: scheme.primary.withValues(alpha: 0.12),
             blurRadius: 14,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.lg, LcSpace.lg, LcSpace.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -507,60 +506,29 @@ class _CaptionsLookHeroCard extends StatelessWidget {
 /// Explains that a caption draft is required before real preview text appears.
 class _CaptionsPreviewDraftRequiredCard extends StatelessWidget {
   const _CaptionsPreviewDraftRequiredCard({
-    required this.theme,
-    required this.scheme,
     required this.l10n,
     required this.onCreateDraft,
   });
 
-  final ThemeData theme;
-  final ColorScheme scheme;
   final AppLocalizations l10n;
   final VoidCallback onCreateDraft;
 
   @override
   Widget build(BuildContext context) {
-    final dark = theme.brightness == Brightness.dark;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.primaryContainer.withValues(alpha: dark ? 0.22 : 0.35),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: scheme.primary.withValues(alpha: 0.28),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l10n.editCaptionsPreviewDraftRequiredTitle,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                height: 1.3,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              l10n.editCaptionsPreviewDraftRequiredBody,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant.withValues(alpha: 0.92),
-                height: 1.38,
-              ),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: onCreateDraft,
-              icon: const Icon(Icons.subtitles_outlined, size: 20),
-              label: Text(l10n.editCaptionsPreviewDraftRequiredCta),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(44),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              ),
-            ),
-          ],
+    return LinkClipInlineEmptyState(
+      icon: Icons.subtitles_outlined,
+      title: l10n.editCaptionsPreviewDraftRequiredTitle,
+      body: l10n.editCaptionsPreviewDraftRequiredBody,
+      action: FilledButton.icon(
+        onPressed: onCreateDraft,
+        icon: const Icon(Icons.auto_awesome_rounded, size: 20),
+        label: Text(l10n.editCaptionsPreviewDraftRequiredCta),
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(48),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(LcRadius.medium),
+          ),
         ),
       ),
     );
@@ -658,11 +626,11 @@ class _CaptionsDraftSecondaryCard extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.28 : 0.4),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(LcRadius.medium),
         border: Border.all(color: scheme.outline.withValues(alpha: 0.14)),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.lg, LcSpace.lg, LcSpace.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

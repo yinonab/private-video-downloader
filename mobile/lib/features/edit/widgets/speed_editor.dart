@@ -2,8 +2,9 @@ import "package:flutter/material.dart";
 
 import "../../../core/l10n/context_l10n.dart";
 import "../../../core/models/quick_edit_models.dart";
+import "../../../core/theme/linkclip_design_system.dart";
 
-/// Constant playback-speed presets — compact chips aligned with [CropEditor].
+/// Constant playback-speed presets — equal-sized chips with clear hierarchy.
 class SpeedEditor extends StatelessWidget {
   const SpeedEditor({
     super.key,
@@ -19,94 +20,49 @@ class SpeedEditor extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final factors = QuickEditSpeedFactor.values;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          l10n.editSpeedSectionTitle,
-          style:
-              theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        LinkClipSectionHeader(
+          title: l10n.editSpeedSectionTitle,
+          subtitle: l10n.editSpeedSectionSubtitle,
         ),
-        const SizedBox(height: 4),
-        Text(
-          l10n.editSpeedSectionSubtitle,
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
+        const SizedBox(height: LcSpace.xl),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final gap = LcSpace.sm;
+            final cols = factors.length >= 5 ? 3 : 2;
+            final tileW =
+                (constraints.maxWidth - gap * (cols - 1)) / cols;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final s in factors)
+                  SizedBox(
+                    width: tileW,
+                    child: LinkClipChoiceChip(
+                      label: s.chipLabel,
+                      selected: selected == s,
+                      onTap: () => onSelected(s),
+                      expanded: true,
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final s in QuickEditSpeedFactor.values)
-              _SpeedChip(
-                label: s.chipLabel,
-                selected: selected == s,
-                onTap: () => onSelected(s),
-              ),
-          ],
-        ),
-        const SizedBox(height: 10),
+        const SizedBox(height: LcSpace.lg),
         Text(
           l10n.editSpeedDurationHint,
-          style: theme.textTheme.labelSmall?.copyWith(
+          style: theme.textTheme.bodySmall?.copyWith(
             color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
-            height: 1.35,
+            height: 1.4,
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SpeedChip extends StatelessWidget {
-  const _SpeedChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final dark = theme.brightness == Brightness.dark;
-    final mutedBlue =
-        scheme.primary.withValues(alpha: dark ? 0.42 : 0.72);
-    final borderColor =
-        selected ? mutedBlue : scheme.outline.withValues(alpha: 0.32);
-    final bg = selected
-        ? scheme.primary.withValues(alpha: dark ? 0.12 : 0.08)
-        : scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.38 : 0.5);
-
-    return Material(
-      color: bg,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: borderColor, width: selected ? 1.2 : 1),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurface.withValues(alpha: 0.93),
-              letterSpacing: 0.1,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

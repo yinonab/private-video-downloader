@@ -28,6 +28,7 @@ import "../../core/operations/operation_controller.dart";
 import "../../core/models/quick_edit_models.dart";
 import "caption_look_editor_screen.dart";
 import "../../core/network/api_client.dart";
+import "../../core/theme/linkclip_design_system.dart";
 import "../../core/theme/linkclip_palette.dart";
 import "../../core/media/backend_media_expired.dart";
 import "../../core/widgets/internet_download_expired_sheet.dart";
@@ -1160,20 +1161,21 @@ class _EditVideoScreenState extends State<EditVideoScreen>
 
   Widget _composerPanelShell(
       ThemeData theme, ColorScheme scheme, Widget child) {
+    final dark = theme.brightness == Brightness.dark;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.sm, LcSpace.lg, LcSpace.md),
       physics: const ClampingScrollPhysics(),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: scheme.surface.withValues(
-              alpha: theme.brightness == Brightness.dark ? 0.34 : 0.62),
-          borderRadius: BorderRadius.circular(18),
+          color: scheme.surface.withValues(alpha: dark ? 0.42 : 0.92),
+          borderRadius: BorderRadius.circular(LcRadius.card),
           border: Border.all(
-            color: scheme.outline.withValues(alpha: 0.26),
+            color: scheme.outline.withValues(alpha: dark ? 0.36 : 0.24),
           ),
+          boxShadow: dark ? const <BoxShadow>[] : context.lcPalette.cardShadows,
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.lg, LcSpace.lg, LcSpace.lg),
           child: child,
         ),
       ),
@@ -1232,7 +1234,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     final accent = context.lcPalette.tiktokAccent;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 2, 10, 8),
+      padding: const EdgeInsets.fromLTRB(LcSpace.md, LcSpace.md, LcSpace.md, LcSpace.md),
       child: _EditorToolbarScrollLane(
         scheme: scheme,
         accent: accent,
@@ -1271,7 +1273,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       previewStack = AspectRatio(
         aspectRatio: 16 / 9,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(LcRadius.large),
           child: ColoredBox(
             color: scheme.surfaceContainerHighest.withValues(alpha: 0.9),
             child: const Center(child: CircularProgressIndicator()),
@@ -1282,7 +1284,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       previewStack = _buildPreview(context, l10n, scheme);
     } else {
       previewStack = ClipRRect(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(LcRadius.large),
         child: Stack(
           fit: StackFit.loose,
           children: [
@@ -1336,20 +1338,20 @@ class _EditVideoScreenState extends State<EditVideoScreen>
 
     final previewCard = DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(LcRadius.large),
         border: Border.all(
-          color: scheme.outline.withValues(alpha: 0.28),
+          color: scheme.outline.withValues(alpha: 0.22),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.28),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(LcRadius.large),
         child: previewStack,
       ),
     );
@@ -1362,12 +1364,12 @@ class _EditVideoScreenState extends State<EditVideoScreen>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.sm, LcSpace.lg, 0),
                 child: previewCard,
               ),
               if (_showDurationApproxHint)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.sm, LcSpace.lg, 0),
                   child: Text(
                     l10n.editDurationApproxHint,
                     textAlign: TextAlign.center,
@@ -1499,65 +1501,94 @@ class _EditVideoScreenState extends State<EditVideoScreen>
           ),
         ),
         if (keyboardInset < 8)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (!_hasChanges)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      l10n.editChooseAtLeastOneChange,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
-                        height: 1.35,
-                      ),
-                    ),
+          Material(
+            color: scheme.surface.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.94 : 0.98,
+            ),
+            elevation: 0,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: scheme.outline.withValues(alpha: 0.22),
                   ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.maybePop(context),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: scheme.onSurfaceVariant,
-                          side: BorderSide(
-                            color: scheme.outline.withValues(alpha: 0.4),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        child: Text(l10n.editExit),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 2,
-                      child: FilledButton(
-                        onPressed: _hasChanges ? _submitEdit : null,
-                        style: FilledButton.styleFrom(
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          disabledBackgroundColor:
-                              scheme.surfaceContainerHighest.withValues(
-                                  alpha: 0.95),
-                          backgroundColor:
-                              scheme.primary.withValues(alpha: 0.88),
-                          foregroundColor: scheme.onPrimary,
-                        ),
-                        child: Text(l10n.editCreateEdit),
-                      ),
-                    ),
-                  ],
                 ),
-              ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    LcSpace.lg,
+                    LcSpace.md,
+                    LcSpace.lg,
+                    LcSpace.md,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!_hasChanges)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: LcSpace.sm),
+                          child: Text(
+                            l10n.editChooseAtLeastOneChange,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: scheme.onSurfaceVariant
+                                  .withValues(alpha: 0.85),
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.maybePop(context),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: scheme.onSurfaceVariant,
+                                side: BorderSide(
+                                  color: scheme.outline.withValues(alpha: 0.4),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(LcRadius.medium),
+                                ),
+                              ),
+                              child: Text(l10n.editExit),
+                            ),
+                          ),
+                          const SizedBox(width: LcSpace.md),
+                          Expanded(
+                            flex: 2,
+                            child: FilledButton(
+                              onPressed: _hasChanges ? _submitEdit : null,
+                              style: FilledButton.styleFrom(
+                                elevation: 0,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(LcRadius.medium),
+                                ),
+                                disabledBackgroundColor: scheme
+                                    .surfaceContainerHighest
+                                    .withValues(alpha: 0.95),
+                                backgroundColor:
+                                    scheme.primary.withValues(alpha: 0.9),
+                                foregroundColor: scheme.onPrimary,
+                              ),
+                              child: Text(l10n.editCreateEdit),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
       ],
@@ -1579,7 +1610,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     );
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      padding: const EdgeInsets.fromLTRB(LcSpace.xl, LcSpace.lg, LcSpace.xl, LcSpace.xl),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1587,7 +1618,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
           Center(
             child: DecoratedBox(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(26),
+                borderRadius: BorderRadius.circular(LcRadius.card),
                 border: Border.all(
                   color: scheme.outline.withValues(alpha: 0.22),
                 ),
@@ -1595,7 +1626,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
                     scheme.surfaceContainerHighest.withValues(alpha: 0.35),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                padding: const EdgeInsets.symmetric(
+                  vertical: LcSpace.md,
+                  horizontal: LcSpace.sm,
+                ),
                 child: EditProcessingAnimation(
                   size: 220,
                   color: scheme.primary,
@@ -1604,34 +1638,34 @@ class _EditVideoScreenState extends State<EditVideoScreen>
               ),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: LcSpace.xxl),
           Text(
             display.headline,
             textAlign: TextAlign.center,
             style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w600),
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: LcSpace.md),
           if (display.subtitle != null) ...[
             Text(
               display.subtitle!,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: scheme.onSurfaceVariant, height: 1.4),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: LcSpace.sm),
           ],
           KeepAppOpenHint(l10n.keepAppOpenUntilEditFinished),
-          const SizedBox(height: 18),
+          const SizedBox(height: LcSpace.xl),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
-              minHeight: 5,
+              minHeight: 6,
               value: display.progress.clamp(0.0, 1.0),
             ),
           ),
           if (display.isEstimated) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: LcSpace.sm),
             Text(
               l10n.editProgressEstimatedNote,
               textAlign: TextAlign.center,
@@ -1907,7 +1941,7 @@ class _EditorToolbarScrollLane extends StatefulWidget {
 class _EditorToolbarScrollLaneState extends State<_EditorToolbarScrollLane> {
   final ScrollController _scroll = ScrollController();
 
-  static const double _laneH = 44;
+  static const double _laneH = 48;
   static const double _inlinePad = 40;
 
   @override
@@ -2194,7 +2228,7 @@ class _EditToolChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(999),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -2205,10 +2239,10 @@ class _EditToolChip extends StatelessWidget {
                     ? accentColor.withValues(alpha: 0.95)
                     : scheme.onSurfaceVariant.withValues(alpha: 0.82),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Text(
                 label,
-                style: theme.textTheme.labelMedium?.copyWith(
+                style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: selected
                       ? accentColor.withValues(alpha: 0.96)
