@@ -303,3 +303,45 @@ class LinkClipInlineEmptyState extends StatelessWidget {
     );
   }
 }
+
+/// Dominant media/thumbnail stage for analyze / status / result screens.
+class LinkClipMediaPreviewCard extends StatelessWidget {
+  const LinkClipMediaPreviewCard({
+    super.key,
+    required this.height,
+    required this.child,
+  });
+
+  final double height;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(LcRadius.large),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.14),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(LcRadius.large),
+        child: SizedBox(
+          height: height,
+          width: double.infinity,
+          child: ColoredBox(
+            color: Colors.black,
+            child: SizedBox.expand(child: child),
+          ),
+        ),
+      ),
+    );
+  }
+}

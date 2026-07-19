@@ -20,6 +20,7 @@ import "../../core/l10n/media_export_display_path.dart";
 import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
 import "../../core/models/quick_edit_models.dart";
+import "../../core/theme/linkclip_design_system.dart";
 import "../../core/theme/linkclip_palette.dart";
 import "../../core/utils/download_error_display.dart";
 import "../../core/utils/format_bytes_ui.dart";
@@ -31,10 +32,12 @@ import "widgets/download_progress_hero_animation.dart";
 import "widgets/initial_download_loading_animation.dart";
 import "../../core/widgets/expandable_description.dart";
 import "../../core/widgets/linkclip_app_bar.dart";
+import "../../core/widgets/linkclip_chips.dart";
 import "../../core/widgets/linkclip_network_thumbnail.dart";
 import "../../core/media/backend_media_expired.dart";
 import "../../core/widgets/internet_download_expired_sheet.dart";
 import "../../core/widgets/keep_app_open_hint.dart";
+import "../../l10n/app_localizations.dart";
 import "../../services/saved_media_actions.dart";
 import "../edit/quick_edit_launch.dart";
 
@@ -643,326 +646,390 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: LinkClipPremiumAppBar(title: Text(l10n.downloadStatusTitle)),
-      body: RefreshIndicator(
-        onRefresh: () => _tickOnce(force: true),
-        child: ListView(
-          padding: const EdgeInsets.all(18),
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            if (_displayErr != null && d == null) ...[
-              Icon(LucideIcons.triangleAlert, size: 48, color: scheme.error),
-              const SizedBox(height: 10),
-              Text(localizedApiErrorMessage(l10n, _displayErr!), style: theme.textTheme.titleMedium),
-              const SizedBox(height: 14),
-              AppPrimaryButton(label: l10n.downloadRetry, loading: false, onPressed: _retry),
-            ],
-            if (d == null && _displayErr == null) ...[
-              InitialDownloadLoadingAnimation(
-                title: l10n.downloadStatusLoadingJob,
-                subtitle: l10n.downloadLoadingSubtitle,
-              ),
-              KeepAppOpenHint(l10n.keepAppOpenUntilDownloadFinished),
-            ],
-            if (d != null) ...[
-              if (_err != null) ...[
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: scheme.errorContainer.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: scheme.error.withValues(alpha: 0.35)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(LucideIcons.triangleAlert, color: scheme.error, size: 22),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            localizedApiErrorMessage(l10n, _err!),
-                            style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurface),
-                          ),
-                        ),
-                      ],
+        body: RefreshIndicator(
+          onRefresh: () => _tickOnce(force: true),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final previewH =
+                  (constraints.maxHeight * 0.38).clamp(220.0, 360.0);
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  LcSpace.lg,
+                  LcSpace.sm,
+                  LcSpace.lg,
+                  LcSpace.xl,
+                ),
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  if (_displayErr != null && d == null) ...[
+                    const SizedBox(height: LcSpace.xl),
+                    Icon(LucideIcons.triangleAlert,
+                        size: 48, color: scheme.error),
+                    const SizedBox(height: LcSpace.md),
+                    Text(
+                      localizedApiErrorMessage(l10n, _displayErr!),
+                      style: theme.textTheme.titleMedium,
                     ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-              ],
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: theme.brightness == Brightness.dark ? const <BoxShadow>[] : context.lcPalette.cardShadows,
-                ),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: scheme.surface,
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: scheme.outline.withValues(alpha: theme.brightness == Brightness.dark ? 0.55 : 0.45)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: d.thumbnail != null && d.thumbnail!.isNotEmpty
-                              ? LinkClipNetworkThumbnail(
-                                  imageUrl: d.thumbnail!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => _ph(context),
-                                )
-                              : _ph(context),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Builder(
-                        builder: (context) {
-                          final split = splitVideoTitleForDisplay(d.title);
-                          final headline = split.headlineTitle.trim().isEmpty ? l10n.untitledVideo : split.headlineTitle.trim();
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                headline,
-                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                    const SizedBox(height: LcSpace.lg),
+                    AppPrimaryButton(
+                      label: l10n.downloadRetry,
+                      loading: false,
+                      onPressed: _retry,
+                    ),
+                  ],
+                  if (d == null && _displayErr == null) ...[
+                    InitialDownloadLoadingAnimation(
+                      title: l10n.downloadStatusLoadingJob,
+                      subtitle: l10n.downloadLoadingSubtitle,
+                    ),
+                    KeepAppOpenHint(l10n.keepAppOpenUntilDownloadFinished),
+                  ],
+                  if (d != null) ...[
+                    if (_err != null) ...[
+                      LinkClipSectionCard(
+                        padding: const EdgeInsets.all(LcSpace.lg),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(LucideIcons.triangleAlert,
+                                color: scheme.error, size: 22),
+                            const SizedBox(width: LcSpace.md),
+                            Expanded(
+                              child: Text(
+                                localizedApiErrorMessage(l10n, _err!),
+                                style: theme.textTheme.bodyMedium
+                                    ?.copyWith(color: scheme.onSurface),
                               ),
-                              if (split.expandableDescription != null &&
-                                  split.expandableDescription!.trim().isNotEmpty) ...[
-                                const SizedBox(height: 6),
-                                ExpandableDescription(text: split.expandableDescription!.trim()),
-                              ],
-                            ],
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 240),
-                        switchInCurve: Curves.easeOut,
-                        switchOutCurve: Curves.easeIn,
-                        child: Align(
-                          key: ValueKey<String>(
-                            "${d.status}|${d.processingStage}|${d.progressPercent}|${d.requestedFormat}|$_localSaved|$_localLookupDone",
-                          ),
-                          alignment: AlignmentDirectional.centerStart,
-                          child: headlineUi == null
-                              ? const SizedBox.shrink()
-                              : Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      headlineUi.screenHeadline,
-                                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                                    ),
-                                    if ((headlineUi.screenHeadlineSubtitle ?? "").trim().isNotEmpty) ...[
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        headlineUi.screenHeadlineSubtitle!.trim(),
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: scheme.onSurfaceVariant,
-                                          height: 1.35,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      if (_showServerProgress(d)) ...[
-                        DownloadProgressHeroAnimation(
-                          processingStage: progressUi?.effectiveStageKey ?? (d.processingStage ?? ""),
-                          status: d.status,
-                          subtitle: l10n.downloadProcessingSubtitle,
-                          progressPercent: d.progressPercent,
-                          isTikTokReady: (d.requestedFormat ?? "").trim().toLowerCase() == "tiktok_ready",
-                        ),
-                        const SizedBox(height: 14),
-                        if (progressUi != null) ...[
-                          BrandedProgressBar(
-                            indeterminate: progressUi.showIndeterminateProgress,
-                            value: progressUi.showDeterminateProgress ? (progressUi.determinatePercent ?? 0) / 100.0 : null,
-                            percentLabel: progressUi.showDeterminateProgress
-                                ? l10n.progressPercent(progressUi.determinatePercent ?? 0)
-                                : null,
-                            stageLabel: progressUi.progressStageTitle,
-                            stageSubtitle: progressUi.progressStageSubtitle,
-                          ),
-                        ],
-                        if ((d.speedText ?? "").trim().isNotEmpty || (d.etaText ?? "").trim().isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 4,
-                            children: [
-                              if ((d.speedText ?? "").trim().isNotEmpty)
-                                Text(
-                                  l10n.downloadSpeed(d.speedText!.trim()),
-                                  style: theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-                                ),
-                              if ((d.etaText ?? "").trim().isNotEmpty)
-                                Text(
-                                  l10n.downloadEta(d.etaText!.trim()),
-                                  style: theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-                                ),
-                            ],
-                          ),
-                        ],
-                        KeepAppOpenHint(l10n.keepAppOpenUntilDownloadFinished),
-                      ],
-                      if ((d.status == "failed" || d.status == "canceled") && (d.error ?? "").trim().isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          formatDownloadJobError(l10n, d.error!),
-                          style: TextStyle(color: scheme.error, height: 1.35),
-                        ),
-                      ],
-                      if (d.status == "failed" || d.status == "canceled") ...[
-                        const SizedBox(height: 18),
-                        AppPrimaryButton(label: l10n.downloadRetry, loading: false, onPressed: _retry),
-                      ],
-                      if (d.status == "done") ...[
-                        if (!_localLookupDone)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: BrandedLoadingPanel(compact: true),
-                          )
-                        else ...[
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 260),
-                            child: _localSaved
-                                ? Column(
-                                    key: const ValueKey<String>("saved"),
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                                    children: [
-                                      const SizedBox(height: 6),
-                                      Center(
-                                        child: Container(
-                                          padding: const EdgeInsets.all(18),
-                                          decoration: BoxDecoration(
-                                            color: context.lcPalette.successState.withValues(alpha: 0.14),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            LucideIcons.circleCheck,
-                                            size: 44,
-                                            color: context.lcPalette.successState,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        l10n.downloadStatusSavedOnDeviceTitle,
-                                        textAlign: TextAlign.center,
-                                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                                      ),
-                                      const SizedBox(height: 6),
-                                    ],
-                                  )
-                                : Column(
-                                    key: const ValueKey<String>("ready"),
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                                    children: [
-                                      Text(
-                                        l10n.downloadVideoReadyHint,
-                                        style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
-                                      ),
-                                      const SizedBox(height: 14),
-                                    ],
-                                  ),
-                          ),
-                          ],
-                          if (_fileBusy) ...[
-                            BrandedProgressBar(
-                              indeterminate: _totalBytes <= 0,
-                              value: _totalBytes > 0 ? (_receiveBytes / _totalBytes).clamp(0.0, 1.0) : null,
-                              percentLabel: _totalBytes > 0
-                                  ? l10n.progressPercent(
-                                      (100 * _receiveBytes / _totalBytes).clamp(0, 100).round(),
-                                    )
-                                  : null,
-                              stageLabel: l10n.loadingSavingToDeviceDot,
-                              bytesSubtitle: _totalBytes > 0 ? "${formatBytesUi(_receiveBytes)} / ${formatBytesUi(_totalBytes)}" : null,
-                            ),
-                            KeepAppOpenHint(l10n.keepAppOpenUntilDownloadFinished),
-                            const SizedBox(height: 14),
-                          ],
-                          if (!_localSaved)
-                            AppPrimaryButton(
-                              label: l10n.downloadSaveToDevice,
-                              loading: _fileBusy,
-                              icon: const Icon(LucideIcons.smartphone),
-                              onPressed: (_fileBusy || _expiredRedownloadOfferInFlight) ? null : _downloadToDevice,
-                            ),
-                          if (!_localSaved) const SizedBox(height: 10),
-                          AppOutlinedButton(
-                            label: l10n.downloadOpen,
-                            icon: Icon(LucideIcons.externalLink, color: scheme.primary),
-                            onPressed: () {
-                              if (_fileBusy || _expiredRedownloadOfferInFlight) {
-                                return;
-                              }
-                              unawaited(_openLocal());
-                            },
-                          ),
-                          const SizedBox(height: 10),
-                          AppOutlinedButton(
-                            label: l10n.downloadShare,
-                            icon: Icon(LucideIcons.share2, color: scheme.primary),
-                            onPressed: () {
-                              if (_fileBusy || _expiredRedownloadOfferInFlight) {
-                                return;
-                              }
-                              unawaited(_shareLocal());
-                            },
-                          ),
-                          if (downloadDetailEligibleForVideoEdit(d) ||
-                              downloadDetailEligibleForAudioEdit(d)) ...[
-                            const SizedBox(height: 10),
-                            AppOutlinedButton(
-                              label: downloadDetailIsAudioOnly(d)
-                                  ? l10n.downloadCardEditAudio
-                                  : l10n.downloadCardEdit,
-                              icon: Icon(
-                                downloadDetailIsAudioOnly(d)
-                                    ? LucideIcons.audioLines
-                                    : LucideIcons.scissors,
-                                color: scheme.primary,
-                              ),
-                              onPressed: () async {
-                                await launchQuickEditForJob(
-                                  context,
-                                  jobId: _pollJobId,
-                                  serverRetentionReferenceUtc: d.createdAt,
-                                  prefetchDetail: d,
-                                );
-                                if (!context.mounted) return;
-                                await _tickOnce();
-                                await _refreshLocalSaved();
-                              },
-                            ),
-                          ],
-                      ],
+                      const SizedBox(height: LcSpace.lg),
                     ],
-                  ),
-                ),
-              ),
-              ).animate().fadeIn(duration: 240.ms).slideY(begin: 0.05, end: 0, curve: Curves.easeOut),
-            ],
-          ],
+                    _buildLargePreview(context, d, previewH),
+                    const SizedBox(height: LcSpace.lg),
+                    _buildTitleAndStatus(
+                      context,
+                      l10n: l10n,
+                      theme: theme,
+                      scheme: scheme,
+                      detail: d,
+                      headlineUi: headlineUi,
+                    ),
+                    if (_showServerProgress(d)) ...[
+                      const SizedBox(height: LcSpace.lg),
+                      LinkClipSectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            DownloadProgressHeroAnimation(
+                              processingStage: progressUi?.effectiveStageKey ??
+                                  (d.processingStage ?? ""),
+                              status: d.status,
+                              subtitle: l10n.downloadProcessingSubtitle,
+                              progressPercent: d.progressPercent,
+                              isTikTokReady:
+                                  (d.requestedFormat ?? "")
+                                          .trim()
+                                          .toLowerCase() ==
+                                      "tiktok_ready",
+                            ),
+                            const SizedBox(height: LcSpace.lg),
+                            if (progressUi != null) ...[
+                              BrandedProgressBar(
+                                indeterminate:
+                                    progressUi.showIndeterminateProgress,
+                                value: progressUi.showDeterminateProgress
+                                    ? (progressUi.determinatePercent ?? 0) /
+                                        100.0
+                                    : null,
+                                percentLabel: progressUi.showDeterminateProgress
+                                    ? l10n.progressPercent(
+                                        progressUi.determinatePercent ?? 0)
+                                    : null,
+                                stageLabel: progressUi.progressStageTitle,
+                                stageSubtitle:
+                                    progressUi.progressStageSubtitle,
+                              ),
+                            ],
+                            if ((d.speedText ?? "").trim().isNotEmpty ||
+                                (d.etaText ?? "").trim().isNotEmpty) ...[
+                              const SizedBox(height: LcSpace.sm),
+                              Wrap(
+                                spacing: LcSpace.md,
+                                runSpacing: LcSpace.xs,
+                                children: [
+                                  if ((d.speedText ?? "").trim().isNotEmpty)
+                                    Text(
+                                      l10n.downloadSpeed(d.speedText!.trim()),
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(
+                                              color: scheme.onSurfaceVariant),
+                                    ),
+                                  if ((d.etaText ?? "").trim().isNotEmpty)
+                                    Text(
+                                      l10n.downloadEta(d.etaText!.trim()),
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(
+                                              color: scheme.onSurfaceVariant),
+                                    ),
+                                ],
+                              ),
+                            ],
+                            KeepAppOpenHint(
+                                l10n.keepAppOpenUntilDownloadFinished),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if ((d.status == "failed" || d.status == "canceled") &&
+                        (d.error ?? "").trim().isNotEmpty) ...[
+                      const SizedBox(height: LcSpace.md),
+                      Text(
+                        formatDownloadJobError(l10n, d.error!),
+                        style: TextStyle(color: scheme.error, height: 1.35),
+                      ),
+                    ],
+                    if (d.status == "failed" || d.status == "canceled") ...[
+                      const SizedBox(height: LcSpace.xl),
+                      AppPrimaryButton(
+                        label: l10n.downloadRetry,
+                        loading: false,
+                        onPressed: _retry,
+                      ),
+                    ],
+                    if (d.status == "done") ...[
+                      const SizedBox(height: LcSpace.xl),
+                      if (!_localLookupDone)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: LcSpace.md),
+                          child: BrandedLoadingPanel(compact: true),
+                        )
+                      else
+                        _buildDoneActions(
+                          context,
+                          l10n: l10n,
+                          scheme: scheme,
+                          detail: d,
+                        ),
+                    ],
+                  ],
+                ],
+              );
+            },
+          ),
         ),
       ),
-      ),
+    );
+  }
+
+  Widget _buildLargePreview(
+    BuildContext context,
+    DownloadDetailResponse d,
+    double height,
+  ) {
+    return LinkClipMediaPreviewCard(
+      height: height,
+      child: d.thumbnail != null && d.thumbnail!.isNotEmpty
+          ? LinkClipNetworkThumbnail(
+              imageUrl: d.thumbnail!,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => _ph(context),
+            )
+          : _ph(context),
+    ).animate().fadeIn(duration: 220.ms).slideY(
+          begin: 0.03,
+          end: 0,
+          curve: Curves.easeOut,
+        );
+  }
+
+  Widget _buildTitleAndStatus(
+    BuildContext context, {
+    required AppLocalizations l10n,
+    required ThemeData theme,
+    required ColorScheme scheme,
+    required DownloadDetailResponse detail,
+    required DownloadJobUiState? headlineUi,
+  }) {
+    final split = splitVideoTitleForDisplay(detail.title);
+    final headline = split.headlineTitle.trim().isEmpty
+        ? l10n.untitledVideo
+        : split.headlineTitle.trim();
+    final saved = detail.status == "done" && _localLookupDone && _localSaved;
+    final badgeLabel = saved
+        ? l10n.downloadStatusSavedOnDeviceTitle
+        : (headlineUi?.statusChipLabel ??
+            DownloadStatusParsed.fromRaw(detail.status).hebrew);
+    final platform = (detail.platform ?? "").trim();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          headline,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            height: 1.3,
+            letterSpacing: -0.2,
+          ),
+        ),
+        if (split.expandableDescription != null &&
+            split.expandableDescription!.trim().isNotEmpty) ...[
+          const SizedBox(height: LcSpace.sm),
+          ExpandableDescription(text: split.expandableDescription!.trim()),
+        ],
+        const SizedBox(height: LcSpace.md),
+        Wrap(
+          spacing: LcSpace.sm,
+          runSpacing: LcSpace.sm,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            LinkClipStatusChip(
+              label: badgeLabel,
+              semantic: DownloadStatusParsed.fromRaw(detail.status).label,
+            ),
+            if (platform.isNotEmpty) LinkClipPlatformChip(label: platform),
+          ],
+        ),
+        if ((headlineUi?.screenHeadlineSubtitle ?? "").trim().isNotEmpty) ...[
+          const SizedBox(height: LcSpace.sm),
+          Text(
+            headlineUi!.screenHeadlineSubtitle!.trim(),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              height: 1.4,
+            ),
+          ),
+        ] else if (detail.status == "done" &&
+            _localLookupDone &&
+            !_localSaved) ...[
+          const SizedBox(height: LcSpace.sm),
+          Text(
+            l10n.downloadVideoReadyHint,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDoneActions(
+    BuildContext context, {
+    required AppLocalizations l10n,
+    required ColorScheme scheme,
+    required DownloadDetailResponse detail,
+  }) {
+    final canEdit = downloadDetailEligibleForVideoEdit(detail) ||
+        downloadDetailEligibleForAudioEdit(detail);
+    final busy = _fileBusy || _expiredRedownloadOfferInFlight;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_fileBusy) ...[
+          BrandedProgressBar(
+            indeterminate: _totalBytes <= 0,
+            value: _totalBytes > 0
+                ? (_receiveBytes / _totalBytes).clamp(0.0, 1.0)
+                : null,
+            percentLabel: _totalBytes > 0
+                ? l10n.progressPercent(
+                    (100 * _receiveBytes / _totalBytes).clamp(0, 100).round(),
+                  )
+                : null,
+            stageLabel: l10n.loadingSavingToDeviceDot,
+            bytesSubtitle: _totalBytes > 0
+                ? "${formatBytesUi(_receiveBytes)} / ${formatBytesUi(_totalBytes)}"
+                : null,
+          ),
+          KeepAppOpenHint(l10n.keepAppOpenUntilDownloadFinished),
+          const SizedBox(height: LcSpace.lg),
+        ],
+        if (!_localSaved)
+          AppPrimaryButton(
+            label: l10n.downloadSaveToDevice,
+            loading: _fileBusy,
+            icon: const Icon(LucideIcons.smartphone),
+            onPressed: busy ? null : _downloadToDevice,
+          )
+        else
+          AppPrimaryButton(
+            label: l10n.downloadOpen,
+            loading: false,
+            icon: Icon(LucideIcons.externalLink, color: scheme.onPrimary),
+            onPressed: busy
+                ? null
+                : () {
+                    unawaited(_openLocal());
+                  },
+          ),
+        const SizedBox(height: LcSpace.md),
+        if (!_localSaved) ...[
+          AppOutlinedButton(
+            label: l10n.downloadOpen,
+            icon: Icon(LucideIcons.externalLink, color: scheme.primary),
+            onPressed: () {
+              if (busy) return;
+              unawaited(_openLocal());
+            },
+          ),
+          const SizedBox(height: LcSpace.sm),
+        ],
+        AppOutlinedButton(
+          label: l10n.downloadShare,
+          icon: Icon(LucideIcons.share2, color: scheme.primary),
+          onPressed: () {
+            if (busy) return;
+            unawaited(_shareLocal());
+          },
+        ),
+        if (canEdit) ...[
+          const SizedBox(height: LcSpace.sm),
+          AppOutlinedButton(
+            label: downloadDetailIsAudioOnly(detail)
+                ? l10n.downloadCardEditAudio
+                : l10n.downloadCardEdit,
+            icon: Icon(
+              downloadDetailIsAudioOnly(detail)
+                  ? LucideIcons.audioLines
+                  : LucideIcons.scissors,
+              color: scheme.primary,
+            ),
+            onPressed: () async {
+              await launchQuickEditForJob(
+                context,
+                jobId: _pollJobId,
+                serverRetentionReferenceUtc: detail.createdAt,
+                prefetchDetail: detail,
+              );
+              if (!context.mounted) return;
+              await _tickOnce();
+              await _refreshLocalSaved();
+            },
+          ),
+        ],
+      ],
     );
   }
 
   Widget _ph(BuildContext context) => ColoredBox(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: Center(child: Icon(LucideIcons.video, size: 56, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        child: Center(
+          child: Icon(
+            LucideIcons.video,
+            size: 56,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
       );
 }

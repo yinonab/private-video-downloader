@@ -5,6 +5,7 @@ import "package:lucide_icons_flutter/lucide_icons.dart";
 import "../../core/l10n/context_l10n.dart";
 import "../../core/l10n/format_display.dart";
 import "../../core/models/analyze_models.dart";
+import "../../core/theme/linkclip_design_system.dart";
 import "../../core/theme/linkclip_palette.dart";
 import "../../core/widgets/linkclip_chips.dart";
 
@@ -92,15 +93,9 @@ class _QualitySelectorState extends State<QualitySelector> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          l10n.analyzeChooseQuality,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.2,
-          ),
-        ),
+        LinkClipSectionHeader(title: l10n.analyzeChooseQuality),
         if (_showTabs) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: LcSpace.md),
           SegmentedButton<_FormatTab>(
             segments: [
               ButtonSegment(
@@ -121,11 +116,12 @@ class _QualitySelectorState extends State<QualitySelector> {
             },
           ),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: LcSpace.md),
         if (indices.isEmpty)
           Text(
             l10n.qualityUnavailableForVideo,
-            style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: scheme.onSurfaceVariant),
           )
         else
           ...List.generate(indices.length, (row) {
@@ -148,15 +144,19 @@ class _QualitySelectorState extends State<QualitySelector> {
               bg = scheme.surfaceContainerHighest.withValues(alpha: 0.35);
             } else if (tikTokSpecial && selected) {
               bg = Color.alphaBlend(
-                palette.tiktokAccentSoft.withValues(alpha: bright == Brightness.dark ? 0.42 : 0.62),
+                palette.tiktokAccentSoft.withValues(
+                    alpha: bright == Brightness.dark ? 0.42 : 0.62),
                 scheme.surface,
               );
             } else if (selected) {
-              bg = scheme.primaryContainer.withValues(alpha: bright == Brightness.dark ? 0.58 : 0.82);
+              bg = scheme.primaryContainer.withValues(
+                  alpha: bright == Brightness.dark ? 0.58 : 0.82);
             } else if (isAudio) {
-              bg = scheme.secondaryContainer.withValues(alpha: bright == Brightness.dark ? 0.45 : 0.72);
+              bg = scheme.secondaryContainer.withValues(
+                  alpha: bright == Brightness.dark ? 0.45 : 0.72);
             } else {
-              bg = scheme.surfaceContainerHighest.withValues(alpha: bright == Brightness.dark ? 0.42 : 0.55);
+              bg = scheme.surfaceContainerHighest.withValues(
+                  alpha: bright == Brightness.dark ? 0.42 : 0.55);
             }
 
             final iconFg = disabled
@@ -167,91 +167,104 @@ class _QualitySelectorState extends State<QualitySelector> {
                         ? scheme.secondary
                         : scheme.primary;
 
-            final iconSize = isAudio ? 52.0 : 46.0;
-            final iconInner = isAudio ? 26.0 : 22.0;
+            final borderColor = disabled
+                ? scheme.outline.withValues(alpha: 0.18)
+                : selected
+                    ? (tikTokSpecial
+                        ? palette.tiktokAccent.withValues(alpha: 0.55)
+                        : scheme.primary.withValues(alpha: 0.45))
+                    : scheme.outline.withValues(alpha: 0.22);
 
             return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: LcSpace.sm),
               child: Material(
                 color: bg,
-                borderRadius: BorderRadius.circular(22),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(LcRadius.medium),
+                  side: BorderSide(
+                    color: borderColor,
+                    width: selected && !disabled ? 1.4 : 1,
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(22),
                   onTap: disabled ? null : () => widget.onChanged(i),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: LcSpace.lg,
+                      vertical: LcSpace.lg,
+                    ),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Container(
-                          width: iconSize,
-                          height: iconSize,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: scheme.surface.withValues(alpha: bright == Brightness.dark ? 0.35 : 0.72),
-                            border: Border.all(
-                              color: isAudio
-                                  ? scheme.secondary.withValues(alpha: 0.35)
-                                  : scheme.outline.withValues(alpha: 0.28),
-                              width: isAudio ? 1.5 : 1,
-                            ),
-                          ),
-                          child: Icon(iconData, color: iconFg, size: iconInner),
-                        ),
-                        const SizedBox(width: 14),
+                        Icon(iconData, color: iconFg, size: 22),
+                        const SizedBox(width: LcSpace.md),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Wrap(
-                                spacing: 8,
-                                runSpacing: 6,
+                                spacing: LcSpace.sm,
+                                runSpacing: LcSpace.xs,
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   Text(
                                     rowLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: theme.textTheme.titleSmall?.copyWith(
                                       fontWeight: FontWeight.w700,
-                                      color: disabled ? scheme.onSurfaceVariant : scheme.onSurface,
+                                      color: disabled
+                                          ? scheme.onSurfaceVariant
+                                          : scheme.onSurface,
                                       letterSpacing: -0.15,
                                     ),
                                   ),
                                   if (!disabled && tikTokSpecial)
-                                    LinkClipTikTokChip(label: l10n.qualityTikTokReadyBadge),
+                                    LinkClipTikTokChip(
+                                        label: l10n.qualityTikTokReadyBadge),
                                 ],
                               ),
                               if (!disabled && isAudio) ...[
-                                const SizedBox(height: 6),
+                                const SizedBox(height: LcSpace.xs),
                                 Text(
                                   l10n.formatAudioMp3Subtitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.labelMedium?.copyWith(
                                     color: scheme.onSurfaceVariant,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: LcSpace.xs),
                                 Text(
                                   l10n.formatAudioMp3Description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: scheme.onSurfaceVariant,
-                                    height: 1.38,
+                                    height: 1.35,
                                   ),
                                 ),
                               ],
                               if (!disabled && tikTokSpecial) ...[
-                                const SizedBox(height: 8),
+                                const SizedBox(height: LcSpace.sm),
                                 Text(
                                   l10n.qualityTikTokReadyDescription,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: scheme.onSurfaceVariant,
-                                    height: 1.38,
+                                    height: 1.35,
                                   ),
                                 ),
                               ],
                               if (disabled) ...[
-                                const SizedBox(height: 6),
+                                const SizedBox(height: LcSpace.xs),
                                 Text(
                                   l10n.qualityUnavailableForVideo,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: scheme.outline,
                                   ),
@@ -260,7 +273,7 @@ class _QualitySelectorState extends State<QualitySelector> {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: LcSpace.sm),
                         Icon(
                           disabled
                               ? LucideIcons.circleMinus
@@ -271,7 +284,8 @@ class _QualitySelectorState extends State<QualitySelector> {
                               ? scheme.outline
                               : selected
                                   ? scheme.primary
-                                  : scheme.onSurfaceVariant.withValues(alpha: 0.55),
+                                  : scheme.onSurfaceVariant
+                                      .withValues(alpha: 0.55),
                           size: 22,
                         ),
                       ],
@@ -281,8 +295,15 @@ class _QualitySelectorState extends State<QualitySelector> {
               ),
             )
                 .animate()
-                .fadeIn(delay: (35 * row).ms, duration: 240.ms, curve: Curves.easeOut)
-                .slideX(begin: 0.02, end: 0, duration: 260.ms, curve: Curves.easeOut);
+                .fadeIn(
+                    delay: (30 * row).ms,
+                    duration: 220.ms,
+                    curve: Curves.easeOut)
+                .slideY(
+                    begin: 0.02,
+                    end: 0,
+                    duration: 240.ms,
+                    curve: Curves.easeOut);
           }),
       ],
     );
