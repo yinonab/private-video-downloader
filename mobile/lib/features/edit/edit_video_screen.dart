@@ -1163,19 +1163,24 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       ThemeData theme, ColorScheme scheme, Widget child) {
     final dark = theme.brightness == Brightness.dark;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.sm, LcSpace.lg, LcSpace.md),
+      padding: const EdgeInsets.fromLTRB(LcSpace.lg, 0, LcSpace.lg, LcSpace.sm),
       physics: const ClampingScrollPhysics(),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: scheme.surface.withValues(alpha: dark ? 0.42 : 0.92),
+          color: scheme.surface.withValues(alpha: dark ? 0.5 : 0.96),
           borderRadius: BorderRadius.circular(LcRadius.card),
           border: Border.all(
-            color: scheme.outline.withValues(alpha: dark ? 0.36 : 0.24),
+            color: scheme.outline.withValues(alpha: dark ? 0.32 : 0.2),
           ),
           boxShadow: dark ? const <BoxShadow>[] : context.lcPalette.cardShadows,
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.lg, LcSpace.lg, LcSpace.lg),
+          padding: const EdgeInsets.fromLTRB(
+            LcSpace.lg,
+            LcSpace.lg,
+            LcSpace.lg,
+            LcSpace.lg,
+          ),
           child: child,
         ),
       ),
@@ -1184,48 +1189,62 @@ class _EditVideoScreenState extends State<EditVideoScreen>
 
   Widget _buildAudioMutePanel(
       ThemeData theme, ColorScheme scheme, AppLocalizations l10n) {
-    return MergeSemantics(
-      child: ListTile(
-        contentPadding: EdgeInsets.zero,
-        title: Text(
-          l10n.editMuteLabel,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LinkClipSectionHeader(
+          title: l10n.editTabAudio,
+          subtitle: l10n.editMuteDescription,
         ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            l10n.editMuteDescription,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-              height: 1.35,
+        const SizedBox(height: LcSpace.xl),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.4 : 0.55,
+            ),
+            borderRadius: BorderRadius.circular(LcRadius.medium),
+            border: Border.all(
+              color: scheme.outline.withValues(alpha: 0.22),
+            ),
+          ),
+          child: MergeSemantics(
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: LcSpace.lg,
+                vertical: LcSpace.sm,
+              ),
+              title: Text(
+                l10n.editMuteLabel,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              trailing: Theme(
+                data: theme.copyWith(
+                  switchTheme: SwitchThemeData(
+                    thumbColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return scheme.onPrimary;
+                      }
+                      return scheme.outline;
+                    }),
+                    trackColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return scheme.primary.withValues(alpha: 0.42);
+                      }
+                      return scheme.surfaceContainerHighest;
+                    }),
+                  ),
+                ),
+                child: Switch.adaptive(
+                  value: _mute,
+                  onChanged: (v) => setState(() => _mute = v),
+                ),
+              ),
             ),
           ),
         ),
-        trailing: Theme(
-          data: theme.copyWith(
-            switchTheme: SwitchThemeData(
-              thumbColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return scheme.onPrimary;
-                }
-                return scheme.outline;
-              }),
-              trackColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return scheme.primary.withValues(alpha: 0.42);
-                }
-                return scheme.surfaceContainerHighest;
-              }),
-            ),
-          ),
-          child: Switch.adaptive(
-            value: _mute,
-            onChanged: (v) => setState(() => _mute = v),
-          ),
-        ),
-      ),
+      ],
     );
   }
 
@@ -1234,7 +1253,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     final accent = context.lcPalette.tiktokAccent;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(LcSpace.md, LcSpace.md, LcSpace.md, LcSpace.md),
+      padding: const EdgeInsets.fromLTRB(LcSpace.sm, LcSpace.md, LcSpace.sm, LcSpace.sm),
       child: _EditorToolbarScrollLane(
         scheme: scheme,
         accent: accent,
@@ -1270,69 +1289,60 @@ class _EditVideoScreenState extends State<EditVideoScreen>
 
     Widget previewStack;
     if (_detailLoading) {
-      previewStack = AspectRatio(
-        aspectRatio: 16 / 9,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(LcRadius.large),
-          child: ColoredBox(
-            color: scheme.surfaceContainerHighest.withValues(alpha: 0.9),
-            child: const Center(child: CircularProgressIndicator()),
-          ),
-        ),
+      previewStack = ColoredBox(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.9),
+        child: const Center(child: CircularProgressIndicator()),
       );
     } else if (_detailError != null) {
       previewStack = _buildPreview(context, l10n, scheme);
     } else {
-      previewStack = ClipRRect(
-        borderRadius: BorderRadius.circular(LcRadius.large),
-        child: Stack(
-          fit: StackFit.loose,
-          children: [
-            EditVideoPreview(
-              key: ValueKey<String>(widget.source.previewIdentityKey),
-              previewSource: widget.source.kind == EditVideoSourceKind.download
-                  ? EditVideoPreviewDownloadSource(
-                      jobId: widget.source.sourceDownloadJobId!,
-                    )
-                  : EditVideoPreviewUploadSource(
-                      uploadId: widget.source.sourceUploadId!,
-                      localPreviewPath: widget.source.localPreviewPath,
-                    ),
-              session: scope.session,
-              apiBaseForUrl: scope.session.serverUrl,
-              previewRotation: _rotation,
-              trimStartSec: _startSec,
-              trimEndSec: _endSec,
-              videoDurationSec: _durationSec,
-              playbackSpeed: previewState.playbackSpeed,
-              muted: previewState.muted,
-              thumbnailUrl: widget.source.kind == EditVideoSourceKind.download
-                  ? _detail?.thumbnail
-                  : _resolveThumbnailUrl(widget.source.thumbnailUrl),
-              onDurationResolved: (sec) {
-                if (!mounted || sec <= 0.5) return;
-                setState(() {
-                  _durationSec = sec;
-                  _startSec = _startSec.clamp(0.0, sec - 0.05);
-                  _endSec = _endSec.clamp(_startSec + 0.05, sec);
-                });
-              },
-              onPlaybackSeconds: (pos) {
-                if (!mounted) return;
-                setState(() => _playbackSec = pos);
-              },
-              captionsPreviewOverlay: buildEditCaptionPreviewOverlay(
-                l10n: l10n,
-                state: previewState.captionOnVideo,
-              ),
+      previewStack = Stack(
+        fit: StackFit.expand,
+        children: [
+          EditVideoPreview(
+            key: ValueKey<String>(widget.source.previewIdentityKey),
+            previewSource: widget.source.kind == EditVideoSourceKind.download
+                ? EditVideoPreviewDownloadSource(
+                    jobId: widget.source.sourceDownloadJobId!,
+                  )
+                : EditVideoPreviewUploadSource(
+                    uploadId: widget.source.sourceUploadId!,
+                    localPreviewPath: widget.source.localPreviewPath,
+                  ),
+            session: scope.session,
+            apiBaseForUrl: scope.session.serverUrl,
+            previewRotation: _rotation,
+            trimStartSec: _startSec,
+            trimEndSec: _endSec,
+            videoDurationSec: _durationSec,
+            playbackSpeed: previewState.playbackSpeed,
+            muted: previewState.muted,
+            thumbnailUrl: widget.source.kind == EditVideoSourceKind.download
+                ? _detail?.thumbnail
+                : _resolveThumbnailUrl(widget.source.thumbnailUrl),
+            onDurationResolved: (sec) {
+              if (!mounted || sec <= 0.5) return;
+              setState(() {
+                _durationSec = sec;
+                _startSec = _startSec.clamp(0.0, sec - 0.05);
+                _endSec = _endSec.clamp(_startSec + 0.05, sec);
+              });
+            },
+            onPlaybackSeconds: (pos) {
+              if (!mounted) return;
+              setState(() => _playbackSec = pos);
+            },
+            captionsPreviewOverlay: buildEditCaptionPreviewOverlay(
+              l10n: l10n,
+              state: previewState.captionOnVideo,
             ),
-            if (previewState.showCropOverlay)
-              Positioned.fill(
-                child: CropPreviewOverlay(
-                    aspect: _crop, primaryColor: scheme.primary),
-              ),
-          ],
-        ),
+          ),
+          if (previewState.showCropOverlay)
+            Positioned.fill(
+              child: CropPreviewOverlay(
+                  aspect: _crop, primaryColor: scheme.primary),
+            ),
+        ],
       );
     }
 
@@ -1340,19 +1350,22 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(LcRadius.large),
         border: Border.all(
-          color: scheme.outline.withValues(alpha: 0.22),
+          color: scheme.outline.withValues(alpha: 0.18),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(LcRadius.large),
-        child: previewStack,
+        child: ColoredBox(
+          color: Colors.black,
+          child: previewStack,
+        ),
       ),
     );
 
@@ -1360,144 +1373,176 @@ class _EditVideoScreenState extends State<EditVideoScreen>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.sm, LcSpace.lg, 0),
-                child: previewCard,
-              ),
-              if (_showDurationApproxHint)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.sm, LcSpace.lg, 0),
-                  child: Text(
-                    l10n.editDurationApproxHint,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Dominant preview: ~40% of composer body (clamped for small/tall phones).
+              final previewH =
+                  (constraints.maxHeight * 0.40).clamp(240.0, 380.0);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      LcSpace.lg,
+                      LcSpace.xs,
+                      LcSpace.lg,
+                      0,
+                    ),
+                    child: SizedBox(
+                      height: previewH,
+                      width: double.infinity,
+                      child: previewCard,
                     ),
                   ),
-                ),
-              _buildEditToolStrip(theme, scheme, l10n),
-              Expanded(
-                child: IndexedStack(
-                  index: _tabController.index,
-                  sizing: StackFit.expand,
-                  children: [
-                    _composerPanelShell(
-                      theme,
-                      scheme,
-                      TrimEditor(
-                        durationSec: _durationSec,
-                        startSec: _startSec,
-                        endSec: _endSec,
-                        playbackSec: _playbackSec,
-                        onChanged: (a, b) => _clearCaptionsDraftAfterTimingEdit(() {
-                          _startSec = a;
-                          _endSec = b;
-                        }),
-                        onReset: _resetTrim,
+                  if (_showDurationApproxHint)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        LcSpace.lg,
+                        LcSpace.xs,
+                        LcSpace.lg,
+                        0,
                       ),
-                    ),
-                    _composerPanelShell(
-                      theme,
-                      scheme,
-                      SpeedEditor(
-                        selected: _speed,
-                        onSelected: (s) =>
-                            _clearCaptionsDraftAfterTimingEdit(() => _speed = s),
-                      ),
-                    ),
-                    _composerPanelShell(
-                      theme,
-                      scheme,
-                      FormatEditor(
-                        aspect: _crop,
-                        fitMode: _formatFitMode,
-                        rotation: _rotation,
-                        onAspectChanged: (c) => setState(() {
-                          _crop = c;
-                          if (c == QuickEditCropAspect.original) {
-                            _formatFitMode = QuickEditFormatMode.fill;
-                          }
-                        }),
-                        onFitModeChanged: (m) =>
-                            setState(() => _formatFitMode = m),
-                        onRotationChanged: (r) =>
-                            setState(() => _rotation = r),
-                      ),
-                    ),
-                    _composerPanelShell(
-                      theme,
-                      scheme,
-                      CaptionsEditorPanel(
-                        autoCaptionsEnabled: _captionsAuto,
-                        effectiveCaptionPreset: inferQuickEditCaptionPreset(
-                          fontSize: _captionsFontSize,
-                          fontFamily: _captionsFontFamily,
-                          position: _captionsPosition,
-                          color: _captionsColor,
-                          style: _captionsStyle,
-                          wordHighlight: _captionsWordHighlight,
-                          offsetX: _captionsOffsetX,
-                          offsetY: _captionsOffsetY,
-                          normalTextColor: _captionsNormalTextColor,
-                          activeTextColor: _captionsActiveTextColor,
-                          boxColor: _captionsBoxColor,
-                          boxShape: _captionsBoxShape,
+                      child: Text(
+                        l10n.editDurationApproxHint,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
                         ),
-                        lookStyleDetailLine: _captionLookStyleDetailLine(l10n),
-                        lookColor: _captionsColor,
-                        lookWordHighlight: _captionsWordHighlight,
-                        lookFontFamily: _captionsFontFamily,
-                        lookNormalTextColor: _captionsNormalTextColor,
-                        lookActiveTextColor: _captionsActiveTextColor,
-                        lookBoxColor: _captionsBoxColor,
-                        lookBoxShape: _captionsBoxShape,
-                        onCustomizeLook: _openCaptionLookEditor,
-                        onGenerateCaptionsDraft: _generateCaptionsDraft,
-                        onRegenerateCaptionsDraftRequested:
-                            _confirmAndRegenerateCaptionsDraft,
-                        captionDraftSegments: _captionsDraftSegments,
-                        onEditCaptionsDraft: _openCaptionDraftEditor,
-                        isCaptionDraftGenerating: _captionsDraftGenerating,
-                        showCaptionDraftTimingStaleHint: _captionsDraftRegenHint,
-                        onAutoCaptionsChanged: (v) {
-                          setState(() {
-                            _captionsAuto = v;
-                            if (!v) {
-                              _captionsOffsetX = 0;
-                              _captionsOffsetY = 0;
-                              _captionsWordHighlight = QuickEditCaptionWordHighlight.none;
-                              _captionsNormalTextColor = null;
-                              _captionsActiveTextColor = null;
-                              _captionsBoxColor = null;
-                              _captionsDraftSegments = null;
-                              _captionsDraftRegenHint = false;
-                              _captionsDraftGenerating = false;
-                            }
-                          });
-                          if (!v) unawaited(_releaseCaptionDraftWakelockIfHeld());
-                        },
                       ),
                     ),
-                    _composerPanelShell(
-                      theme,
-                      scheme,
-                      _buildAudioMutePanel(theme, scheme, l10n),
+                  _buildEditToolStrip(theme, scheme, l10n),
+                  Expanded(
+                    child: IndexedStack(
+                      index: _tabController.index,
+                      sizing: StackFit.expand,
+                      children: [
+                        _composerPanelShell(
+                          theme,
+                          scheme,
+                          TrimEditor(
+                            durationSec: _durationSec,
+                            startSec: _startSec,
+                            endSec: _endSec,
+                            playbackSec: _playbackSec,
+                            onChanged: (a, b) =>
+                                _clearCaptionsDraftAfterTimingEdit(() {
+                              _startSec = a;
+                              _endSec = b;
+                            }),
+                            onReset: _resetTrim,
+                          ),
+                        ),
+                        _composerPanelShell(
+                          theme,
+                          scheme,
+                          SpeedEditor(
+                            selected: _speed,
+                            onSelected: (s) =>
+                                _clearCaptionsDraftAfterTimingEdit(
+                                    () => _speed = s),
+                          ),
+                        ),
+                        _composerPanelShell(
+                          theme,
+                          scheme,
+                          FormatEditor(
+                            aspect: _crop,
+                            fitMode: _formatFitMode,
+                            rotation: _rotation,
+                            onAspectChanged: (c) => setState(() {
+                              _crop = c;
+                              if (c == QuickEditCropAspect.original) {
+                                _formatFitMode = QuickEditFormatMode.fill;
+                              }
+                            }),
+                            onFitModeChanged: (m) =>
+                                setState(() => _formatFitMode = m),
+                            onRotationChanged: (r) =>
+                                setState(() => _rotation = r),
+                          ),
+                        ),
+                        _composerPanelShell(
+                          theme,
+                          scheme,
+                          CaptionsEditorPanel(
+                            autoCaptionsEnabled: _captionsAuto,
+                            effectiveCaptionPreset: inferQuickEditCaptionPreset(
+                              fontSize: _captionsFontSize,
+                              fontFamily: _captionsFontFamily,
+                              position: _captionsPosition,
+                              color: _captionsColor,
+                              style: _captionsStyle,
+                              wordHighlight: _captionsWordHighlight,
+                              offsetX: _captionsOffsetX,
+                              offsetY: _captionsOffsetY,
+                              normalTextColor: _captionsNormalTextColor,
+                              activeTextColor: _captionsActiveTextColor,
+                              boxColor: _captionsBoxColor,
+                              boxShape: _captionsBoxShape,
+                            ),
+                            lookStyleDetailLine:
+                                _captionLookStyleDetailLine(l10n),
+                            lookColor: _captionsColor,
+                            lookWordHighlight: _captionsWordHighlight,
+                            lookFontFamily: _captionsFontFamily,
+                            lookNormalTextColor: _captionsNormalTextColor,
+                            lookActiveTextColor: _captionsActiveTextColor,
+                            lookBoxColor: _captionsBoxColor,
+                            lookBoxShape: _captionsBoxShape,
+                            onCustomizeLook: _openCaptionLookEditor,
+                            onGenerateCaptionsDraft: _generateCaptionsDraft,
+                            onRegenerateCaptionsDraftRequested:
+                                _confirmAndRegenerateCaptionsDraft,
+                            captionDraftSegments: _captionsDraftSegments,
+                            onEditCaptionsDraft: _openCaptionDraftEditor,
+                            isCaptionDraftGenerating: _captionsDraftGenerating,
+                            showCaptionDraftTimingStaleHint:
+                                _captionsDraftRegenHint,
+                            onAutoCaptionsChanged: (v) {
+                              setState(() {
+                                _captionsAuto = v;
+                                if (!v) {
+                                  _captionsOffsetX = 0;
+                                  _captionsOffsetY = 0;
+                                  _captionsWordHighlight =
+                                      QuickEditCaptionWordHighlight.none;
+                                  _captionsNormalTextColor = null;
+                                  _captionsActiveTextColor = null;
+                                  _captionsBoxColor = null;
+                                  _captionsDraftSegments = null;
+                                  _captionsDraftRegenHint = false;
+                                  _captionsDraftGenerating = false;
+                                }
+                              });
+                              if (!v) {
+                                unawaited(
+                                    _releaseCaptionDraftWakelockIfHeld());
+                              }
+                            },
+                          ),
+                        ),
+                        _composerPanelShell(
+                          theme,
+                          scheme,
+                          _buildAudioMutePanel(theme, scheme, l10n),
+                        ),
+                        _composerPanelShell(
+                          theme,
+                          scheme,
+                          CompressionSelector(
+                            selected: _compress,
+                            onSelected: (p) =>
+                                setState(() => _compress = p),
+                          ),
+                        ),
+                      ],
                     ),
-                    _composerPanelShell(
-                      theme,
-                      scheme,
-                      CompressionSelector(
-                        selected: _compress,
-                        onSelected: (p) => setState(() => _compress = p),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                  ),
+                ],
+              );
+            },
           ),
         ),
         if (keyboardInset < 8)
@@ -1892,18 +1937,18 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     }
 
     final thumb = _detail?.thumbnail;
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: thumb != null && thumb.isNotEmpty
-            ? Image.network(
-                thumb,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _previewFallback(scheme),
-              )
-            : _previewFallback(scheme),
-      ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (thumb != null && thumb.isNotEmpty)
+          Image.network(
+            thumb,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _previewFallback(scheme),
+          )
+        else
+          _previewFallback(scheme),
+      ],
     );
   }
 

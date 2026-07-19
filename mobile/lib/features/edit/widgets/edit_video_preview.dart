@@ -320,114 +320,97 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
     );
   }
 
-  /// **0°** — fixed 16:9 + contain (full frame, letterboxed when needed).
-  Widget _previewZeroDegrees(VideoPlayerController c) {
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: Stack(
-          fit: StackFit.expand,
-          alignment: Alignment.center,
-          children: [
-            const ColoredBox(color: Colors.black),
-            Center(
-              child: FittedBox(
-                fit: BoxFit.contain,
-                alignment: Alignment.center,
-                child: SizedBox(
-                  width: c.value.size.width,
-                  height: c.value.size.height,
-                  child: VideoPlayer(c),
-                ),
-              ),
-            ),
-            ..._overlayAboveVideoUnderPlay(),
-            _playOverlayInk(c),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// **180°** — same framing as **0°**; video paint rotates inside contain.
-  Widget _previewInverted(VideoPlayerController c) {
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: Stack(
-          fit: StackFit.expand,
-          alignment: Alignment.center,
-          children: [
-            const ColoredBox(color: Colors.black),
-            Center(
-              child: FittedBox(
-                fit: BoxFit.contain,
-                alignment: Alignment.center,
-                child: Transform.rotate(
-                  angle: math.pi,
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: c.value.size.width,
-                    height: c.value.size.height,
-                    child: VideoPlayer(c),
-                  ),
-                ),
-              ),
-            ),
-            ..._overlayAboveVideoUnderPlay(),
-            _playOverlayInk(c),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// **90° / 270°** — outer aspect swaps W/H projection; [`BoxFit.contain`] avoids clipping the rotated raster.
-  Widget _previewSideways(
+  /// Parent-sized stage: video [`BoxFit.contain`] (letterboxed). Height comes from the edit shell.
+  Widget _previewContainedStage(
     VideoPlayerController c, {
-    required double radians,
-    required double sourceAspectWidthOverHeight,
+    Widget Function(Widget video)? transformVideo,
   }) {
-    final displayAspect =
-        sourceAspectWidthOverHeight >= 1e-8 ? 1 / sourceAspectWidthOverHeight : 9 / 16;
-    final outerAr = math.min(2.05, math.max(0.28, displayAspect));
-
-    Widget core = SizedBox(
+    Widget video = SizedBox(
       width: c.value.size.width,
       height: c.value.size.height,
       child: VideoPlayer(c),
     );
-    core = Transform.rotate(
-      angle: radians,
-      alignment: Alignment.center,
-      filterQuality: FilterQuality.medium,
-      child: core,
-    );
+    if (transformVideo != null) {
+      video = transformVideo(video);
+    }
 
-    return AspectRatio(
-      aspectRatio: outerAr,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: Stack(
-          fit: StackFit.expand,
-          alignment: Alignment.center,
-          children: [
-            ColoredBox(
-              color: Colors.black,
-              child: Center(
-                child: FittedBox(
-                  fit: BoxFit.contain,
-                  alignment: Alignment.center,
-                  child: core,
-                ),
-              ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: Stack(
+        fit: StackFit.expand,
+        alignment: Alignment.center,
+        children: [
+          const ColoredBox(color: Colors.black),
+          Center(
+            child: FittedBox(
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
+              child: video,
             ),
-            ..._overlayAboveVideoUnderPlay(),
-            _playOverlayInk(c),
-          ],
-        ),
+          ),
+          ..._overlayAboveVideoUnderPlay(),
+          _playOverlayInk(c),
+        ],
+      ),
+    );
+  }
+
+  /// **0°** — fill allocated stage + contain (full frame, letterboxed when needed).
+  Widget _previewZeroDegrees(VideoPlayerController c) {
+    return _previewContainedStage(c);
+  }
+
+  /// **180°** — same framing as **0°**; video paint rotates inside contain.
+  Widget _previewInverted(VideoPlayerController c) {
+    return _previewContainedStage(
+      c,
+      transformVideo: (video) => Transform.rotate(
+        angle: math.pi,
+        alignment: Alignment.center,
+        child: video,
+      ),
+    );
+  }
+
+  /// **90° / 270°** — rotate inside parent stage; [`BoxFit.contain`] avoids clipping.
+  Widget _previewSideways(
+    VideoPlayerController c, {
+    required double radians,
+  }) {
+    return _previewContainedStage(
+      c,
+      transformVideo: (video) => Transform.rotate(
+        angle: radians,
+        alignment: Alignment.center,
+        filterQuality: FilterQuality.medium,
+        child: video,
+      ),
+    );
+  }
+
+  Widget _stagePlaceholder({
+    required ColorScheme scheme,
+    required String? thumb,
+    required Widget center,
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (thumb != null && thumb.isNotEmpty)
+            Image.network(
+              thumb,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  ColoredBox(color: scheme.surfaceContainerHighest),
+            )
+          else
+            ColoredBox(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.95),
+            ),
+          center,
+        ],
       ),
     );
   }
@@ -456,63 +439,27 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
     final thumb = widget.thumbnailUrl;
 
     if (_initializing) {
-      return AspectRatio(
-        aspectRatio: 16 / 9,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (thumb != null && thumb.isNotEmpty)
-                Image.network(thumb, fit: BoxFit.cover)
-              else
-                ColoredBox(
-                    color:
-                        scheme.surfaceContainerHighest.withValues(alpha: 0.95)),
-              const Center(child: CircularProgressIndicator()),
-            ],
-          ),
-        ),
+      return _stagePlaceholder(
+        scheme: scheme,
+        thumb: thumb,
+        center: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_initError != null ||
         _controller == null ||
         !_controller!.value.isInitialized) {
-      return AspectRatio(
-        aspectRatio: 16 / 9,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (thumb != null && thumb.isNotEmpty)
-                Image.network(
-                  thumb,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      ColoredBox(color: scheme.surfaceContainerHighest),
-                )
-              else
-                ColoredBox(
-                    color:
-                        scheme.surfaceContainerHighest.withValues(alpha: 0.95)),
-              Center(
-                child: Icon(Icons.play_circle_outline_rounded,
-                    size: 64, color: scheme.outline),
-              ),
-            ],
-          ),
+      return _stagePlaceholder(
+        scheme: scheme,
+        thumb: thumb,
+        center: Center(
+          child: Icon(Icons.play_circle_outline_rounded,
+              size: 64, color: scheme.outline),
         ),
       );
     }
 
     final c = _controller!;
-    final w = c.value.size.width;
-    final h = c.value.size.height;
-    final ok = w > 8 && h > 8;
-    final srcAr =
-        ok ? (w / h) : (16 / 9); /* fallback aligns with legacy placeholder */
 
     return switch (widget.previewRotation) {
       QuickEditRotation.deg0 => _previewZeroDegrees(c),
@@ -520,12 +467,10 @@ class _EditVideoPreviewState extends State<EditVideoPreview> {
       QuickEditRotation.deg90 => _previewSideways(
           c,
           radians: math.pi / 2,
-          sourceAspectWidthOverHeight: srcAr,
         ),
       QuickEditRotation.deg270 => _previewSideways(
           c,
           radians: 3 * math.pi / 2,
-          sourceAspectWidthOverHeight: srcAr,
         ),
     };
   }
