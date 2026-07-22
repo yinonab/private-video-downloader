@@ -11,14 +11,14 @@ import "../../core/l10n/context_l10n.dart";
 import "../../core/l10n/download_job_ui_state.dart";
 import "../../core/models/download_models.dart";
 import "../../core/models/quick_edit_models.dart";
+import "../../core/media/linkclip_media_thumbnail.dart";
 import "../../core/theme/linkclip_design_system.dart";
 import "../../core/theme/linkclip_palette.dart";
 import "../../core/widgets/branded_progress.dart";
 import "../../core/widgets/linkclip_chips.dart";
-import "../../core/widgets/linkclip_network_thumbnail.dart";
 import "../../l10n/app_localizations.dart";
 
-/// Compact download row: one primary action, overflow menu, long‑press sheet, restrained icon swipe shortcuts.
+/// Compact media card: aspect-aware project tile + title/actions (not full-width landscape banners).
 class DownloadCard extends StatelessWidget {
   const DownloadCard({
     super.key,
@@ -59,8 +59,6 @@ class DownloadCard extends StatelessWidget {
     final s = i == 0 ? v.toInt().toString() : v.toStringAsFixed(v >= 10 ? 0 : 1);
     return "$s ${u[i]}";
   }
-
-  static const double _thumbW = 96;
 
   /// Restrained swipe pane (~0.24–0.32 of card width depending on icon count).
   static double _swipeExtentRatio(int actionCount) {
@@ -124,7 +122,7 @@ class DownloadCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.lg, LcSpace.sm, 0),
+            padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.lg, LcSpace.sm, LcSpace.sm),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -144,19 +142,106 @@ class DownloadCard extends StatelessWidget {
                         HapticFeedback.lightImpact();
                         onOpenStatus();
                       },
+                      onLongPress: () {
+                        HapticFeedback.selectionClick();
+                        _showActionsSheet(
+                          context,
+                          entries: _sheetEntries(
+                            l10n: l10n,
+                            failedOrCanceled: failedOrCanceled,
+                            done: done,
+                            hideOpenInSheet: primaryIsOpenLocal,
+                            isAudioOnly: isAudioOnly,
+                          ),
+                        );
+                      },
                       splashColor: scheme.primary.withValues(alpha: 0.06),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                        child: Text(
-                          titleLine,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: scheme.onSurface,
-                            height: 1.3,
-                            letterSpacing: -0.15,
-                          ),
+                        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              titleLine,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: scheme.onSurface,
+                                height: 1.3,
+                                letterSpacing: -0.15,
+                              ),
+                            ),
+                            const SizedBox(height: LcSpace.sm),
+                            Wrap(
+                              spacing: LcSpace.sm,
+                              runSpacing: 6,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                LinkClipStatusChip(
+                                  label: statusLabel,
+                                  semantic: item.statusParsed.label,
+                                ),
+                                Text(
+                                  platformLine.toLowerCase(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: scheme.onSurfaceVariant.withValues(alpha: 0.9),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (done && isAudioOnly) ...[
+                              const SizedBox(height: LcSpace.sm),
+                              Text(
+                                l10n.downloadCardMp3Badge,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: scheme.primary.withValues(alpha: 0.85),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                            if (done && isTikTokJob) ...[
+                              const SizedBox(height: LcSpace.sm),
+                              Text(
+                                l10n.downloadChipTikTokReady,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: palette.tiktokOnAccent.withValues(alpha: 0.75),
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: (theme.textTheme.labelSmall?.fontSize ?? 11) * 0.95,
+                                ),
+                              ),
+                            ],
+                            if (item.active) ...[
+                              const SizedBox(height: LcSpace.md),
+                              Builder(
+                                builder: (context) {
+                                  final pct = ui.determinatePercent ?? 0;
+                                  return BrandedProgressBar(
+                                    dense: true,
+                                    indeterminate: ui.showIndeterminateProgress,
+                                    value: ui.showDeterminateProgress ? pct / 100.0 : null,
+                                    percentLabel:
+                                        ui.showDeterminateProgress ? l10n.progressPercent(pct) : null,
+                                    stageLabel: ui.progressStageTitle,
+                                    stageSubtitle: ui.progressStageSubtitle,
+                                  );
+                                },
+                              ),
+                            ],
+                            const SizedBox(height: LcSpace.sm),
+                            Text(
+                              [if (sizeStr != null) sizeStr, dateStr].join(" · "),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: scheme.onSurfaceVariant.withValues(alpha: 0.72),
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -167,7 +252,11 @@ class DownloadCard extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                   onOpened: () => HapticFeedback.selectionClick(),
-                  icon: Icon(LucideIcons.ellipsisVertical, color: scheme.onSurfaceVariant.withValues(alpha: 0.9), size: 20),
+                  icon: Icon(
+                    LucideIcons.ellipsisVertical,
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.9),
+                    size: 20,
+                  ),
                   onSelected: (k) {
                     HapticFeedback.lightImpact();
                     _handleMenuKey(
@@ -192,114 +281,9 @@ class DownloadCard extends StatelessWidget {
               ],
             ),
           ),
-          Padding(
-            padding: EdgeInsetsDirectional.only(
-              start: LcSpace.lg + _thumbW + LcSpace.md,
-              end: LcSpace.lg,
-              top: LcSpace.md,
-            ),
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(LcRadius.small),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  onOpenStatus();
-                },
-                onLongPress: () {
-                  HapticFeedback.selectionClick();
-                  _showActionsSheet(
-                    context,
-                    entries: _sheetEntries(
-                      l10n: l10n,
-                      failedOrCanceled: failedOrCanceled,
-                      done: done,
-                      hideOpenInSheet: primaryIsOpenLocal,
-                      isAudioOnly: isAudioOnly,
-                    ),
-                  );
-                },
-                splashColor: scheme.primary.withValues(alpha: 0.06),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              platformLine.toLowerCase(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: scheme.onSurfaceVariant.withValues(alpha: 0.92),
-                                fontWeight: FontWeight.w500,
-                                letterSpacing: 0.2,
-                                fontSize: (theme.textTheme.labelSmall?.fontSize ?? 11) * 0.98,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: LcSpace.sm),
-                          LinkClipStatusChip(label: statusLabel, semantic: item.statusParsed.label),
-                        ],
-                      ),
-                      if (done && isAudioOnly) ...[
-                        const SizedBox(height: LcSpace.sm),
-                        Text(
-                          l10n.downloadCardMp3Badge,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: scheme.primary.withValues(alpha: 0.85),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                      if (done && isTikTokJob) ...[
-                        const SizedBox(height: LcSpace.sm),
-                        Text(
-                          l10n.downloadChipTikTokReady,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: palette.tiktokOnAccent.withValues(alpha: 0.75),
-                            fontWeight: FontWeight.w500,
-                            fontSize: (theme.textTheme.labelSmall?.fontSize ?? 11) * 0.95,
-                          ),
-                        ),
-                      ],
-                      if (item.active) ...[
-                        const SizedBox(height: LcSpace.md),
-                        Builder(
-                          builder: (context) {
-                            final pct = ui.determinatePercent ?? 0;
-                            return BrandedProgressBar(
-                              dense: true,
-                              indeterminate: ui.showIndeterminateProgress,
-                              value: ui.showDeterminateProgress ? pct / 100.0 : null,
-                              percentLabel: ui.showDeterminateProgress ? l10n.progressPercent(pct) : null,
-                              stageLabel: ui.progressStageTitle,
-                              stageSubtitle: ui.progressStageSubtitle,
-                            );
-                          },
-                        ),
-                      ],
-                      const SizedBox(height: LcSpace.sm),
-                      Text(
-                        [if (sizeStr != null) sizeStr, dateStr].join(" · "),
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant.withValues(alpha: 0.72),
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
           if (primary != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.sm, LcSpace.lg, LcSpace.lg),
+              padding: const EdgeInsets.fromLTRB(LcSpace.lg, 0, LcSpace.lg, LcSpace.lg),
               child: _PrimaryCta(
                 label: primary.label,
                 icon: primary.icon,
@@ -672,52 +656,16 @@ class DownloadCard extends StatelessWidget {
   }
 
   Widget _thumb(BuildContext context) {
-    if (downloadItemIsAudioOnly(item)) {
-      return _ph(context, audio: true);
-    }
-    final thumb = item.thumbnail;
-    if (thumb != null && thumb.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          width: _thumbW,
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: LinkClipNetworkThumbnail(
-              imageUrl: thumb,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _ph(context),
-              loadingBuilder: (context, child, prog) => prog == null ? child : _ph(context, loading: true),
-            ),
-          ),
-        ),
-      );
-    }
-    return _ph(context);
-  }
-
-  Widget _ph(BuildContext context, {bool loading = false, bool audio = false}) {
-    final scheme = Theme.of(context).colorScheme;
-    final icon = loading
-        ? _LucideSpinner(iconData: LucideIcons.loader, color: scheme.primary.withValues(alpha: 0.7))
-        : Icon(
-            audio ? LucideIcons.audioLines : LucideIcons.video,
-            color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
-          );
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: SizedBox(
-        width: _thumbW,
-        child: AspectRatio(
-          aspectRatio: 16 / 9,
-          child: ColoredBox(
-            color: scheme.surfaceContainerHighest.withValues(
-              alpha: Theme.of(context).brightness == Brightness.dark ? 0.72 : 0.55,
-            ),
-            child: Center(child: icon),
-          ),
-        ),
-      ),
+    final audio = downloadItemIsAudioOnly(item);
+    final thumb = item.thumbnail?.trim();
+    return LinkClipMediaThumbnail(
+      networkUrl: audio ? null : (thumb != null && thumb.isNotEmpty ? thumb : null),
+      layout: LinkClipMediaThumbnailLayout.tile,
+      fitStrategy: LinkClipMediaThumbnailFit.cover,
+      resolveImageAspect: !audio,
+      isAudio: audio,
+      borderRadius: BorderRadius.circular(LcRadius.medium),
+      placeholderIcon: audio ? LucideIcons.audioLines : LucideIcons.video,
     );
   }
 }
@@ -740,7 +688,7 @@ class _ThumbnailTap extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(LcRadius.medium),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
@@ -752,7 +700,7 @@ class _ThumbnailTap extends StatelessWidget {
           }
         },
         splashColor: scheme.primary.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(LcRadius.medium),
         child: child,
       ),
     );
@@ -834,35 +782,6 @@ class _SheetTile extends StatelessWidget {
         HapticFeedback.lightImpact();
         onTap();
       },
-    );
-  }
-}
-
-class _LucideSpinner extends StatefulWidget {
-  const _LucideSpinner({required this.iconData, required this.color});
-
-  final IconData iconData;
-  final Color color;
-
-  @override
-  State<_LucideSpinner> createState() => _LucideSpinnerState();
-}
-
-class _LucideSpinnerState extends State<_LucideSpinner> with SingleTickerProviderStateMixin {
-  late final AnimationController _rot =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 880))..repeat();
-
-  @override
-  void dispose() {
-    _rot.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RotationTransition(
-      turns: _rot,
-      child: Icon(widget.iconData, color: widget.color),
     );
   }
 }

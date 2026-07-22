@@ -6,16 +6,29 @@ class LinkClipNetworkThumbnail extends StatelessWidget {
     super.key,
     required this.imageUrl,
     required this.fit,
+    this.width,
+    this.height,
+    this.cacheWidth,
+    this.cacheHeight,
+    this.alignment = Alignment.center,
+    this.filterQuality = FilterQuality.medium,
     this.errorBuilder,
     this.loadingBuilder,
   });
 
   final String imageUrl;
   final BoxFit fit;
+  final double? width;
+  final double? height;
+  final int? cacheWidth;
+  final int? cacheHeight;
+  final AlignmentGeometry alignment;
+  final FilterQuality filterQuality;
   final ImageErrorWidgetBuilder? errorBuilder;
   final ImageLoadingBuilder? loadingBuilder;
 
-  static Map<String, String>? _headers(String url) {
+  /// Headers for Facebook CDN thumbs (also used when resolving image aspect).
+  static Map<String, String>? headersFor(String url) {
     final uri = Uri.tryParse(url);
     if (uri == null) return null;
     final host = uri.host.toLowerCase();
@@ -34,7 +47,15 @@ class LinkClipNetworkThumbnail extends StatelessWidget {
     return Image.network(
       imageUrl,
       fit: fit,
-      headers: _headers(imageUrl),
+      width: width,
+      height: height,
+      cacheWidth: cacheWidth,
+      // Prefer leaving cacheHeight null when cacheWidth is set so decode
+      // preserves aspect ratio (both set can squeeze on some engines).
+      cacheHeight: cacheWidth != null ? null : cacheHeight,
+      alignment: alignment,
+      filterQuality: filterQuality,
+      headers: headersFor(imageUrl),
       errorBuilder: errorBuilder,
       loadingBuilder: loadingBuilder,
     );

@@ -323,7 +323,7 @@ class _EditHistoryCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(LcSpace.lg, LcSpace.lg, LcSpace.sm, LcSpace.lg),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,7 +333,7 @@ class _EditHistoryCard extends StatelessWidget {
                   fileExists: exists,
                   editHistory: editHistory,
                   borderRadius: BorderRadius.circular(LcRadius.medium),
-                  size: 76,
+                  durationLabel: dur,
                 ),
                 const SizedBox(width: LcSpace.md),
                 Expanded(
@@ -344,19 +344,28 @@ class _EditHistoryCard extends StatelessWidget {
                         displayTitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, height: 1.3),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          height: 1.3,
+                        ),
                       ),
                       const SizedBox(height: LcSpace.sm),
                       Text(
                         df.format(item.savedAt),
-                        style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant.withValues(alpha: 0.9)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.9),
+                        ),
                       ),
                       if (!exists)
                         Padding(
                           padding: const EdgeInsets.only(top: LcSpace.md),
                           child: DecoratedBox(
                             decoration: BoxDecoration(
-                              color: palette.dangerMutedBg.withValues(alpha: theme.brightness == Brightness.dark ? 0.5 : 0.55),
+                              color: palette.dangerMutedBg.withValues(
+                                alpha: theme.brightness == Brightness.dark ? 0.5 : 0.55,
+                              ),
                               borderRadius: BorderRadius.circular(LcRadius.small),
                               border: Border.all(color: scheme.error.withValues(alpha: 0.22)),
                             ),
@@ -379,7 +388,11 @@ class _EditHistoryCard extends StatelessWidget {
                   tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                  icon: Icon(LucideIcons.ellipsisVertical, color: scheme.onSurfaceVariant.withValues(alpha: 0.9), size: 20),
+                  icon: Icon(
+                    LucideIcons.ellipsisVertical,
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.9),
+                    size: 20,
+                  ),
                   onSelected: (v) async {
                     if (v == "share") {
                       await _share(context, item.localFilePath);
@@ -406,7 +419,10 @@ class _EditHistoryCard extends StatelessWidget {
                         const PopupMenuDivider(),
                         PopupMenuItem<String>(
                           value: "delete_app",
-                          child: Text(l10n.deleteEditFromApp, style: TextStyle(color: scheme.error, fontWeight: FontWeight.w600)),
+                          child: Text(
+                            l10n.deleteEditFromApp,
+                            style: TextStyle(color: scheme.error, fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ];
                     }
@@ -421,22 +437,26 @@ class _EditHistoryCard extends StatelessWidget {
               ],
             ),
             if (chips.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: LcSpace.md),
               Wrap(spacing: 7, runSpacing: 6, children: chips),
             ],
             if (exists) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: LcSpace.md),
               SizedBox(
                 width: double.infinity,
                 height: 40,
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
                     elevation: 0,
-                    backgroundColor:
-                        Color.alphaBlend(scheme.primary.withValues(alpha: 0.18), scheme.surface),
+                    backgroundColor: Color.alphaBlend(
+                      scheme.primary.withValues(alpha: 0.18),
+                      scheme.surface,
+                    ),
                     foregroundColor: scheme.primary,
                     padding: const EdgeInsets.symmetric(horizontal: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(LcRadius.medium),
+                    ),
                   ),
                   onPressed: () => _open(context, item.localFilePath),
                   icon: Icon(LucideIcons.externalLink, size: 17, color: scheme.primary),

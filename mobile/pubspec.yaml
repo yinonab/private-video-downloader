@@ -40,13 +40,17 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.3
+  image: ^4.8.0
 
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/app_icon.png"
-  adaptive_icon_background: "#151528"
-  adaptive_icon_foreground: "assets/app_icon.png"
+  # Padded source keeps phone/film/scissors inside Android adaptive masks.
+  image_path: "assets/app_icon/linkclip_icon_padded.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/app_icon/linkclip_icon_padded.png"
+  # Extra inset on top of source padding (~76% artwork).
+  adaptive_icon_foreground_inset: 18
 
 flutter:
   generate: true

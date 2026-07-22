@@ -2,7 +2,7 @@
 
 | Metadata | |
 |----------|--|
-| **Last updated** | 2026-06-01 |
+| **Last updated** | 2026-07-20 |
 | **Status** | Android Quick Edit MVP implemented; in QA/polish. |
 | **Primary platform** | Android |
 | **Backend** | Production Docker Compose deployment (see `backend/docker-compose.prod.yml`, `backend/DEPLOY_HETZNER.md`) |
@@ -189,6 +189,8 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 
 **Project:** `mobile/` — Flutter package `private_video_downloader`.
 
+- **Branding (Android):** Launcher display name **`LinkClip`** (`AndroidManifest.xml` `android:label`). Launcher icon from padded source **`assets/app_icon/linkclip_icon_padded.png`** (artwork ~76% of canvas; original `assets/edit-video.png`) via **`flutter_launcher_icons`**: adaptive icon white background (`#FFFFFF`), **18%** foreground inset. Regenerate: `cd mobile && dart run tool/pad_launcher_icon.dart && dart run flutter_launcher_icons`. Shareable APKs: after `flutter build apk`, run `mobile/scripts/copy_linkclip_apk.ps1` to copy `app-*.apk` → **`LinkClip-debug.apk`** / **`LinkClip-release.apk`** under `build/app/outputs/flutter-apk/` (Flutter’s default names are left unchanged).
+
 ### Structure (high level)
 
 | Path | Role |
@@ -218,8 +220,8 @@ Download-based Quick Edit behavior (validation, redownload/expiry flows) is **un
 
 Recent iteration focused on clarity and layout stability (some areas may still be refined in QA):
 
-- **Home:** Compact **Paste link** / **Edit video** row; **downloads** cards use **spacious padding**, **24px** card radius, clearer title/metadata hierarchy, and status chip (`download_card.dart`); **single primary action** when applicable (retry / save / open); secondary actions via **overflow menu**, optional **long-press** sheet, and restrained **`flutter_slidable`** swipe. Segmented Downloads/Edits tabs use understated selection. **Theme:** navy/slate base, muted steel-blue accent `#4E8FBF` (`linkclip_palette.dart`, `app_theme.dart`, `linkclip_design_system.dart`).
-- **Home — local edit history (`Edits` tab):** Clearer cards with larger thumbnails and more padding; **Share** / **Save** (Android) / **Delete from app** in overflow; **Open** stays on-card as the single primary CTA (`home_edits_tab.dart`).
+- **Home:** Compact **Paste link** / **Edit video** row; **downloads** / **edits** use **aspect-aware project tiles** with **letterbox-aware** thumbnail handling: if a remote thumb is a tall canvas with baked black bars around landscape content, the tile uses the **content** aspect and crops bars for list display (`thumbnail_letterbox.dart`, `LinkClipMediaThumbnail`). List fit is **cover**; no platform-forced portrait. Status/meta beside the tile; primary CTA below.
+- **Home — local edit history (`Edits` tab):** Same tile rules using stored `width`/`height` when available; duration badge on thumb; **Open** primary CTA (`home_edits_tab.dart`).
 - **Analyze result:** Large-preview hierarchy — ~36% height media stage (`LinkClipMediaPreviewCard`), title max 2 lines, platform/duration chips, cleaner quality rows (no oversized icon circles), sticky-feel primary prepare CTA (`analyze_screen.dart`, `quality_selector.dart`). Analyze/wakelock/download-create behavior unchanged.
 - **Download status screen:** Large-preview result layout aligned with edit composer — ~38% height preview stage (contain letterboxing), title max 2 lines, status/platform chips, short helper text, primary Save (or Open when already saved) + secondary Share/Edit (`download_status_screen.dart`). No change to save/open/share/edit/ActiveOperation behavior.
 - **Design system (UI cleanup):** Shared tokens/components in `mobile/lib/core/theme/linkclip_design_system.dart` — spacing (`xs`–`xxl`), radii (`small`/`medium`/`large`/`card`), `LinkClipSectionCard`, `LinkClipSectionHeader`, `LinkClipChoiceChip`, `LinkClipStickyActionBar`, `LinkClipInlineEmptyState`, `LinkClipMediaPreviewCard`. Applied to edit Format/Speed/Trim, captions empty state, downloads/edits cards, download status, analyze result, working progress. **No** OperationMiniCard / PiP / DownloadManager.
