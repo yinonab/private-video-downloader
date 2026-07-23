@@ -324,7 +324,7 @@ class AppLocalizationsHe extends AppLocalizations {
   String get downloadStatusDone => 'מוכן לשמירה';
 
   @override
-  String get downloadStatusFailed => 'ההורדה נכשלה';
+  String get downloadStatusFailed => 'ההכנה נכשלה';
 
   @override
   String get downloadStatusCanceled => 'בוטל';
@@ -333,7 +333,21 @@ class AppLocalizationsHe extends AppLocalizations {
   String get downloadStatusUnknown => 'לא ידוע';
 
   @override
-  String get downloadVideoReadyHint => 'הסרטון מוכן להורדה למכשיר.';
+  String get downloadVideoReadyHint =>
+      'הסרטון מוכן. אפשר לשמור, לשתף או לפתוח.';
+
+  @override
+  String get downloadVideoReadyLocalHint =>
+      'הסרטון מוכן. אפשר לפתוח, לשתף או לשמור.';
+
+  @override
+  String get downloadFinalizingLocalChip => 'מסיים הכנה…';
+
+  @override
+  String get downloadFinalizingLocalHeadline => 'מכין את הקובץ לשימוש…';
+
+  @override
+  String get loadingPreparingFileForUseDot => 'מכין את הקובץ לשימוש…';
 
   @override
   String downloadSpeed(String speed) {
@@ -683,10 +697,10 @@ class AppLocalizationsHe extends AppLocalizations {
       'בודק את הסרטון ומכין את אפשרויות ההורדה.';
 
   @override
-  String get downloadProcessingSubtitle => 'מוריד ומעבד את הסרטון שלך.';
+  String get downloadProcessingSubtitle => 'מכין ומעבד את הסרטון שלך.';
 
   @override
-  String get downloadLoadingSubtitle => 'מכין את ההורדה שלך ומתחבר לשרת.';
+  String get downloadLoadingSubtitle => 'מתחברים לשרת ומכינים את הקובץ.';
 
   @override
   String get fileNoLongerAvailableTitle => 'הקובץ כבר לא זמין';
@@ -715,7 +729,11 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get keepAppOpenUntilDownloadFinished =>
-      'מומלץ להשאיר את האפליקציה פתוחה עד סיום ההורדה.';
+      'מומלץ להשאיר את האפליקציה פתוחה עד סיום ההכנה.';
+
+  @override
+  String get keepAppOpenUntilSaveFinished =>
+      'מומלץ להשאיר את האפליקציה פתוחה עד שהקובץ יישמר במכשיר.';
 
   @override
   String get keepAppOpenUntilUploadFinished =>
@@ -730,13 +748,19 @@ class AppLocalizationsHe extends AppLocalizations {
       'הסרטון הערוך כבר לא זמין בשרת ולא נמצא במכשיר.';
 
   @override
-  String get loadingPreparingDownloadDot => 'מכין הורדה…';
+  String get loadingPreparingDownloadDot => 'מכין את הסרטון…';
 
   @override
-  String get loadingDownloadingDot => 'מוריד…';
+  String get loadingDownloadingDot => 'מכין קובץ סופי…';
 
   @override
   String get loadingSavingToDeviceDot => 'שומר למכשיר…';
+
+  @override
+  String get loadingPreparingForShareDot => 'מכין לשיתוף…';
+
+  @override
+  String get loadingPreparingForOpenDot => 'מכין לפתיחה…';
 
   @override
   String get loadingFinalizingDot => 'מסיים…';
@@ -748,7 +772,7 @@ class AppLocalizationsHe extends AppLocalizations {
   String get downloadStagePreparing => 'מכין…';
 
   @override
-  String get downloadStageDownloading => 'מוריד…';
+  String get downloadStageDownloading => 'מכין קובץ…';
 
   @override
   String get downloadStageFinalizing => 'מסיים…';
@@ -774,7 +798,7 @@ class AppLocalizationsHe extends AppLocalizations {
   String get downloadStatusSavedOnDeviceTitle => 'נשמר במכשיר';
 
   @override
-  String get downloadStatusLoadingJob => 'טוען הורדה…';
+  String get downloadStatusLoadingJob => 'מכין את הסרטון…';
 
   @override
   String get stageQueued => 'ממתין בתור';
@@ -783,7 +807,7 @@ class AppLocalizationsHe extends AppLocalizations {
   String get stagePreparing => 'מכינים את הסרטון...';
 
   @override
-  String get stageDownloading => 'מוריד...';
+  String get stageDownloading => 'מכין את הסרטון...';
 
   @override
   String get stageCheckingCompatibility => 'בודק תאימות וידאו...';

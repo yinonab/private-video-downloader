@@ -2,6 +2,7 @@ import "dart:developer" as dev;
 import "dart:io";
 
 import "package:dio/dio.dart";
+import "package:flutter/foundation.dart";
 import "package:media_store_plus/media_store_plus.dart";
 import "package:path/path.dart" as p;
 import "package:path_provider/path_provider.dart";
@@ -56,6 +57,191 @@ final class FileDownloadService {
   static const String _downloadFailedHebrew = "הורדת הקובץ למכשיר נכשלה. נסה שוב.";
 
   Future<String?> cachedPath(String jobId) => _session.localPathForJob(jobId);
+
+  /// In-flight [ensureLocalJobMedia] futures keyed by jobId (dedupe concurrent Save/Share/Open).
+  final Map<String, Future<DownloadSaveOutcome>> _ensureInFlight = {};
+
+  /// Returns a valid local final file in **app cache** for [jobId].
+  ///
+  /// Cache-only: never publishes to MediaStore / public Downloads.
+  /// Concurrent callers for the same job share one in-flight transfer.
+  Future<DownloadSaveOutcome> ensureLocalJobMedia({
+    required String jobId,
+    required DownloadDetailResponse detail,
+    void Function(int received, int total)? onProgress,
+  }) {
+    final id = jobId.trim();
+    final existing = _ensureInFlight[id];
+    if (existing != null) {
+      _downloadDebugPrint("ensureLocalJobMedia join in-flight jobId=$id");
+      debugPrint("[FinalFile] ensureLocalJobMedia join in-flight jobId=$id");
+      return existing;
+    }
+
+    final future = _ensureLocalJobMediaBody(
+      jobId: id,
+      detail: detail,
+      onProgress: onProgress,
+    );
+    _ensureInFlight[id] = future;
+    future.whenComplete(() {
+      if (identical(_ensureInFlight[id], future)) {
+        _ensureInFlight.remove(id);
+      }
+    });
+    return future;
+  }
+
+  Future<DownloadSaveOutcome> _ensureLocalJobMediaBody({
+    required String jobId,
+    required DownloadDetailResponse detail,
+    void Function(int received, int total)? onProgress,
+  }) async {
+    final desc = await _session.savedDownloadForJob(jobId);
+    if (desc != null && desc.internalPath.trim().isNotEmpty) {
+      final path = desc.internalPath.trim();
+      if (!path.startsWith("content:")) {
+        final f = File(path);
+        if (await f.exists()) {
+          final len = await f.length();
+          if (len > 0) {
+            final published =
+                desc.publicUri != null && desc.publicUri!.trim().isNotEmpty;
+            debugPrint(
+              "[FinalFile] ensureLocalJobMedia result=reused_cache jobId=$jobId "
+              "size=$len mediaStorePublished=$published",
+            );
+            return DownloadSaveOutcome(
+              internalPath: path,
+              publicUri: desc.publicUri,
+              mediaStorePublished: published,
+            );
+          }
+        }
+      }
+    }
+
+    debugPrint(
+      "[FinalFile] ensureLocalJobMedia result=downloaded_to_cache START jobId=$jobId",
+    );
+    final outcome = await downloadJobMedia(
+      jobId: jobId,
+      detail: detail,
+      onProgress: onProgress,
+    );
+    debugPrint(
+      "[FinalFile] ensureLocalJobMedia result=downloaded_to_cache DONE jobId=$jobId "
+      "mediaStorePublished=${outcome.mediaStorePublished}",
+    );
+    return outcome;
+  }
+
+  /// Publishes an already-local final file to Android Downloads (MediaStore).
+  /// No HTTP transfer. Call only from explicit **Save to device**.
+  Future<DownloadSaveOutcome?> publishLocalJobMediaToDevice({required String jobId}) async {
+    final desc = await _session.savedDownloadForJob(jobId);
+    if (desc == null) return null;
+    final path = desc.internalPath.trim();
+    if (path.isEmpty || path.startsWith("content:")) return null;
+    final internalFile = File(path);
+    if (!await internalFile.exists()) return null;
+    final internalLen = await internalFile.length();
+    if (internalLen <= 0) return null;
+
+    if (!Platform.isAndroid) {
+      return DownloadSaveOutcome(
+        internalPath: path,
+        publicUri: desc.publicUri,
+        mediaStorePublished:
+            desc.publicUri != null && desc.publicUri!.trim().isNotEmpty,
+      );
+    }
+
+    if (desc.publicUri != null && desc.publicUri!.trim().isNotEmpty) {
+      debugPrint(
+        "[FinalFile] save result=already_published_to_device jobId=$jobId",
+      );
+      return DownloadSaveOutcome(
+        internalPath: path,
+        publicUri: desc.publicUri,
+        mediaStorePublished: true,
+      );
+    }
+
+    final shareName = desc.shareFileName.trim().isNotEmpty
+        ? desc.shareFileName.trim()
+        : p.basename(path);
+    final mime = desc.mimeType.trim().isNotEmpty
+        ? desc.mimeType.trim()
+        : "application/octet-stream";
+
+    final tmpRoot = await getTemporaryDirectory();
+    final exportTmpPath = p.join(tmpRoot.path, shareName);
+    await _tryDelete(exportTmpPath);
+
+    try {
+      await internalFile.copy(exportTmpPath);
+      final exportLen = await File(exportTmpPath).length();
+      if (exportLen <= 0 || exportLen != internalLen) {
+        await _tryDelete(exportTmpPath);
+        _downloadDebugPrint(
+          "publishLocalJobMediaToDevice skip invalid export jobId=$jobId",
+        );
+        return DownloadSaveOutcome(
+          internalPath: path,
+          publicUri: null,
+          mediaStorePublished: false,
+        );
+      }
+
+      SaveInfo? info;
+      try {
+        info = await MediaStore().saveFile(
+          tempFilePath: exportTmpPath,
+          dirType: DirType.download,
+          dirName: DirName.download,
+        );
+      } catch (e, st) {
+        _downloadDebugCatch("publishLocalJobMediaToDevice.MediaStore", e, st);
+        info = null;
+      } finally {
+        await _tryDelete(exportTmpPath);
+      }
+
+      final uriStr = info?.uri.toString();
+      if (info != null && uriStr != null && uriStr.isNotEmpty) {
+        final displayName =
+            info.name.trim().isNotEmpty ? info.name.trim() : shareName;
+        await _session.rememberSavedDownload(
+          jobId: jobId,
+          internalPath: path,
+          publicUri: uriStr,
+          shareFileName: displayName,
+          mimeType: mime,
+          fileSizeBytes: internalLen,
+        );
+        _downloadDebugPrint(
+          "publishLocalJobMediaToDevice success jobId=$jobId (no HTTP re-download)",
+        );
+        debugPrint(
+          "[FinalFile] save result=published_to_device jobId=$jobId",
+        );
+        return DownloadSaveOutcome(
+          internalPath: path,
+          publicUri: uriStr,
+          mediaStorePublished: true,
+        );
+      }
+    } catch (e, st) {
+      _downloadDebugCatch("publishLocalJobMediaToDevice", e, st);
+    }
+
+    return DownloadSaveOutcome(
+      internalPath: path,
+      publicUri: null,
+      mediaStorePublished: false,
+    );
+  }
 
   Future<void> _tryDelete(String path) async {
     try {
@@ -219,127 +405,28 @@ final class FileDownloadService {
     final mime = DownloadMediaNaming.mimeFromExtension(ext);
     final shareName = p.basename(targetPath);
 
-    Future<void> persist({required String? publicUri}) async {
-      await _session.rememberSavedDownload(
-        jobId: jobId,
-        internalPath: targetPath,
-        publicUri: publicUri,
-        shareFileName: shareName,
-        mimeType: mime,
-        fileSizeBytes: internalLen,
-      );
-      dev.log(
-        "file_download: descriptor stored internal=$targetPath publicUri=$publicUri name=$shareName mime=$mime size=$internalLen",
-      );
-      _downloadDebugPrint(
-        "descriptor stored jobId=$jobId internalPath=$targetPath publicUri=$publicUri "
-        "shareFileName=$shareName mimeType=$mime fileSizeBytes=$internalLen",
-      );
-    }
-
-    if (Platform.isAndroid) {
-      final tmpRoot = await getTemporaryDirectory();
-      final exportTmpPath = p.join(tmpRoot.path, shareName);
-      final exportFile = File(exportTmpPath);
-      await _tryDelete(exportTmpPath);
-
-      final bytes = await internalFile.readAsBytes();
-      dev.log("file_download: MediaStore export read bytes=${bytes.length} (internal=$internalLen)");
-      if (bytes.isEmpty || bytes.length != internalLen) {
-        await persist(publicUri: null);
-        dev.log("file_download: export read invalid; skip MediaStore");
-        _downloadDebugPrint(
-          "MediaStore skipped invalidExportRead bytesLen=${bytes.length} internalLen=$internalLen",
-        );
-        return DownloadSaveOutcome(internalPath: targetPath, publicUri: null, mediaStorePublished: false);
-      }
-
-      await exportFile.writeAsBytes(bytes, flush: true);
-      final exportLen = await exportFile.length();
-      dev.log("file_download: MediaStore temp path=$exportTmpPath bytes=$exportLen");
-      if (exportLen <= 0 || exportLen != bytes.length) {
-        try {
-          await exportFile.delete();
-        } catch (e, st) {
-          _downloadDebugCatch("exportFile.delete invalid exportLen", e, st);
-        }
-        await persist(publicUri: null);
-        _downloadDebugPrint(
-          "MediaStore skipped invalidExportTmp exportLen=$exportLen bytesLen=${bytes.length}",
-        );
-        return DownloadSaveOutcome(internalPath: targetPath, publicUri: null, mediaStorePublished: false);
-      }
-
-      SaveInfo? info;
-      try {
-        _downloadDebugPrint(
-          "MediaStore.saveFile start exportTmpPath=$exportTmpPath internalPath=$targetPath bytes=$exportLen",
-        );
-        final saved = await MediaStore().saveFile(
-          tempFilePath: exportTmpPath,
-          dirType: DirType.download,
-          dirName: DirName.download,
-        );
-        info = saved;
-        _downloadDebugPrint(
-          "MediaStore.saveFile returned uri=${saved?.uri} name=${saved?.name}",
-        );
-      } catch (e, st) {
-        dev.log("file_download: MediaStore.saveFile error", error: e, stackTrace: st);
-        _downloadDebugCatch("MediaStore.saveFile", e, st);
-        info = null;
-      }
-
-      final uriStr = info?.uri.toString();
-      if (info != null && uriStr != null && uriStr.isNotEmpty) {
-        var uriExistsLogged = false;
-        try {
-          uriExistsLogged = await MediaStore().isFileUriExist(uriString: uriStr);
-        } catch (e, st) {
-          dev.log("file_download: isFileUriExist failed", error: e, stackTrace: st);
-          _downloadDebugCatch("MediaStore.isFileUriExist", e, st);
-        }
-        dev.log(
-          "file_download: MediaStore success uri=$uriStr name=${info.name} uriExists=$uriExistsLogged",
-        );
-        _downloadDebugPrint(
-          "MediaStore result=success uri=$uriStr displayName=${info.name} uriExists=$uriExistsLogged",
-        );
-        final displayName = info.name.trim().isNotEmpty ? info.name.trim() : shareName;
-        await _session.rememberSavedDownload(
-          jobId: jobId,
-          internalPath: targetPath,
-          publicUri: uriStr,
-          shareFileName: displayName,
-          mimeType: mime,
-          fileSizeBytes: internalLen,
-        );
-        dev.log(
-          "file_download: descriptor stored internal=$targetPath publicUri=$uriStr name=$displayName size=$internalLen",
-        );
-        _downloadDebugPrint(
-          "descriptor stored (MediaStore ok) jobId=$jobId internalPath=$targetPath publicUri=$uriStr "
-          "shareFileName=$displayName fileSizeBytes=$internalLen",
-        );
-
-        final verifyInternal = await internalFile.length();
-        dev.log("file_download: post-MediaStore internal bytes=$verifyInternal path=$targetPath");
-
-        return DownloadSaveOutcome(
-          internalPath: targetPath,
-          publicUri: uriStr,
-          mediaStorePublished: true,
-        );
-      }
-
-      dev.log("file_download: MediaStore failed; descriptor internal-only path=$targetPath");
-      _downloadDebugPrint("MediaStore result=failed internalPath=$targetPath (persist internal-only)");
-      await persist(publicUri: null);
-      return DownloadSaveOutcome(internalPath: targetPath, publicUri: null, mediaStorePublished: false);
-    }
-
-    await persist(publicUri: null);
-    return DownloadSaveOutcome(internalPath: targetPath, publicUri: null, mediaStorePublished: false);
+    // Cache-only: never publish to MediaStore here. Explicit Save uses
+    // [publishLocalJobMediaToDevice].
+    await _session.rememberSavedDownload(
+      jobId: jobId,
+      internalPath: targetPath,
+      publicUri: null,
+      shareFileName: shareName,
+      mimeType: mime,
+      fileSizeBytes: internalLen,
+    );
+    debugPrint(
+      "[FinalFile] downloadJobMedia result=downloaded_to_cache jobId=$jobId size=$internalLen",
+    );
+    _downloadDebugPrint(
+      "descriptor stored cache-only jobId=$jobId internalPath=$targetPath "
+      "shareFileName=$shareName mimeType=$mime fileSizeBytes=$internalLen",
+    );
+    return DownloadSaveOutcome(
+      internalPath: targetPath,
+      publicUri: null,
+      mediaStorePublished: false,
+    );
   }
 
   /// Downloads edited MP4 into app documents (`edits/`). Does not register a download-job descriptor.

@@ -93,13 +93,20 @@ Future<bool> _saveDownloadToDevice(
       }
       return false;
     }
-    final outcome = await scope.files.downloadJobMedia(
+    final outcome = await scope.files.ensureLocalJobMedia(
       jobId: jobId,
       detail: detail,
       onProgress: (received, total) {
         progress.value = (received, total);
       },
     );
+    // Explicit save-to-device: publish cache to MediaStore when possible.
+    var published = outcome;
+    if (Platform.isAndroid && !outcome.mediaStorePublished) {
+      final fromCache =
+          await scope.files.publishLocalJobMediaToDevice(jobId: jobId);
+      if (fromCache != null) published = fromCache;
+    }
     final ok = await validateSavedDownload(scope.session, jobId);
     if (context.mounted) {
       await _dismissSaveProgressDialog(context);
@@ -108,7 +115,8 @@ Future<bool> _saveDownloadToDevice(
           l10n,
           kLinkClipMediaStoreFolderName,
         );
-        final msg = outcome.mediaStorePublished == true && outcome.publicUri != null
+        final msg = published.mediaStorePublished == true &&
+                published.publicUri != null
             ? l10n.downloadSavedToDownloads(displayPath)
             : (Platform.isAndroid
                 ? l10n.downloadSavedInAppOnly(displayPath)

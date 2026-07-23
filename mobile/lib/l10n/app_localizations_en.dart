@@ -339,7 +339,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadVideoReadyHint =>
-      'The video is ready to save to your device.';
+      'The video is ready. You can save, share, or open it.';
+
+  @override
+  String get downloadVideoReadyLocalHint =>
+      'The video is ready. You can open, share, or save it.';
+
+  @override
+  String get downloadFinalizingLocalChip => 'Finishing preparation…';
+
+  @override
+  String get downloadFinalizingLocalHeadline => 'Preparing the file for use…';
+
+  @override
+  String get loadingPreparingFileForUseDot => 'Preparing the file for use…';
 
   @override
   String downloadSpeed(String speed) {
@@ -692,11 +705,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadProcessingSubtitle =>
-      'Downloading and processing your video.';
+      'Preparing and processing your video.';
 
   @override
   String get downloadLoadingSubtitle =>
-      'Preparing your download and connecting to the server.';
+      'Connecting to the server and preparing the file.';
 
   @override
   String get fileNoLongerAvailableTitle => 'This file is no longer available';
@@ -725,7 +738,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get keepAppOpenUntilDownloadFinished =>
-      'We recommend keeping the app open until the download finishes.';
+      'We recommend keeping the app open until preparation finishes.';
+
+  @override
+  String get keepAppOpenUntilSaveFinished =>
+      'We recommend keeping the app open until the file is saved to your device.';
 
   @override
   String get keepAppOpenUntilUploadFinished =>
@@ -740,13 +757,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'This edited video is no longer on the server and wasn\'t found on your device.';
 
   @override
-  String get loadingPreparingDownloadDot => 'Preparing download…';
+  String get loadingPreparingDownloadDot => 'Preparing video…';
 
   @override
-  String get loadingDownloadingDot => 'Downloading…';
+  String get loadingDownloadingDot => 'Preparing final file…';
 
   @override
   String get loadingSavingToDeviceDot => 'Saving to device…';
+
+  @override
+  String get loadingPreparingForShareDot => 'Preparing to share…';
+
+  @override
+  String get loadingPreparingForOpenDot => 'Preparing to open…';
 
   @override
   String get loadingFinalizingDot => 'Finalizing…';
@@ -758,7 +781,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get downloadStagePreparing => 'Preparing…';
 
   @override
-  String get downloadStageDownloading => 'Downloading…';
+  String get downloadStageDownloading => 'Preparing file…';
 
   @override
   String get downloadStageFinalizing => 'Finalizing…';
@@ -784,7 +807,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get downloadStatusSavedOnDeviceTitle => 'Saved on device';
 
   @override
-  String get downloadStatusLoadingJob => 'Loading download…';
+  String get downloadStatusLoadingJob => 'Preparing video…';
 
   @override
   String get stageQueued => 'Queued';
@@ -793,7 +816,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stagePreparing => 'Preparing your video...';
 
   @override
-  String get stageDownloading => 'Downloading...';
+  String get stageDownloading => 'Preparing the video...';
 
   @override
   String get stageCheckingCompatibility => 'Checking video compatibility...';

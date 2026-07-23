@@ -88,8 +88,11 @@ class DownloadCard extends StatelessWidget {
       requestedFormat: item.requestedFormat,
       compactProgressCard: true,
     );
-    final statusLabel = ui.statusChipLabel;
     final done = item.statusParsed.label == DownloadUiStatusLabel.done;
+    // Backend-done without a local file is not fully ready yet.
+    final statusLabel = done && !localFileExists
+        ? l10n.downloadFinalizingLocalChip
+        : ui.statusChipLabel;
     final failedOrCanceled = item.status == "failed" || item.status == "canceled";
     final isTikTokJob = (item.requestedFormat ?? "").trim().toLowerCase() == "tiktok_ready";
     final isAudioOnly = downloadItemIsAudioOnly(item);

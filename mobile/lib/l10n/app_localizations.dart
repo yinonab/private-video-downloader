@@ -731,8 +731,32 @@ abstract class AppLocalizations {
   /// No description provided for @downloadVideoReadyHint.
   ///
   /// In en, this message translates to:
-  /// **'The video is ready to save to your device.'**
+  /// **'The video is ready. You can save, share, or open it.'**
   String get downloadVideoReadyHint;
+
+  /// No description provided for @downloadVideoReadyLocalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The video is ready. You can open, share, or save it.'**
+  String get downloadVideoReadyLocalHint;
+
+  /// No description provided for @downloadFinalizingLocalChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing preparation…'**
+  String get downloadFinalizingLocalChip;
+
+  /// No description provided for @downloadFinalizingLocalHeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing the file for use…'**
+  String get downloadFinalizingLocalHeadline;
+
+  /// No description provided for @loadingPreparingFileForUseDot.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing the file for use…'**
+  String get loadingPreparingFileForUseDot;
 
   /// No description provided for @downloadSpeed.
   ///
@@ -1355,13 +1379,13 @@ abstract class AppLocalizations {
   /// No description provided for @downloadProcessingSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Downloading and processing your video.'**
+  /// **'Preparing and processing your video.'**
   String get downloadProcessingSubtitle;
 
   /// No description provided for @downloadLoadingSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Preparing your download and connecting to the server.'**
+  /// **'Connecting to the server and preparing the file.'**
   String get downloadLoadingSubtitle;
 
   /// No description provided for @fileNoLongerAvailableTitle.
@@ -1409,8 +1433,14 @@ abstract class AppLocalizations {
   /// No description provided for @keepAppOpenUntilDownloadFinished.
   ///
   /// In en, this message translates to:
-  /// **'We recommend keeping the app open until the download finishes.'**
+  /// **'We recommend keeping the app open until preparation finishes.'**
   String get keepAppOpenUntilDownloadFinished;
+
+  /// No description provided for @keepAppOpenUntilSaveFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'We recommend keeping the app open until the file is saved to your device.'**
+  String get keepAppOpenUntilSaveFinished;
 
   /// No description provided for @keepAppOpenUntilUploadFinished.
   ///
@@ -1433,13 +1463,13 @@ abstract class AppLocalizations {
   /// No description provided for @loadingPreparingDownloadDot.
   ///
   /// In en, this message translates to:
-  /// **'Preparing download…'**
+  /// **'Preparing video…'**
   String get loadingPreparingDownloadDot;
 
   /// No description provided for @loadingDownloadingDot.
   ///
   /// In en, this message translates to:
-  /// **'Downloading…'**
+  /// **'Preparing final file…'**
   String get loadingDownloadingDot;
 
   /// No description provided for @loadingSavingToDeviceDot.
@@ -1447,6 +1477,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Saving to device…'**
   String get loadingSavingToDeviceDot;
+
+  /// No description provided for @loadingPreparingForShareDot.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing to share…'**
+  String get loadingPreparingForShareDot;
+
+  /// No description provided for @loadingPreparingForOpenDot.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing to open…'**
+  String get loadingPreparingForOpenDot;
 
   /// No description provided for @loadingFinalizingDot.
   ///
@@ -1469,7 +1511,7 @@ abstract class AppLocalizations {
   /// No description provided for @downloadStageDownloading.
   ///
   /// In en, this message translates to:
-  /// **'Downloading…'**
+  /// **'Preparing file…'**
   String get downloadStageDownloading;
 
   /// No description provided for @downloadStageFinalizing.
@@ -1517,7 +1559,7 @@ abstract class AppLocalizations {
   /// No description provided for @downloadStatusLoadingJob.
   ///
   /// In en, this message translates to:
-  /// **'Loading download…'**
+  /// **'Preparing video…'**
   String get downloadStatusLoadingJob;
 
   /// No description provided for @stageQueued.
@@ -1535,7 +1577,7 @@ abstract class AppLocalizations {
   /// No description provided for @stageDownloading.
   ///
   /// In en, this message translates to:
-  /// **'Downloading...'**
+  /// **'Preparing the video...'**
   String get stageDownloading;
 
   /// No description provided for @stageCheckingCompatibility.

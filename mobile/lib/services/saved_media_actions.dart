@@ -12,17 +12,23 @@ import "../l10n/app_localizations.dart";
 Future<bool> validateSavedDownload(LocalSession session, String jobId) async {
   final desc = await session.savedDownloadForJob(jobId);
   if (desc == null || desc.internalPath.trim().isEmpty) {
+    debugPrint("[FinalFile] validate jobId=$jobId descriptorFound=false");
     dev.log("saved_media: missing descriptor jobId=$jobId");
     return false;
   }
   final path = desc.internalPath.trim();
   if (path.startsWith("content:")) {
+    debugPrint("[FinalFile] validate jobId=$jobId descriptorFound=true pathType=contentUri (rejected)");
     dev.log("saved_media: unexpected content internal ref jobId=$jobId");
     return false;
   }
   final f = File(path);
   final exists = await f.exists();
   final len = exists ? await f.length() : 0;
+  debugPrint(
+    "[FinalFile] validate jobId=$jobId descriptorFound=true exists=$exists size=$len "
+    "mediaStoreUri=${desc.publicUri != null && desc.publicUri!.trim().isNotEmpty}",
+  );
   dev.log(
     "saved_media: validate internal exists=$exists size=$len storedSize=${desc.fileSizeBytes} jobId=$jobId path=$path",
   );
@@ -75,21 +81,34 @@ Future<void> shareSavedDownload({
 }) async {
   final l10n = AppLocalizations.of(context);
   final messenger = ScaffoldMessenger.of(context);
+  debugPrint("[FinalFile] share requested jobId=$jobId");
   final desc = await session.savedDownloadForJob(jobId);
   if (desc == null || desc.internalPath.isEmpty) {
+    debugPrint("[FinalFile] share abort — no descriptor jobId=$jobId");
     messenger.showSnackBar(SnackBar(content: Text(l10n.savedMustDownloadFirst)));
     return;
   }
   final localPath = desc.internalPath.trim();
+  final hasMediaStore =
+      desc.publicUri != null && desc.publicUri!.trim().isNotEmpty;
+  debugPrint(
+    "[FinalFile] share descriptorFound=true mediaStore=$hasMediaStore "
+    "shareUsing=pathType=cache",
+  );
   dev.log(
     "saved_media share: internal=$localPath name=${desc.shareFileName} mime=${desc.mimeType}",
   );
   if (!await validateSavedDownload(session, jobId)) {
+    debugPrint("[FinalFile] share abort — validate failed jobId=$jobId");
     messenger.showSnackBar(SnackBar(content: Text(l10n.savedCannotShareFile)));
     return;
   }
   final shareText = (title != null && title.trim().isNotEmpty) ? title.trim() : null;
   try {
+    debugPrint(
+      "[FinalFile] share opening system sheet via XFile(cache) jobId=$jobId "
+      "(no MediaStore publish)",
+    );
     final xf = XFile(
       localPath,
       mimeType: desc.mimeType,

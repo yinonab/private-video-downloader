@@ -38,7 +38,9 @@ import "../../core/media/backend_media_expired.dart";
 import "../../core/widgets/internet_download_expired_sheet.dart";
 import "../../core/widgets/keep_app_open_hint.dart";
 import "../../l10n/app_localizations.dart";
+import "../../services/file_download_service.dart";
 import "../../services/saved_media_actions.dart";
+import "../edit/launch_audio_edit.dart";
 import "../edit/quick_edit_launch.dart";
 
 class DownloadStatusScreen extends StatefulWidget {
@@ -83,22 +85,31 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
   String? _resolvedJobId;
   bool _polling = false;
   bool _fileBusy = false;
+  /// Action-specific Stage B label while [_fileBusy] (save / share / open / auto-finalize).
+  String? _fileBusyStageLabel;
+  /// Backend done; transferring final file into local cache before showing ready.
+  bool _finalizingLocal = false;
   bool _expiredRedownloadOfferInFlight = false;
   int _receiveBytes = 0;
   int _totalBytes = 0;
   bool _localSaved = false;
+  /// True when a public MediaStore / Downloads URI is recorded for this job.
+  bool _devicePublished = false;
   bool _localLookupDone = false;
   bool _downloadWakelockHeld = false;
 
   bool _wantsDownloadWakelock() {
-    if (_fileBusy) return true;
+    if (_fileBusy || _finalizingLocal) return true;
     final pollId = _pollJobId;
     if (pollId.isEmpty) {
       return widget.pendingCreateRequest != null && _err == null;
     }
     final d = _detail;
     if (d == null) return true;
-    return !d.terminal;
+    // Keep awake while backend runs, or while backend-done but local file not ready yet.
+    if (!d.terminal) return true;
+    if (d.status == "done" && !_localSaved) return true;
+    return false;
   }
 
   Future<void> _syncDownloadWakelock() async {
@@ -207,6 +218,17 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
     if (detail.terminal) {
       _timer?.cancel();
     }
+    if (detail.status == "done") {
+      assert(() {
+        if (kDebugMode) {
+          debugPrint(
+            "### FINAL_FILE ### backend done jobId=${detail.id} — starting local ensure if needed",
+          );
+        }
+        return true;
+      }());
+      unawaited(_maybeStartLocalFinalize());
+    }
   }
 
   @override
@@ -221,10 +243,15 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
     final id = _pollJobId;
     if (id.isEmpty) return;
     final terminal = _detail?.terminal ?? false;
-    if (terminal && !_fileBusy) return;
+    // Resume polling / local finalize when not fully locally ready.
+    if (terminal && _localSaved && !_fileBusy && !_finalizingLocal) return;
     _polling = false;
     unawaited(_operations?.pollNow(force: true));
-    _startPollingTimer();
+    if (!terminal) {
+      _startPollingTimer();
+    } else if (_detail?.status == "done" && !_localSaved) {
+      unawaited(_maybeStartLocalFinalize());
+    }
     unawaited(_syncDownloadWakelock());
   }
 
@@ -362,12 +389,95 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
     final id = _pollJobId;
     if (id.isEmpty) return;
     final session = AppScope.read(context).session;
-    final desc = await session.savedDownloadForJob(id);
+    final ok = await validateSavedDownload(session, id);
+    final desc = ok ? await session.savedDownloadForJob(id) : null;
+    final published =
+        desc?.publicUri != null && desc!.publicUri!.trim().isNotEmpty;
     if (!mounted) return;
     setState(() {
-      _localSaved = desc != null && desc.internalPath.trim().isNotEmpty;
+      _localSaved = ok;
+      _devicePublished = published;
       _localLookupDone = true;
     });
+  }
+
+  /// After backend `done`, pull the final file into **app cache only** (no MediaStore).
+  Future<void> _maybeStartLocalFinalize() async {
+    final d = _detail;
+    if (d == null || d.status != "done") return;
+    final jobId = _pollJobId;
+    if (jobId.isEmpty) return;
+    if (_finalizingLocal) return;
+
+    final scope = AppScope.read(context);
+    if (await validateSavedDownload(scope.session, jobId)) {
+      if (!mounted) return;
+      await _refreshLocalSaved();
+      debugPrint(
+        "[FinalFile] autoFinalize result=reused_cache jobId=$jobId",
+      );
+      return;
+    }
+    if (!mounted) return;
+
+    final l10n = context.l10n;
+    setState(() {
+      _finalizingLocal = true;
+      _fileBusy = true;
+      _fileBusyStageLabel = l10n.loadingPreparingFileForUseDot;
+      _receiveBytes = 0;
+      _totalBytes = 0;
+      _localLookupDone = true;
+    });
+    unawaited(_syncDownloadWakelock());
+    unawaited(scope.operations.markClientDownloadingResult());
+    debugPrint("[FinalFile] autoFinalize cacheOnly start jobId=$jobId");
+
+    try {
+      await scope.files.ensureLocalJobMedia(
+        jobId: jobId,
+        detail: d,
+        onProgress: (r, t) {
+          if (!mounted) return;
+          setState(() {
+            _receiveBytes = r;
+            _totalBytes = t;
+          });
+        },
+      );
+      if (!mounted) return;
+      await _refreshLocalSaved();
+      await scope.operations.markSuccess();
+      debugPrint(
+        "[FinalFile] autoFinalize result=downloaded_to_cache jobId=$jobId "
+        "localSaved=$_localSaved devicePublished=$_devicePublished",
+      );
+    } catch (e, st) {
+      downloadDebugPrint(
+        "catch download_status_screen._maybeStartLocalFinalize type=${e.runtimeType} message=$e",
+      );
+      downloadDebugStackTrace("download_status_screen._maybeStartLocalFinalize", st);
+      if (!mounted) return;
+      if (e is ApiError && isMissingBackendBinaryError(e)) {
+        await _maybeOfferRedownloadForMissingFile(e);
+      } else {
+        final msg =
+            e is ApiError ? localizedApiErrorMessage(context.l10n, e) : "$e";
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        unawaited(
+          scope.operations.markFailed(errorCode: e is ApiError ? e.code : null),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _finalizingLocal = false;
+          _fileBusy = false;
+          _fileBusyStageLabel = null;
+        });
+      }
+      unawaited(_syncDownloadWakelock());
+    }
   }
 
   Future<void> _maybeOfferRedownloadForMissingFile(ApiError err) async {
@@ -388,27 +498,53 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
     }
   }
 
-  /// When the user has not saved locally yet, pull from server once (Open/Share/Save-to-device path).
-  Future<bool> _ensureLocalCopyFromServerForActions() async {
+  /// Stage B actions after local ready (or join in-flight finalize).
+  Future<bool> _ensureLocalCopyForAction(_LocalFileAction kind) async {
     final d = _detail;
     if (d == null || d.status != "done") return false;
-    if (_localSaved) return true;
-    if (_fileBusy) return false;
+    final scope = AppScope.read(context);
+    final l10n = context.l10n;
+    final jobId = _pollJobId;
 
-    setState(() {
-      _fileBusy = true;
-      _receiveBytes = 0;
-      _totalBytes = 0;
-    });
-    unawaited(AppScope.read(context).operations.markClientDownloadingResult());
-    final operations = AppScope.read(context).operations;
+    if (await validateSavedDownload(scope.session, jobId)) {
+      if (!mounted) return false;
+      await _refreshLocalSaved();
+      debugPrint(
+        "[FinalFile] action=$kind result=reused_cache jobId=$jobId (no transfer UI)",
+      );
+      return true;
+    }
+    if (!mounted) return false;
+
+    debugPrint(
+      "[FinalFile] action=$kind cacheMissing=true willEnsure jobId=$jobId "
+      "finalizing=$_finalizingLocal fileBusy=$_fileBusy",
+    );
+
+    // Prefer joining auto-finalize / in-flight ensure rather than a second transfer.
+    final owningBusyUi = !_fileBusy && !_finalizingLocal;
+    if (owningBusyUi) {
+      setState(() {
+        _fileBusy = true;
+        _fileBusyStageLabel = switch (kind) {
+          // Cache ensure only — MediaStore publish has its own “saving” UI.
+          _LocalFileAction.save => l10n.loadingPreparingFileForUseDot,
+          _LocalFileAction.share => l10n.loadingPreparingForShareDot,
+          _LocalFileAction.open => l10n.loadingPreparingForOpenDot,
+        };
+        _receiveBytes = 0;
+        _totalBytes = 0;
+      });
+      unawaited(_syncDownloadWakelock());
+      unawaited(scope.operations.markClientDownloadingResult());
+    }
+
     try {
-      final scope = AppScope.read(context);
-      await scope.files.downloadJobMedia(
-        jobId: _pollJobId,
+      await scope.files.ensureLocalJobMedia(
+        jobId: jobId,
         detail: d,
         onProgress: (r, t) {
-          if (!mounted) return;
+          if (!mounted || !owningBusyUi) return;
           setState(() {
             _receiveBytes = r;
             _totalBytes = t;
@@ -417,11 +553,14 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
       );
       if (!mounted) return false;
       await _refreshLocalSaved();
-      await operations.markSuccess();
+      if (owningBusyUi) {
+        await scope.operations.markSuccess();
+      }
       return _localSaved;
     } catch (e, st) {
       downloadDebugPrint(
-        "catch download_status_screen._ensureLocalCopyFromServerForActions type=${e.runtimeType} message=$e",
+        "catch download_status_screen._ensureLocalCopyForAction kind=$kind "
+        "type=${e.runtimeType} message=$e",
       );
       if (e is DioException) {
         downloadDebugPrint(
@@ -429,7 +568,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
           "cancelTokenCancelled=${e.requestOptions.cancelToken?.isCancelled}",
         );
       }
-      downloadDebugStackTrace("download_status_screen._ensureLocalCopyFromServerForActions", st);
+      downloadDebugStackTrace("download_status_screen._ensureLocalCopyForAction", st);
       if (!mounted) return false;
       if (e is ApiError && isMissingBackendBinaryError(e)) {
         await _maybeOfferRedownloadForMissingFile(e);
@@ -437,10 +576,20 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
         final msg =
             e is ApiError ? localizedApiErrorMessage(context.l10n, e) : "$e";
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        if (owningBusyUi) {
+          unawaited(
+            scope.operations.markFailed(errorCode: e is ApiError ? e.code : null),
+          );
+        }
       }
       return false;
     } finally {
-      if (mounted) setState(() => _fileBusy = false);
+      if (owningBusyUi && mounted) {
+        setState(() {
+          _fileBusy = false;
+          _fileBusyStageLabel = null;
+        });
+      }
       unawaited(_syncDownloadWakelock());
     }
   }
@@ -470,6 +619,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
       }());
       if (next.status == "done") {
         await _refreshLocalSaved();
+        unawaited(_maybeStartLocalFinalize());
       }
     } catch (e) {
       if (!mounted) return;
@@ -491,80 +641,77 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
     final d = _detail;
     if (d == null || d.status != "done") return;
     final scope = AppScope.read(context);
-    downloadDebugPrint(
-      "pressed הורד למכשיר jobId=$_pollJobId "
-      "baseUrl=${scope.session.serverUrl.trim()} finalFileUrl=${scope.api.downloadFileUrl(_pollJobId)} "
-      "tokenExists=${scope.session.deviceToken.trim().isNotEmpty}",
-    );
-    setState(() {
-      _fileBusy = true;
-      _receiveBytes = 0;
-      _totalBytes = 0;
-    });
-    unawaited(_syncDownloadWakelock());
-    unawaited(scope.operations.markClientDownloadingResult());
-    try {
-      final files = scope.files;
-      final outcome = await files.downloadJobMedia(
-        jobId: _pollJobId,
-        detail: d,
-        onProgress: (r, t) {
-          if (!mounted) return;
-          setState(() {
-            _receiveBytes = r;
-            _totalBytes = t;
-          });
-        },
+    debugPrint("[FinalFile] save tapped jobId=$_pollJobId");
+
+    // Ensure app cache first (join in-flight finalize if needed) — no MediaStore yet.
+    final cacheOk = await _ensureLocalCopyForAction(_LocalFileAction.save);
+    if (!mounted || !cacheOk) return;
+
+    final descBefore = await scope.session.savedDownloadForJob(_pollJobId);
+    final alreadyPublished = descBefore?.publicUri != null &&
+        descBefore!.publicUri!.trim().isNotEmpty;
+
+    DownloadSaveOutcome outcome;
+    if (alreadyPublished) {
+      outcome = DownloadSaveOutcome(
+        internalPath: descBefore.internalPath,
+        publicUri: descBefore.publicUri,
+        mediaStorePublished: true,
       );
-      if (!mounted) return;
-      downloadDebugPrint(
-        "downloadToDevice success internalPath=${outcome.internalPath} "
-        "mediaStorePublished=${outcome.mediaStorePublished} publicUri=${outcome.publicUri}",
+      debugPrint(
+        "[FinalFile] save result=already_published_to_device jobId=$_pollJobId",
       );
-      await _refreshLocalSaved();
-      await scope.operations.markSuccess();
-      final displayPath = MediaExportDisplayPath.downloadsThenFolder(
-          l10n, kLinkClipMediaStoreFolderName);
-      final msg = outcome.mediaStorePublished == true && outcome.publicUri != null
-          ? l10n.downloadSavedToDownloads(displayPath)
-          : (Platform.isAndroid
-              ? l10n.downloadSavedInAppOnly(displayPath)
-              : l10n.downloadSavedGeneric);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-    } catch (e, st) {
-      downloadDebugPrint(
-        "catch download_status_screen._downloadToDevice type=${e.runtimeType} message=$e",
-      );
-      if (e is DioException) {
-        downloadDebugPrint(
-          "DioException dioType=${e.type} responseStatus=${e.response?.statusCode} "
-          "cancelTokenCancelled=${e.requestOptions.cancelToken?.isCancelled}",
-        );
-      }
-      if (e is ApiError) {
-        downloadDebugPrint(
-          "ApiError code=${e.code} httpStatus=${e.httpStatus} localized=${e.localized}",
-        );
-      }
-      downloadDebugStackTrace("download_status_screen._downloadToDevice", st);
-      if (!mounted) return;
-      if (e is ApiError && isMissingBackendBinaryError(e)) {
-        await _maybeOfferRedownloadForMissingFile(e);
-        return;
-      }
-      final msg = e is ApiError ? localizedApiErrorMessage(l10n, e) : "$e";
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-      unawaited(scope.operations.markFailed(errorCode: e is ApiError ? e.code : null));
-    } finally {
-      if (mounted) setState(() => _fileBusy = false);
+    } else if (Platform.isAndroid) {
+      setState(() {
+        _fileBusy = true;
+        _fileBusyStageLabel = l10n.loadingSavingToDeviceDot;
+      });
       unawaited(_syncDownloadWakelock());
+      try {
+        outcome = await scope.files.publishLocalJobMediaToDevice(
+              jobId: _pollJobId,
+            ) ??
+            DownloadSaveOutcome(
+              internalPath: descBefore?.internalPath ?? "",
+              publicUri: null,
+              mediaStorePublished: false,
+            );
+      } finally {
+        if (mounted) {
+          setState(() {
+            _fileBusy = false;
+            _fileBusyStageLabel = null;
+          });
+        }
+        unawaited(_syncDownloadWakelock());
+      }
+    } else {
+      outcome = DownloadSaveOutcome(
+        internalPath: descBefore?.internalPath ?? "",
+        publicUri: null,
+        mediaStorePublished: false,
+      );
     }
+
+    if (!mounted) return;
+    await _refreshLocalSaved();
+    if (!mounted) return;
+    final displayPath = MediaExportDisplayPath.downloadsThenFolder(
+      l10n,
+      kLinkClipMediaStoreFolderName,
+    );
+    final msg = outcome.mediaStorePublished && outcome.publicUri != null
+        ? l10n.downloadSavedToDownloads(displayPath)
+        : (Platform.isAndroid
+            ? l10n.downloadSavedInAppOnly(displayPath)
+            : l10n.downloadSavedGeneric);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Future<void> _openLocal() async {
-    final ok = await _ensureLocalCopyFromServerForActions();
+    final ok = await _ensureLocalCopyForAction(_LocalFileAction.open);
     if (!mounted || !ok) return;
+    debugPrint("[FinalFile] open result=opened_cache jobId=$_pollJobId");
     await openSavedDownload(
       context: context,
       session: AppScope.read(context).session,
@@ -573,8 +720,13 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
   }
 
   Future<void> _shareLocal() async {
-    final ok = await _ensureLocalCopyFromServerForActions();
+    debugPrint(
+      "[FinalFile] share tapped jobId=$_pollJobId localSaved=$_localSaved "
+      "devicePublished=$_devicePublished finalizing=$_finalizingLocal",
+    );
+    final ok = await _ensureLocalCopyForAction(_LocalFileAction.share);
     if (!mounted || !ok) return;
+    debugPrint("[FinalFile] share result=shared_cache jobId=$_pollJobId");
     await shareSavedDownload(
       context: context,
       session: AppScope.read(context).session,
@@ -623,7 +775,9 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
         processingStage: d.processingStage,
         progressPercent: d.progressPercent,
         requestedFormat: d.requestedFormat,
-        forDoneSavedLocallyHeadline: d.status == "done" && _localLookupDone && _localSaved,
+        forDoneSavedLocallyHeadline: d.status == "done" &&
+            _localLookupDone &&
+            _devicePublished,
         compactProgressCard: false,
         debugLog: !showProg,
       );
@@ -856,11 +1010,19 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
     final headline = split.headlineTitle.trim().isEmpty
         ? l10n.untitledVideo
         : split.headlineTitle.trim();
-    final saved = detail.status == "done" && _localLookupDone && _localSaved;
-    final badgeLabel = saved
+    final locallyReady =
+        detail.status == "done" && _localLookupDone && _localSaved;
+    final finalizingLocal = detail.status == "done" &&
+        _localLookupDone &&
+        !_localSaved;
+    final badgeLabel = _devicePublished && locallyReady
         ? l10n.downloadStatusSavedOnDeviceTitle
-        : (headlineUi?.statusChipLabel ??
-            DownloadStatusParsed.fromRaw(detail.status).hebrew);
+        : locallyReady
+            ? l10n.stageDone
+            : finalizingLocal
+                ? l10n.downloadFinalizingLocalChip
+                : (headlineUi?.statusChipLabel ??
+                    DownloadStatusParsed.fromRaw(detail.status).hebrew);
     final platform = (detail.platform ?? "").trim();
 
     return Column(
@@ -894,7 +1056,18 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
             if (platform.isNotEmpty) LinkClipPlatformChip(label: platform),
           ],
         ),
-        if ((headlineUi?.screenHeadlineSubtitle ?? "").trim().isNotEmpty) ...[
+        if (finalizingLocal) ...[
+          const SizedBox(height: LcSpace.sm),
+          Text(
+            l10n.downloadFinalizingLocalHeadline,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              height: 1.4,
+            ),
+          ),
+        ] else if ((headlineUi?.screenHeadlineSubtitle ?? "").trim().isNotEmpty) ...[
           const SizedBox(height: LcSpace.sm),
           Text(
             headlineUi!.screenHeadlineSubtitle!.trim(),
@@ -905,12 +1078,10 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
               height: 1.4,
             ),
           ),
-        ] else if (detail.status == "done" &&
-            _localLookupDone &&
-            !_localSaved) ...[
+        ] else if (locallyReady) ...[
           const SizedBox(height: LcSpace.sm),
           Text(
-            l10n.downloadVideoReadyHint,
+            l10n.downloadVideoReadyLocalHint,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -931,12 +1102,13 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
   }) {
     final canEdit = downloadDetailEligibleForVideoEdit(detail) ||
         downloadDetailEligibleForAudioEdit(detail);
-    final busy = _fileBusy || _expiredRedownloadOfferInFlight;
+    final busy = _fileBusy || _finalizingLocal || _expiredRedownloadOfferInFlight;
+    final locallyReady = _localSaved;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_fileBusy) ...[
+        if (_fileBusy || _finalizingLocal) ...[
           BrandedProgressBar(
             indeterminate: _totalBytes <= 0,
             value: _totalBytes > 0
@@ -947,22 +1119,17 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
                     (100 * _receiveBytes / _totalBytes).clamp(0, 100).round(),
                   )
                 : null,
-            stageLabel: l10n.loadingSavingToDeviceDot,
+            stageLabel: _fileBusyStageLabel ??
+                l10n.loadingPreparingFileForUseDot,
             bytesSubtitle: _totalBytes > 0
                 ? "${formatBytesUi(_receiveBytes)} / ${formatBytesUi(_totalBytes)}"
                 : null,
           ),
-          KeepAppOpenHint(l10n.keepAppOpenUntilDownloadFinished),
+          KeepAppOpenHint(l10n.keepAppOpenUntilSaveFinished),
           const SizedBox(height: LcSpace.lg),
         ],
-        if (!_localSaved)
-          AppPrimaryButton(
-            label: l10n.downloadSaveToDevice,
-            loading: _fileBusy,
-            icon: const Icon(LucideIcons.smartphone),
-            onPressed: busy ? null : _downloadToDevice,
-          )
-        else
+        // Ready actions only after local file exists.
+        if (locallyReady) ...[
           AppPrimaryButton(
             label: l10n.downloadOpen,
             loading: false,
@@ -973,53 +1140,92 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
                     unawaited(_openLocal());
                   },
           ),
-        const SizedBox(height: LcSpace.md),
-        if (!_localSaved) ...[
+          const SizedBox(height: LcSpace.md),
+          AppOutlinedButton(
+            label: l10n.downloadShare,
+            icon: Icon(LucideIcons.share2, color: scheme.primary),
+            onPressed: () {
+              if (busy) return;
+              unawaited(_shareLocal());
+            },
+          ),
+          const SizedBox(height: LcSpace.sm),
+          AppOutlinedButton(
+            label: l10n.downloadSaveToDevice,
+            icon: Icon(LucideIcons.smartphone, color: scheme.primary),
+            onPressed: () {
+              if (busy) return;
+              unawaited(_downloadToDevice());
+            },
+          ),
+          if (canEdit) ...[
+            const SizedBox(height: LcSpace.sm),
+            AppOutlinedButton(
+              label: downloadDetailIsAudioOnly(detail)
+                  ? l10n.downloadCardEditAudio
+                  : l10n.downloadCardEdit,
+              icon: Icon(
+                downloadDetailIsAudioOnly(detail)
+                    ? LucideIcons.audioLines
+                    : LucideIcons.scissors,
+                color: scheme.primary,
+              ),
+              onPressed: () {
+                if (busy) return;
+                unawaited(_openEdit());
+              },
+            ),
+          ],
+        ] else ...[
+          // Still finalizing — allow Share/Open/Save to attach to the same in-flight transfer.
+          AppOutlinedButton(
+            label: l10n.downloadShare,
+            icon: Icon(LucideIcons.share2, color: scheme.primary),
+            onPressed: () {
+              unawaited(_shareLocal());
+            },
+          ),
+          const SizedBox(height: LcSpace.sm),
           AppOutlinedButton(
             label: l10n.downloadOpen,
             icon: Icon(LucideIcons.externalLink, color: scheme.primary),
             onPressed: () {
-              if (busy) return;
               unawaited(_openLocal());
             },
           ),
           const SizedBox(height: LcSpace.sm),
-        ],
-        AppOutlinedButton(
-          label: l10n.downloadShare,
-          icon: Icon(LucideIcons.share2, color: scheme.primary),
-          onPressed: () {
-            if (busy) return;
-            unawaited(_shareLocal());
-          },
-        ),
-        if (canEdit) ...[
-          const SizedBox(height: LcSpace.sm),
           AppOutlinedButton(
-            label: downloadDetailIsAudioOnly(detail)
-                ? l10n.downloadCardEditAudio
-                : l10n.downloadCardEdit,
-            icon: Icon(
-              downloadDetailIsAudioOnly(detail)
-                  ? LucideIcons.audioLines
-                  : LucideIcons.scissors,
-              color: scheme.primary,
-            ),
-            onPressed: () async {
-              await launchQuickEditForJob(
-                context,
-                jobId: _pollJobId,
-                serverRetentionReferenceUtc: detail.createdAt,
-                prefetchDetail: detail,
-              );
-              if (!context.mounted) return;
-              await _tickOnce();
-              await _refreshLocalSaved();
+            label: l10n.downloadSaveToDevice,
+            icon: Icon(LucideIcons.smartphone, color: scheme.primary),
+            onPressed: () {
+              unawaited(_downloadToDevice());
             },
           ),
         ],
       ],
     );
+  }
+
+  Future<void> _openEdit() async {
+    final detail = _detail;
+    if (detail == null) return;
+    if (downloadDetailEligibleForAudioEdit(detail)) {
+      await launchAudioEditForJob(
+        context,
+        jobId: _pollJobId,
+        prefetchedDetail: detail,
+      );
+    } else {
+      await launchQuickEditForJob(
+        context,
+        jobId: _pollJobId,
+        serverRetentionReferenceUtc: detail.createdAt,
+        prefetchDetail: detail,
+      );
+    }
+    if (!mounted) return;
+    await _tickOnce();
+    await _refreshLocalSaved();
   }
 
   Widget _ph(BuildContext context) => ColoredBox(
@@ -1033,3 +1239,5 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
         ),
       );
 }
+
+enum _LocalFileAction { save, open, share }
