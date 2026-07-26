@@ -6,7 +6,7 @@ import { AppError, codes } from "../../types/errors";
 import { assertUnderDailyAnalyzeLimit, incrementAnalyzeCount } from "../../services/rateLimit";
 import { config } from "../../config";
 import { notifyAnalyzeFailedGeneric, safeHostFromUrlString } from "../../services/operationalAlerts";
-import { logDownloadPerf, startPerfTimer } from "../../services/downloadPerf";
+import { logAnalyzePerf } from "../../services/analyzePerf";
 
 const analyzeRoutes: FastifyPluginAsync = async (app) => {
   app.post("/analyze", { preHandler: authDevice }, async (request, reply) => {
@@ -24,12 +24,20 @@ const analyzeRoutes: FastifyPluginAsync = async (app) => {
       throw new AppError(codes.BAD_REQUEST, "Invalid body", 400);
     }
     const ctx = request.deviceCtx!;
+    const urlHostHint = safeHostFromUrlString(parsed.data.url);
+    logAnalyzePerf({
+      stage: "analyze_request_received",
+      durationMs: 0,
+      urlHost: urlHostHint,
+      cacheHit: false,
+      result: "accepted",
+    });
     try {
       await assertUnderDailyAnalyzeLimit(app.redis, ctx.id, config.ANALYZE_DAILY_LIMIT);
     } catch (e) {
       if (e instanceof AppError) {
         notifyAnalyzeFailedGeneric({
-          urlHost: safeHostFromUrlString(parsed.data.url),
+          urlHost: urlHostHint,
           classification: "analyze_daily_rate_limit",
           errorCode: e.code,
           actionHint: "Device exceeded analyze daily quota.",
@@ -38,23 +46,9 @@ const analyzeRoutes: FastifyPluginAsync = async (app) => {
       throw e;
     }
     await incrementAnalyzeCount(app.redis, ctx.id);
-    const analyzeTimer = startPerfTimer();
-    try {
-      const result = await analyzeUrl(app.prisma, parsed.data.url);
-      logDownloadPerf({
-        stage: "analyze",
-        durationMs: analyzeTimer.elapsedMs(),
-        platform: (result.platform ?? "unknown").toString(),
-      });
-      reply.send(result);
-    } catch (e) {
-      logDownloadPerf({
-        stage: "analyze_failed",
-        durationMs: analyzeTimer.elapsedMs(),
-        platform: "unknown",
-      });
-      throw e;
-    }
+    // Sub-stages + analyze_total are logged inside analyzeUrl ([Perf][Analyze]).
+    const result = await analyzeUrl(app.prisma, parsed.data.url);
+    reply.send(result);
   });
 };
 

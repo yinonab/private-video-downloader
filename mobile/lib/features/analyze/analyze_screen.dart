@@ -15,6 +15,7 @@ import "../../core/models/api_error.dart";
 import "../../core/models/download_models.dart";
 import "../../core/theme/linkclip_design_system.dart";
 import "../../core/theme/linkclip_palette.dart";
+import "../../core/utils/download_perf_log.dart";
 import "../../core/utils/video_title_split.dart";
 import "../../core/widgets/app_button.dart";
 import "../../core/widgets/error_view.dart";
@@ -95,17 +96,47 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       _loading = true;
       _err = null;
     });
+    final httpSw = Stopwatch()..start();
     try {
       final svc = AppScope.read(context).analyzeService;
       final res = await svc.analyze(u);
+      httpSw.stop();
       if (!mounted) return;
+      final uiSw = Stopwatch()..start();
       setState(() {
         _data = res;
         _fmtIndex = res.pickDefaultFormatIndex();
       });
+      uiSw.stop();
+      final thumb = res.thumbnail?.trim() ?? "";
+      final qualityCount = res.availableFormats.length;
+      logMobileDownloadPerf(
+        stage: "analyze_http",
+        durationMs: httpSw.elapsedMilliseconds,
+        platform: res.platform,
+        formatCount: qualityCount,
+        qualityCount: qualityCount,
+        thumbnailPresent: thumb.isNotEmpty,
+        cacheHit: false,
+        result: "success",
+      );
+      logMobileDownloadPerf(
+        stage: "analyze_ui_ready",
+        durationMs: uiSw.elapsedMilliseconds,
+        platform: res.platform,
+        result: "quality_selector_ready",
+      );
     } catch (e) {
+      httpSw.stop();
       if (!mounted) return;
-      setState(() => _err = e is ApiError ? e : ApiError.fromUnknown(e));
+      final err = e is ApiError ? e : ApiError.fromUnknown(e);
+      setState(() => _err = err);
+      logMobileDownloadPerf(
+        stage: "analyze_http",
+        durationMs: httpSw.elapsedMilliseconds,
+        cacheHit: false,
+        result: "failure",
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
       await _setAnalyzeWakelock(false);

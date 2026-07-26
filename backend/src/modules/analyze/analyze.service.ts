@@ -30,6 +30,11 @@ import {
   safeHostFromUrlString,
   tryNotifyInstagramYtDlpCritical,
 } from "../../services/operationalAlerts";
+import {
+  countYtdlpFormats,
+  logAnalyzePerf,
+  startPerfTimer,
+} from "../../services/analyzePerf";
 
 const AVAILABLE_FORMATS_LEGACY = [
   { label: "Best MP4", value: "best", type: "video" },
@@ -121,17 +126,51 @@ function handleYtdlpAnalyzeError(err: YtdlpMetadataError, urlHost: string): neve
   throw new AppError(codes.ANALYZE_FAILED, "Could not analyze URL", 502);
 }
 
+function logAnalyzeFailureTotal(opts: {
+  totalMs: number;
+  urlHost?: string;
+  platform?: string;
+  classification: string;
+  result?: string;
+}): void {
+  logAnalyzePerf({
+    stage: "analyze_total",
+    durationMs: opts.totalMs,
+    urlHost: opts.urlHost,
+    platform: opts.platform,
+    cacheHit: false,
+    result: opts.result ?? "failure",
+    classification: opts.classification,
+  });
+}
+
 export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
+  const totalTimer = startPerfTimer();
+  let urlHost = "unknown";
+  let platformHint: string | undefined;
+
+  const platformDetectTimer = startPerfTimer();
   let normalized: string;
   try {
     normalized = normalizeUrl(urlRaw);
   } catch (e) {
     const host = safeHostFromUrlString(urlRaw);
+    logAnalyzePerf({
+      stage: "analyze_platform_detect",
+      durationMs: platformDetectTimer.elapsedMs(),
+      urlHost: host,
+      result: "invalid_url",
+    });
     if (e instanceof AppError) {
       notifyAnalyzeFailedGeneric({
         urlHost: host,
         classification: "invalid_url",
         errorCode: e.code,
+      });
+      logAnalyzeFailureTotal({
+        totalMs: totalTimer.elapsedMs(),
+        urlHost: host,
+        classification: "invalid_url",
       });
       throw e;
     }
@@ -140,10 +179,14 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
       classification: "invalid_url",
       errorCode: codes.INVALID_URL,
     });
+    logAnalyzeFailureTotal({
+      totalMs: totalTimer.elapsedMs(),
+      urlHost: host,
+      classification: "invalid_url",
+    });
     throw new AppError(codes.INVALID_URL, "Invalid URL", 400);
   }
 
-  let urlHost = "unknown";
   try {
     urlHost = new URL(normalized).hostname.toLowerCase();
   } catch {
@@ -153,6 +196,12 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
   try {
     await assertUrlSafeForFetch(normalized);
   } catch (e) {
+    logAnalyzePerf({
+      stage: "analyze_platform_detect",
+      durationMs: platformDetectTimer.elapsedMs(),
+      urlHost,
+      result: "url_safety_blocked",
+    });
     if (e instanceof AppError) {
       notifyAnalyzeFailedGeneric({
         urlHost,
@@ -161,15 +210,31 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
         actionHint: "Private IP, blocked host, or DNS policy rejected this URL.",
       });
     }
+    logAnalyzeFailureTotal({
+      totalMs: totalTimer.elapsedMs(),
+      urlHost,
+      classification: "url_safety_blocked",
+    });
     throw e;
   }
 
   if (hostnameIsThreads(urlHost)) {
+    logAnalyzePerf({
+      stage: "analyze_platform_detect",
+      durationMs: platformDetectTimer.elapsedMs(),
+      urlHost,
+      result: "threads_unsupported",
+    });
     notifyAnalyzeFailedGeneric({
       urlHost,
       classification: "threads_unsupported",
       errorCode: codes.LINKCLIP_ERR_THREADS_UNSUPPORTED,
       actionHint: "Threads links are blocked by product policy.",
+    });
+    logAnalyzeFailureTotal({
+      totalMs: totalTimer.elapsedMs(),
+      urlHost,
+      classification: "threads_unsupported",
     });
     throw new AppError(
       codes.LINKCLIP_ERR_THREADS_UNSUPPORTED,
@@ -178,19 +243,49 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
     );
   }
 
+  logAnalyzePerf({
+    stage: "analyze_platform_detect",
+    durationMs: platformDetectTimer.elapsedMs(),
+    urlHost,
+    result: "ok",
+    cacheHit: false,
+  });
+
   let meta: YtdlpVideoInfo;
   let usedFacebookFallback = false;
 
+  const ytdlpTimer = startPerfTimer();
   try {
     meta = await fetchMetadataJson(normalized);
+    logAnalyzePerf({
+      stage: "analyze_ytdlp_metadata",
+      durationMs: ytdlpTimer.elapsedMs(),
+      urlHost,
+      formatCount: countYtdlpFormats(meta),
+      result: "success",
+      cacheHit: false,
+    });
   } catch (err) {
+    const ytdlpMs = ytdlpTimer.elapsedMs();
     if (!(err instanceof YtdlpMetadataError)) {
+      logAnalyzePerf({
+        stage: "analyze_ytdlp_metadata",
+        durationMs: ytdlpMs,
+        urlHost,
+        result: "failure",
+        classification: "unexpected_metadata_error",
+      });
       logger.warn({ err }, "analyze unexpected failure");
       notifyAnalyzeFailedGeneric({
         urlHost,
         classification: "unexpected_metadata_error",
         errorCode: codes.ANALYZE_FAILED,
         actionHint: "Non-yt-dlp error during metadata fetch — inspect logs.",
+      });
+      logAnalyzeFailureTotal({
+        totalMs: totalTimer.elapsedMs(),
+        urlHost,
+        classification: "unexpected_metadata_error",
       });
       throw new AppError(codes.ANALYZE_FAILED, "Could not analyze URL", 502);
     }
@@ -200,8 +295,18 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
       mapped?.code ?? analyzeErrorCodeForYtdlpClassification(err.classification);
     const logClassification = mapped?.classification ?? err.classification;
     const platform = mapped?.platform;
+    platformHint = platform;
     const statusCode = mapped?.statusCode ?? 502;
     const cookieFlags = ytDlpCookiesOperationalFlags();
+
+    logAnalyzePerf({
+      stage: "analyze_ytdlp_metadata",
+      durationMs: ytdlpMs,
+      urlHost,
+      platform: platform ?? undefined,
+      result: "failure",
+      classification: logClassification,
+    });
 
     logger.warn(
       {
@@ -242,6 +347,12 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
             actionHint: "Facebook HTML fallback failed — inspect extractor logs.",
           });
         }
+        logAnalyzeFailureTotal({
+          totalMs: totalTimer.elapsedMs(),
+          urlHost,
+          platform: "facebook",
+          classification: "facebook_fallback_failed",
+        });
         throw new AppError(
           codes.FACEBOOK_EXTRACT_FAILED,
           "We couldn't read this Facebook video right now. This link may require special access or Facebook may be blocking access to it. Try another link or try again later.",
@@ -263,18 +374,51 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
               : "Check platform support or yt-dlp metadata path.",
         });
       }
+      logAnalyzeFailureTotal({
+        totalMs: totalTimer.elapsedMs(),
+        urlHost,
+        platform: platformHint,
+        classification: logClassification,
+      });
       handleYtdlpAnalyzeError(err, urlHost);
     }
   }
 
+  const parseTimer = startPerfTimer();
   const platform = extractorToPlatform(meta.extractor);
+  platformHint = platform ?? meta.extractor ?? undefined;
   const urlHash = hashUrl(normalized);
+  const title = meta.title ?? "Untitled";
+  const durationSec = meta.duration != null ? Math.floor(meta.duration) : undefined;
+  const thumbnail = meta.thumbnail;
+  const thumbnailPresent = typeof thumbnail === "string" && thumbnail.trim().length > 0;
+  const formatCount = countYtdlpFormats(meta);
+  logAnalyzePerf({
+    stage: "analyze_parse_metadata",
+    durationMs: parseTimer.elapsedMs(),
+    urlHost,
+    platform: platformHint,
+    formatCount,
+    thumbnailPresent,
+    result: usedFacebookFallback ? "facebook_fallback" : "ok",
+  });
 
+  const qualitiesTimer = startPerfTimer();
   const availableQualities = computeAvailableQualities(meta, {
     platform: platform ?? meta.extractor ?? "unknown",
     urlHost,
   });
+  logAnalyzePerf({
+    stage: "analyze_qualities",
+    durationMs: qualitiesTimer.elapsedMs(),
+    urlHost,
+    platform: platformHint,
+    formatCount,
+    qualityCount: availableQualities.length,
+    result: "ok",
+  });
 
+  const upsertTimer = startPerfTimer();
   await prisma.link.upsert({
     where: { urlHash },
     create: {
@@ -296,13 +440,33 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
       facebookDirectFallback: usedFacebookFallback,
     },
   });
+  logAnalyzePerf({
+    stage: "analyze_link_upsert",
+    durationMs: upsertTimer.elapsedMs(),
+    urlHost,
+    platform: platformHint,
+    result: "ok",
+  });
+
+  const responsePlatform = platform ?? meta.extractor ?? "unknown";
+  logAnalyzePerf({
+    stage: "analyze_total",
+    durationMs: totalTimer.elapsedMs(),
+    urlHost,
+    platform: responsePlatform,
+    formatCount,
+    qualityCount: availableQualities.length,
+    thumbnailPresent,
+    cacheHit: false,
+    result: "success",
+  });
 
   return {
     url: normalized,
-    platform: platform ?? meta.extractor ?? "unknown",
-    title: meta.title ?? "Untitled",
-    durationSec: meta.duration != null ? Math.floor(meta.duration) : undefined,
-    thumbnail: meta.thumbnail,
+    platform: responsePlatform,
+    title,
+    durationSec,
+    thumbnail,
     extractor: meta.extractor ?? "unknown",
     availableFormats: [...AVAILABLE_FORMATS_LEGACY],
     availableQualities,

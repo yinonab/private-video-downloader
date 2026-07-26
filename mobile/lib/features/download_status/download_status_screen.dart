@@ -778,7 +778,15 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
       "[FinalFile] share tapped jobId=$_pollJobId localSaved=$_localSaved "
       "devicePublished=$_devicePublished finalizing=$_finalizingLocal",
     );
-    final sw = Stopwatch()..start();
+    logMobileDownloadPerf(
+      stage: "share_tap",
+      durationMs: 0,
+      jobId: _pollJobId,
+      result: "user_action",
+    );
+    // Total includes ensure + shareSavedDownload + await Share.shareXFiles return
+    // (native sheet / user interaction time after the sheet opens).
+    final totalSw = Stopwatch()..start();
     final ok = await _ensureLocalCopyForAction(_LocalFileAction.share);
     if (!mounted || !ok) return;
     debugPrint("[FinalFile] share result=shared_cache jobId=$_pollJobId");
@@ -788,12 +796,12 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
       jobId: _pollJobId,
       title: _detail?.title,
     );
-    sw.stop();
+    totalSw.stop();
     logMobileDownloadPerf(
-      stage: "share",
-      durationMs: sw.elapsedMilliseconds,
+      stage: "share_total",
+      durationMs: totalSw.elapsedMilliseconds,
       jobId: _pollJobId,
-      result: "shared_cache",
+      result: "shared_cache_includes_native_sheet_return",
     );
   }
 

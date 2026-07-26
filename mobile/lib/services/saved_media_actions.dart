@@ -7,6 +7,7 @@ import "package:open_filex/open_filex.dart";
 import "package:share_plus/share_plus.dart";
 
 import "../core/storage/local_session.dart";
+import "../core/utils/download_perf_log.dart";
 import "../l10n/app_localizations.dart";
 
 Future<bool> validateSavedDownload(LocalSession session, String jobId) async {
@@ -82,8 +83,23 @@ Future<void> shareSavedDownload({
   final l10n = AppLocalizations.of(context);
   final messenger = ScaffoldMessenger.of(context);
   debugPrint("[FinalFile] share requested jobId=$jobId");
+
+  logMobileDownloadPerf(
+    stage: "share_validate_cache_start",
+    durationMs: 0,
+    jobId: jobId,
+  );
+  final validateSw = Stopwatch()..start();
   final desc = await session.savedDownloadForJob(jobId);
   if (desc == null || desc.internalPath.isEmpty) {
+    validateSw.stop();
+    logMobileDownloadPerf(
+      stage: "share_validate_cache_done",
+      durationMs: validateSw.elapsedMilliseconds,
+      jobId: jobId,
+      cacheValid: false,
+      result: "missing_descriptor",
+    );
     debugPrint("[FinalFile] share abort — no descriptor jobId=$jobId");
     messenger.showSnackBar(SnackBar(content: Text(l10n.savedMustDownloadFirst)));
     return;
@@ -98,7 +114,25 @@ Future<void> shareSavedDownload({
   dev.log(
     "saved_media share: internal=$localPath name=${desc.shareFileName} mime=${desc.mimeType}",
   );
-  if (!await validateSavedDownload(session, jobId)) {
+  final ok = await validateSavedDownload(session, jobId);
+  validateSw.stop();
+  var sizeBytes = 0;
+  if (ok) {
+    try {
+      sizeBytes = await File(localPath).length();
+    } catch (_) {
+      sizeBytes = desc.fileSizeBytes;
+    }
+  }
+  logMobileDownloadPerf(
+    stage: "share_validate_cache_done",
+    durationMs: validateSw.elapsedMilliseconds,
+    jobId: jobId,
+    cacheValid: ok,
+    bytes: sizeBytes > 0 ? sizeBytes : null,
+    result: ok ? "shared_cache" : "validate_failed",
+  );
+  if (!ok) {
     debugPrint("[FinalFile] share abort — validate failed jobId=$jobId");
     messenger.showSnackBar(SnackBar(content: Text(l10n.savedCannotShareFile)));
     return;
@@ -109,12 +143,40 @@ Future<void> shareSavedDownload({
       "[FinalFile] share opening system sheet via XFile(cache) jobId=$jobId "
       "(no MediaStore publish)",
     );
+    logMobileDownloadPerf(
+      stage: "share_prepare_xfile_start",
+      durationMs: 0,
+      jobId: jobId,
+    );
+    final prepareSw = Stopwatch()..start();
     final xf = XFile(
       localPath,
       mimeType: desc.mimeType,
       name: desc.shareFileName,
     );
+    prepareSw.stop();
+    logMobileDownloadPerf(
+      stage: "share_prepare_xfile_done",
+      durationMs: prepareSw.elapsedMilliseconds,
+      jobId: jobId,
+      bytes: sizeBytes > 0 ? sizeBytes : null,
+    );
+
+    logMobileDownloadPerf(
+      stage: "share_native_call_start",
+      durationMs: 0,
+      jobId: jobId,
+      result: "awaiting_share_sheet",
+    );
+    final nativeSw = Stopwatch()..start();
     final result = await Share.shareXFiles([xf], text: shareText);
+    nativeSw.stop();
+    logMobileDownloadPerf(
+      stage: "share_native_call_return",
+      durationMs: nativeSw.elapsedMilliseconds,
+      jobId: jobId,
+      result: "share_sheet_returned",
+    );
     dev.log("saved_media share: ShareResult status=${result.status} raw=$result");
     if (result.status == ShareResultStatus.unavailable) {
       messenger.showSnackBar(

@@ -11,6 +11,11 @@ void logMobileDownloadPerf({
   int? bytes,
   int? contentLength,
   double? mbps,
+  bool? cacheValid,
+  bool? cacheHit,
+  int? formatCount,
+  int? qualityCount,
+  bool? thumbnailPresent,
 }) {
   if (!kDebugMode) return;
   final parts = <String>[
@@ -24,6 +29,11 @@ void logMobileDownloadPerf({
   if (bytes != null) parts.add("bytes=$bytes");
   if (contentLength != null) parts.add("contentLength=$contentLength");
   if (mbps != null) parts.add("mbps=${mbps.toStringAsFixed(2)}");
+  if (cacheValid != null) parts.add("cacheValid=$cacheValid");
+  if (cacheHit != null) parts.add("cacheHit=$cacheHit");
+  if (formatCount != null) parts.add("formatCount=$formatCount");
+  if (qualityCount != null) parts.add("qualityCount=$qualityCount");
+  if (thumbnailPresent != null) parts.add("thumbnailPresent=$thumbnailPresent");
   debugPrint(parts.join(" "));
 }
 
