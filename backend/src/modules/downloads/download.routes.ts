@@ -22,6 +22,18 @@ type ReadableMediaPick = {
   stat: fs.Stats;
 };
 
+function filenameExtensionOnly(filename: string | null | undefined): string | null {
+  const raw = (filename ?? "").trim();
+  if (!raw) return null;
+  const base = raw.includes("/") ? raw.slice(raw.lastIndexOf("/") + 1) : raw;
+  const baseWin = base.includes("\\") ? base.slice(base.lastIndexOf("\\") + 1) : base;
+  const dot = baseWin.lastIndexOf(".");
+  if (dot <= 0 || dot === baseWin.length - 1) return null;
+  const ext = baseWin.slice(dot + 1).toLowerCase();
+  if (!/^[a-z0-9]{1,8}$/.test(ext)) return null;
+  return ext;
+}
+
 /** Resolve DB file rows to a real non-empty file on disk (prefers video, then largest size). */
 async function pickReadableMediaFile(
   request: FastifyRequest,
@@ -36,9 +48,17 @@ async function pickReadableMediaFile(
     let absPath: string;
     try {
       absPath = resolveAbsoluteFromStorageKey(asset.storageKey);
-    } catch (err) {
+    } catch {
       request.log.warn(
-        { jobId, deviceId, dbStorageKey: asset.storageKey, err },
+        {
+          jobId,
+          deviceId,
+          assetType: asset.type,
+          mimeType: asset.mimeType,
+          hasDbStorageKey: Boolean(asset.storageKey?.trim()),
+          hasResolvedPath: false,
+          filenameExtension: filenameExtensionOnly(asset.filename),
+        },
         "download file: invalid storage key"
       );
       continue;
@@ -52,37 +72,49 @@ async function pickReadableMediaFile(
         {
           jobId,
           deviceId,
-          dbStorageKey: asset.storageKey,
-          resolvedAbsolutePath: absPath,
+          assetType: asset.type,
+          mimeType: asset.mimeType,
           exists: false,
+          hasDbStorageKey: Boolean(asset.storageKey?.trim()),
+          hasResolvedPath: true,
+          filenameExtension: filenameExtensionOnly(asset.filename),
+          dbSizeBytes: asset.sizeBytes != null ? asset.sizeBytes.toString() : null,
         },
         "download file: stat failed (missing path)"
       );
       continue;
     }
 
-    const exists = true;
     request.log.info(
       {
         jobId,
         deviceId,
-        dbStorageKey: asset.storageKey,
-        resolvedAbsolutePath: absPath,
-        exists,
-        statSize: st.size,
+        assetType: asset.type,
+        mimeType: asset.mimeType,
+        exists: true,
         isFile: st.isFile(),
         isDirectory: st.isDirectory(),
-        filename: asset.filename,
-        mimeType: asset.mimeType,
-        assetType: asset.type,
+        statSize: st.size,
         dbSizeBytes: asset.sizeBytes != null ? asset.sizeBytes.toString() : null,
+        hasDbStorageKey: Boolean(asset.storageKey?.trim()),
+        hasResolvedPath: true,
+        filenameExtension: filenameExtensionOnly(asset.filename),
       },
       "download file: resolved path stat"
     );
 
     if (!st.isFile()) {
       request.log.warn(
-        { jobId, deviceId, resolvedAbsolutePath: absPath, statSize: st.size },
+        {
+          jobId,
+          deviceId,
+          assetType: asset.type,
+          exists: true,
+          isFile: false,
+          isDirectory: st.isDirectory(),
+          statSize: st.size,
+          hasResolvedPath: true,
+        },
         "download file: skip — not a regular file"
       );
       continue;
@@ -90,7 +122,15 @@ async function pickReadableMediaFile(
 
     if (st.size <= 0) {
       request.log.warn(
-        { jobId, deviceId, resolvedAbsolutePath: absPath, statSize: st.size },
+        {
+          jobId,
+          deviceId,
+          assetType: asset.type,
+          exists: true,
+          isFile: true,
+          statSize: st.size,
+          hasResolvedPath: true,
+        },
         "download file: skip — empty or zero-length file"
       );
       continue;
@@ -113,10 +153,17 @@ async function pickReadableMediaFile(
     {
       jobId,
       deviceId,
-      chosenStorageKey: chosen.asset.storageKey,
-      chosenAbsolutePath: chosen.absPath,
-      chosenStatSize: chosen.stat.size,
-      chosenFilename: chosen.asset.filename,
+      hasChosenAsset: true,
+      assetType: chosen.asset.type,
+      mimeType: chosen.asset.mimeType,
+      exists: true,
+      isFile: chosen.stat.isFile(),
+      isDirectory: chosen.stat.isDirectory(),
+      statSize: chosen.stat.size,
+      dbSizeBytes: chosen.asset.sizeBytes != null ? chosen.asset.sizeBytes.toString() : null,
+      hasDbStorageKey: Boolean(chosen.asset.storageKey?.trim()),
+      hasResolvedPath: true,
+      filenameExtension: filenameExtensionOnly(chosen.asset.filename),
     },
     "download file: chosen asset for streaming"
   );
