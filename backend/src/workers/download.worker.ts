@@ -10,7 +10,7 @@ import type { QueuePayload } from "../modules/downloads/download.service";
 import { ensureDeviceDirs, getAudioDir, getVideoDir } from "../services/storage";
 import {
   DOWNLOAD_JOB_ERROR_NORMALIZE_FAILED,
-  ffmpegNormalizeCommandSummary,
+  ffmpegNormalizeCommandShape,
   ffprobeMedia,
   runFfmpegAudioNormalize,
   runFfmpegFullTranscode,
@@ -542,8 +542,17 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
           let probe: ProbeResult;
           try {
             probe = await ffprobeMedia(bestPath);
-          } catch (err) {
-            logger.warn({ jobId, err, inputPath: bestPath }, "ffprobe failed — using full transcode");
+          } catch {
+            logger.warn(
+              {
+                jobId,
+                platform: platformLabel,
+                quality: format,
+                probeFailed: true,
+                tiktokReadyCompatiblePreferred: true,
+              },
+              "ffprobe failed — using full transcode"
+            );
             probe = { durationMs: 0 };
           }
 
@@ -640,7 +649,7 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
             });
           }
 
-          const ffmpegCommandSummary = ffmpegNormalizeCommandSummary(ffmpegResult.args);
+          const ffmpegShape = ffmpegNormalizeCommandShape(ffmpegResult.args);
 
           let normStat: { size: number } | null = null;
           try {
@@ -677,17 +686,16 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
               {
                 jobId,
                 platform: platformLabel,
+                quality: format,
                 strategy,
-                inputPath: bestPath,
-                normalizedTempPath: tempNormPath,
                 inputBytes: bestSize,
-                normalizedBytes,
-                ffmpegCommandSummary,
+                outputBytes: normalizedBytes,
+                outputExists: normalizedBytes > 0,
                 ffmpegExitCode: ffmpegResult.code,
-                stderrTail: ffmpegResult.stderrTail,
                 success: false,
                 normalizationEnabled: true,
                 isTikTokReady: true,
+                ...ffmpegShape,
               },
               "ffmpeg normalize failed"
             );
@@ -746,14 +754,18 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
                 isTikTokReady: true,
               }
             );
+            const errCode =
+              err && typeof err === "object" && "code" in err
+                ? String((err as { code?: unknown }).code ?? "")
+                : "";
             logger.warn(
               {
                 jobId,
                 platform: platformLabel,
-                err,
+                quality: format,
                 strategy,
-                normalizedTempPath: tempNormPath,
-                finalPath,
+                renameFailed: true,
+                errCode: errCode || undefined,
                 success: false,
                 normalizationEnabled: true,
                 isTikTokReady: true,
@@ -787,18 +799,20 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
             {
               jobId,
               platform: platformLabel,
+              quality: format,
               strategy,
-              inputPath: bestPath,
-              finalPath,
               inputBytes: bestSize,
               outputBytes: finalSize,
+              inputExists: true,
+              outputExists: finalSize > 0,
               durationMs: probe.durationMs,
-              ffmpegCommandSummary,
               ffmpegExitCode: ffmpegResult.code,
               success: true,
               normalizationEnabled: true,
               normalizationStrategy: strategy,
               isTikTokReady: true,
+              tiktokReadyCompatiblePreferred: true,
+              ...ffmpegShape,
             },
             "ffmpeg normalize succeeded"
           );

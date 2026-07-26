@@ -123,10 +123,49 @@ export function selectNormalizeStrategy(probe: ProbeResult): NormalizeStrategy {
   return "remux";
 }
 
-export function ffmpegNormalizeCommandSummary(args: string[]): string {
-  const safe = args.map((a) => (/\s/.test(a) ? JSON.stringify(a) : a));
-  const s = ["ffmpeg", ...safe].join(" ");
-  return s.length > 2500 ? `${s.slice(0, 2500)}…` : s;
+/** Safe ffmpeg arg shape for logs — never includes input/output paths. */
+export type FfmpegNormalizeCommandShape = {
+  hasVideoMap: boolean;
+  hasOptionalAudio: boolean;
+  videoCodecAction: string;
+  audioCodecAction: string;
+  audioBitrate: string | null;
+  audioSampleRate: string | null;
+  movflagsFaststart: boolean;
+};
+
+/**
+ * Derive a path-free description of normalize ffmpeg args for structured logs.
+ * Do not log raw argv (paths appear after `-i` and as the final output).
+ */
+export function ffmpegNormalizeCommandShape(args: string[]): FfmpegNormalizeCommandShape {
+  const hasFlag = (flag: string) => args.includes(flag);
+  const valueAfter = (flag: string): string | undefined => {
+    const i = args.indexOf(flag);
+    if (i < 0 || i + 1 >= args.length) return undefined;
+    return args[i + 1];
+  };
+
+  let videoCodecAction = "unknown";
+  let audioCodecAction = "unknown";
+  if (hasFlag("-c") && valueAfter("-c") === "copy") {
+    videoCodecAction = "copy";
+    audioCodecAction = "copy";
+  }
+  const cv = valueAfter("-c:v");
+  if (cv) videoCodecAction = cv;
+  const ca = valueAfter("-c:a");
+  if (ca) audioCodecAction = ca;
+
+  return {
+    hasVideoMap: hasFlag("0:v:0") || args.some((a) => a === "0:v:0"),
+    hasOptionalAudio: hasFlag("0:a?") || args.some((a) => a === "0:a?"),
+    videoCodecAction,
+    audioCodecAction,
+    audioBitrate: valueAfter("-b:a") ?? null,
+    audioSampleRate: valueAfter("-ar") ?? null,
+    movflagsFaststart: args.some((a) => a.includes("faststart")),
+  };
 }
 
 export async function runFfmpegRemux(opts: {
