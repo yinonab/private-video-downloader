@@ -115,7 +115,7 @@ Measured TikTok runs (instrumentation only; **no optimizations Done**):
 | Priority | Area | Status | Notes |
 |----------|------|--------|--------|
 | **1** | TikTok-ready `full_transcode` avoidance | **Done — verified in production** | Prefer AVC/H.264 (+ AAC); HE-AACv2 → `audio_only`; see verified timings below |
-| **2** | Analyze metadata cost (`--dump-json`) | **Open (next)** | Dominates Analyze (~2.8–3.3s); cache/dedupe/progressive UI / lighter metadata later |
+| **2** | Analyze metadata cost (`--dump-json`) | **Partially mitigated** | Redis short-TTL (60s) Analyze DTO cache + same-process in-flight dedupe shipped; first request still pays full `--dump-json`. Further: progressive UI / lighter metadata |
 | **3** | Analyze failure `classification=unknown` | Open — later | Improve yt-dlp stderr → typed classification |
 | **4** | Mobile cache finalize (large files) | Low | Streaming-to-disk if bytes grow |
 | **5** | Share / Save | **Not active** | Do not change |
@@ -151,6 +151,17 @@ bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best
 | `best` path | `strategy=skipped` | **unchanged** (`skipped`) |
 
 Not every TikTok improves (HEVC-only sources may still `full_transcode`).
+
+## Analyze result cache (60s Redis + in-flight dedupe)
+
+- Key: `analyze:result:v1:{urlHash}` (hash of normalized URL; never log the key/URL).
+- TTL: **60 seconds**. Stores the full Analyze JSON DTO (including `availableQualities`).
+- Hit: skip `fetchMetadataJson` and Link upsert; still count daily Analyze quota.
+- Miss: existing flow + upsert, then cache on **success only** (failures never cached).
+- Redis errors: warn and fall through (Analyze must not fail because of cache).
+- Invalid cached payload (malformed JSON or bad shape): treat as miss, best-effort Redis `DEL` (`op: "delete_invalid"`; never logs key/URL/payload); DEL failure does not fail Analyze.
+- Same-process concurrent identical URLs share one Promise (`analyze_inflight_wait` / `joined` / `joined_failure`). Every HTTP request emits its own `analyze_total` (including failed in-flight followers).
+- Perf: `analyze_cache_lookup` with `redis_hit` / `redis_miss` / `redis_error`.
 
 ## TikTok-ready full_transcode avoidance — investigation notes (2026-07-26)
 
@@ -239,7 +250,7 @@ total_to_saved_approx:   # total_to_ready + save
 
 **Recommended next targets:**
 
-1. **Analyze metadata cost** (`analyze_ytdlp_metadata` / `--dump-json`) — open backlog #2.
+1. **Analyze first-hit `--dump-json` cost** — Redis 60s result cache + in-flight dedupe shipped; progressive UI / lighter metadata still open.
 2. Analyze failure classification improvements.
 3. Large-file cache finalize streaming (if needed).
 4. Share/Save — no change.

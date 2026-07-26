@@ -47,7 +47,7 @@ const analyzeRoutes: FastifyPluginAsync = async (app) => {
     }
     await incrementAnalyzeCount(app.redis, ctx.id);
     // Sub-stages + analyze_total are logged inside analyzeUrl ([Perf][Analyze]).
-    const result = await analyzeUrl(app.prisma, parsed.data.url);
+    const result = await analyzeUrl(app.prisma, parsed.data.url, { redis: app.redis });
     reply.send(result);
   });
 };

@@ -35,6 +35,14 @@ import {
   logAnalyzePerf,
   startPerfTimer,
 } from "../../services/analyzePerf";
+import {
+  lookupAnalyzeResultCache,
+  storeAnalyzeResultCache,
+  type AnalyzeResponseDto,
+  type AnalyzeResultCacheRedis,
+} from "../../services/analyzeResultCache";
+
+export type { AnalyzeResponseDto, AnalyzeResultCacheRedis };
 
 const AVAILABLE_FORMATS_LEGACY = [
   { label: "Best MP4", value: "best", type: "video" },
@@ -43,6 +51,24 @@ const AVAILABLE_FORMATS_LEGACY = [
   { label: "480p MP4", value: "480p", type: "video" },
   { label: "Audio MP3", value: "audio_mp3", type: "audio" },
 ] as const;
+
+/** Same-process in-flight dedupe (cross-instance cache is Redis). */
+const analyzeInflight = new Map<string, Promise<AnalyzeResponseDto>>();
+
+/** @internal test helper */
+export function resetAnalyzeInflightForTests(): void {
+  analyzeInflight.clear();
+}
+
+export type AnalyzeUrlOptions = {
+  redis?: AnalyzeResultCacheRedis | null;
+  /** Test seam — defaults to production `fetchMetadataJson`. */
+  fetchMetadata?: (url: string) => Promise<YtdlpVideoInfo>;
+  /** Test seam — defaults to production `extractFacebookDirectMedia`. */
+  extractFacebook?: typeof extractFacebookDirectMedia;
+  /** Test seam — defaults to production `assertUrlSafeForFetch`. */
+  assertUrlSafe?: (url: string) => Promise<void>;
+};
 
 function buildSyntheticFacebookYtdlpMeta(
   canonicalUrl: string,
@@ -144,119 +170,24 @@ function logAnalyzeFailureTotal(opts: {
   });
 }
 
-export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
-  const totalTimer = startPerfTimer();
-  let urlHost = "unknown";
+async function runFreshAnalyze(opts: {
+  prisma: PrismaClient;
+  normalized: string;
+  urlHost: string;
+  urlHash: string;
+  totalTimer: { elapsedMs: () => number };
+  fetchMetadata: (url: string) => Promise<YtdlpVideoInfo>;
+  extractFacebook: typeof extractFacebookDirectMedia;
+}): Promise<AnalyzeResponseDto> {
+  const { prisma, normalized, urlHost, urlHash, totalTimer, fetchMetadata, extractFacebook } = opts;
   let platformHint: string | undefined;
-
-  const platformDetectTimer = startPerfTimer();
-  let normalized: string;
-  try {
-    normalized = normalizeUrl(urlRaw);
-  } catch (e) {
-    const host = safeHostFromUrlString(urlRaw);
-    logAnalyzePerf({
-      stage: "analyze_platform_detect",
-      durationMs: platformDetectTimer.elapsedMs(),
-      urlHost: host,
-      result: "invalid_url",
-    });
-    if (e instanceof AppError) {
-      notifyAnalyzeFailedGeneric({
-        urlHost: host,
-        classification: "invalid_url",
-        errorCode: e.code,
-      });
-      logAnalyzeFailureTotal({
-        totalMs: totalTimer.elapsedMs(),
-        urlHost: host,
-        classification: "invalid_url",
-      });
-      throw e;
-    }
-    notifyAnalyzeFailedGeneric({
-      urlHost: host,
-      classification: "invalid_url",
-      errorCode: codes.INVALID_URL,
-    });
-    logAnalyzeFailureTotal({
-      totalMs: totalTimer.elapsedMs(),
-      urlHost: host,
-      classification: "invalid_url",
-    });
-    throw new AppError(codes.INVALID_URL, "Invalid URL", 400);
-  }
-
-  try {
-    urlHost = new URL(normalized).hostname.toLowerCase();
-  } catch {
-    /* ignore */
-  }
-
-  try {
-    await assertUrlSafeForFetch(normalized);
-  } catch (e) {
-    logAnalyzePerf({
-      stage: "analyze_platform_detect",
-      durationMs: platformDetectTimer.elapsedMs(),
-      urlHost,
-      result: "url_safety_blocked",
-    });
-    if (e instanceof AppError) {
-      notifyAnalyzeFailedGeneric({
-        urlHost,
-        classification: "url_safety_blocked",
-        errorCode: e.code,
-        actionHint: "Private IP, blocked host, or DNS policy rejected this URL.",
-      });
-    }
-    logAnalyzeFailureTotal({
-      totalMs: totalTimer.elapsedMs(),
-      urlHost,
-      classification: "url_safety_blocked",
-    });
-    throw e;
-  }
-
-  if (hostnameIsThreads(urlHost)) {
-    logAnalyzePerf({
-      stage: "analyze_platform_detect",
-      durationMs: platformDetectTimer.elapsedMs(),
-      urlHost,
-      result: "threads_unsupported",
-    });
-    notifyAnalyzeFailedGeneric({
-      urlHost,
-      classification: "threads_unsupported",
-      errorCode: codes.LINKCLIP_ERR_THREADS_UNSUPPORTED,
-      actionHint: "Threads links are blocked by product policy.",
-    });
-    logAnalyzeFailureTotal({
-      totalMs: totalTimer.elapsedMs(),
-      urlHost,
-      classification: "threads_unsupported",
-    });
-    throw new AppError(
-      codes.LINKCLIP_ERR_THREADS_UNSUPPORTED,
-      "Threads links are not supported for download yet.",
-      400
-    );
-  }
-
-  logAnalyzePerf({
-    stage: "analyze_platform_detect",
-    durationMs: platformDetectTimer.elapsedMs(),
-    urlHost,
-    result: "ok",
-    cacheHit: false,
-  });
 
   let meta: YtdlpVideoInfo;
   let usedFacebookFallback = false;
 
   const ytdlpTimer = startPerfTimer();
   try {
-    meta = await fetchMetadataJson(normalized);
+    meta = await fetchMetadata(normalized);
     logAnalyzePerf({
       stage: "analyze_ytdlp_metadata",
       durationMs: ytdlpTimer.elapsedMs(),
@@ -334,7 +265,7 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
       hostnameIsFacebook(urlHost) && stderrIndicatesFacebookCannotParseData(err.stderrTail);
 
     if (facebookParseFail) {
-      const fb = await extractFacebookDirectMedia(normalized);
+      const fb = await extractFacebook(normalized);
       if (!fb.ok) {
         if (fb.reason === "no_mp4_candidates") {
           notifyFacebookNoMp4CandidatesAlert({ context: "analyze", urlHost });
@@ -387,7 +318,6 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
   const parseTimer = startPerfTimer();
   const platform = extractorToPlatform(meta.extractor);
   platformHint = platform ?? meta.extractor ?? undefined;
-  const urlHash = hashUrl(normalized);
   const title = meta.title ?? "Untitled";
   const durationSec = meta.duration != null ? Math.floor(meta.duration) : undefined;
   const thumbnail = meta.thumbnail;
@@ -449,6 +379,17 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
   });
 
   const responsePlatform = platform ?? meta.extractor ?? "unknown";
+  const dto: AnalyzeResponseDto = {
+    url: normalized,
+    platform: responsePlatform,
+    title,
+    durationSec,
+    thumbnail,
+    extractor: meta.extractor ?? "unknown",
+    availableFormats: [...AVAILABLE_FORMATS_LEGACY],
+    availableQualities,
+  };
+
   logAnalyzePerf({
     stage: "analyze_total",
     durationMs: totalTimer.elapsedMs(),
@@ -461,14 +402,229 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
     result: "success",
   });
 
-  return {
-    url: normalized,
-    platform: responsePlatform,
-    title,
-    durationSec,
-    thumbnail,
-    extractor: meta.extractor ?? "unknown",
-    availableFormats: [...AVAILABLE_FORMATS_LEGACY],
-    availableQualities,
-  };
+  return dto;
+}
+
+export async function analyzeUrl(
+  prisma: PrismaClient,
+  urlRaw: string,
+  options?: AnalyzeUrlOptions
+): Promise<AnalyzeResponseDto> {
+  const totalTimer = startPerfTimer();
+  const redis = options?.redis ?? null;
+  const fetchMetadata = options?.fetchMetadata ?? fetchMetadataJson;
+  const extractFacebook = options?.extractFacebook ?? extractFacebookDirectMedia;
+  const assertUrlSafe = options?.assertUrlSafe ?? assertUrlSafeForFetch;
+
+  let urlHost = "unknown";
+
+  const platformDetectTimer = startPerfTimer();
+  let normalized: string;
+  try {
+    normalized = normalizeUrl(urlRaw);
+  } catch (e) {
+    const host = safeHostFromUrlString(urlRaw);
+    logAnalyzePerf({
+      stage: "analyze_platform_detect",
+      durationMs: platformDetectTimer.elapsedMs(),
+      urlHost: host,
+      result: "invalid_url",
+    });
+    if (e instanceof AppError) {
+      notifyAnalyzeFailedGeneric({
+        urlHost: host,
+        classification: "invalid_url",
+        errorCode: e.code,
+      });
+      logAnalyzeFailureTotal({
+        totalMs: totalTimer.elapsedMs(),
+        urlHost: host,
+        classification: "invalid_url",
+      });
+      throw e;
+    }
+    notifyAnalyzeFailedGeneric({
+      urlHost: host,
+      classification: "invalid_url",
+      errorCode: codes.INVALID_URL,
+    });
+    logAnalyzeFailureTotal({
+      totalMs: totalTimer.elapsedMs(),
+      urlHost: host,
+      classification: "invalid_url",
+    });
+    throw new AppError(codes.INVALID_URL, "Invalid URL", 400);
+  }
+
+  try {
+    urlHost = new URL(normalized).hostname.toLowerCase();
+  } catch {
+    /* ignore */
+  }
+
+  try {
+    await assertUrlSafe(normalized);
+  } catch (e) {
+    logAnalyzePerf({
+      stage: "analyze_platform_detect",
+      durationMs: platformDetectTimer.elapsedMs(),
+      urlHost,
+      result: "url_safety_blocked",
+    });
+    if (e instanceof AppError) {
+      notifyAnalyzeFailedGeneric({
+        urlHost,
+        classification: "url_safety_blocked",
+        errorCode: e.code,
+        actionHint: "Private IP, blocked host, or DNS policy rejected this URL.",
+      });
+    }
+    logAnalyzeFailureTotal({
+      totalMs: totalTimer.elapsedMs(),
+      urlHost,
+      classification: "url_safety_blocked",
+    });
+    throw e;
+  }
+
+  if (hostnameIsThreads(urlHost)) {
+    logAnalyzePerf({
+      stage: "analyze_platform_detect",
+      durationMs: platformDetectTimer.elapsedMs(),
+      urlHost,
+      result: "threads_unsupported",
+    });
+    notifyAnalyzeFailedGeneric({
+      urlHost,
+      classification: "threads_unsupported",
+      errorCode: codes.LINKCLIP_ERR_THREADS_UNSUPPORTED,
+      actionHint: "Threads links are blocked by product policy.",
+    });
+    logAnalyzeFailureTotal({
+      totalMs: totalTimer.elapsedMs(),
+      urlHost,
+      classification: "threads_unsupported",
+    });
+    throw new AppError(
+      codes.LINKCLIP_ERR_THREADS_UNSUPPORTED,
+      "Threads links are not supported for download yet.",
+      400
+    );
+  }
+
+  logAnalyzePerf({
+    stage: "analyze_platform_detect",
+    durationMs: platformDetectTimer.elapsedMs(),
+    urlHost,
+    result: "ok",
+    cacheHit: false,
+  });
+
+  const urlHash = hashUrl(normalized);
+
+  const cacheLookupTimer = startPerfTimer();
+  const cacheLookup = await lookupAnalyzeResultCache(redis, urlHash);
+  if (cacheLookup.status === "hit") {
+    logAnalyzePerf({
+      stage: "analyze_cache_lookup",
+      durationMs: cacheLookupTimer.elapsedMs(),
+      urlHost,
+      platform: cacheLookup.dto.platform,
+      cacheHit: true,
+      result: "redis_hit",
+      qualityCount: cacheLookup.dto.availableQualities.length,
+    });
+    logAnalyzePerf({
+      stage: "analyze_total",
+      durationMs: totalTimer.elapsedMs(),
+      urlHost,
+      platform: cacheLookup.dto.platform,
+      cacheHit: true,
+      result: "success",
+      qualityCount: cacheLookup.dto.availableQualities.length,
+      thumbnailPresent:
+        typeof cacheLookup.dto.thumbnail === "string" && cacheLookup.dto.thumbnail.trim().length > 0,
+    });
+    return cacheLookup.dto;
+  }
+
+  logAnalyzePerf({
+    stage: "analyze_cache_lookup",
+    durationMs: cacheLookupTimer.elapsedMs(),
+    urlHost,
+    cacheHit: false,
+    result:
+      cacheLookup.status === "error"
+        ? "redis_error"
+        : cacheLookup.status === "skipped"
+          ? "redis_skipped"
+          : "redis_miss",
+  });
+
+  const existing = analyzeInflight.get(urlHash);
+  if (existing) {
+    const waitTimer = startPerfTimer();
+    try {
+      const dto = await existing;
+      logAnalyzePerf({
+        stage: "analyze_inflight_wait",
+        durationMs: waitTimer.elapsedMs(),
+        urlHost,
+        platform: dto.platform,
+        cacheHit: false,
+        result: "joined",
+      });
+      logAnalyzePerf({
+        stage: "analyze_total",
+        durationMs: totalTimer.elapsedMs(),
+        urlHost,
+        platform: dto.platform,
+        cacheHit: false,
+        result: "success",
+        qualityCount: dto.availableQualities.length,
+      });
+      return dto;
+    } catch (e) {
+      logAnalyzePerf({
+        stage: "analyze_inflight_wait",
+        durationMs: waitTimer.elapsedMs(),
+        urlHost,
+        cacheHit: false,
+        result: "joined_failure",
+      });
+      const classification =
+        e instanceof AppError
+          ? e.code
+          : "joined_failure";
+      logAnalyzeFailureTotal({
+        totalMs: totalTimer.elapsedMs(),
+        urlHost,
+        classification,
+      });
+      throw e;
+    }
+  }
+
+  const work = (async (): Promise<AnalyzeResponseDto> => {
+    const dto = await runFreshAnalyze({
+      prisma,
+      normalized,
+      urlHost,
+      urlHash,
+      totalTimer,
+      fetchMetadata,
+      extractFacebook,
+    });
+    await storeAnalyzeResultCache(redis, urlHash, dto);
+    return dto;
+  })();
+
+  analyzeInflight.set(urlHash, work);
+  try {
+    return await work;
+  } finally {
+    if (analyzeInflight.get(urlHash) === work) {
+      analyzeInflight.delete(urlHash);
+    }
+  }
 }
