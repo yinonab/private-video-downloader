@@ -104,7 +104,7 @@ Measured TikTok runs (instrumentation only; **no optimizations Done**):
 
 1. **Queue / job create** — not bottlenecks (~tens of ms).
 2. **TikTok `best`** — mostly Analyze (~3s) + yt-dlp (~3.8–4.3s); ffmpeg **skipped** (non–TikTok-ready path); backend total ~4–4.4s.
-3. **TikTok `tiktok_ready`** — was the **highest bottleneck** (ffmpeg `full_transcode` ~13.4s on ~50s media). **Mitigation shipped:** AVC/H.264-preferring selector for `tiktok_ready` only; re-benchmark required to confirm remux/audio_only.
+3. **TikTok `tiktok_ready`** — was the highest bottleneck (ffmpeg `full_transcode` ~13.4s). **Done — verified in production:** AVC/H.264-preferring selector → `strategy=audio_only`, ffmpeg **1019–1239ms**, `backend_total` **3768–4124ms** (was ffmpeg ~13400ms / `backend_total` ~16566ms).
 4. **Analyze** — almost entirely `analyze_ytdlp_metadata` (~2.8–2.9s of ~2.9s total). UI/upsert/qualities ≈ 0–10ms. Mobile `analyze_http` ~3.3s; `analyze_ui_ready` 0ms.
 5. **Mobile `cache_finalize`** — ~1.2–2.0s (low priority for now).
 6. **Save** — ~0.2–0.4s — not a bottleneck.
@@ -114,15 +114,15 @@ Measured TikTok runs (instrumentation only; **no optimizations Done**):
 
 | Priority | Area | Status | Notes |
 |----------|------|--------|--------|
-| **1** | TikTok-ready `full_transcode` avoidance | **Implemented (measure on device)** | `tiktok_ready` prefers AVC/H.264 (+ AAC) then falls back to former `best` selector; normalize unchanged |
-| **2** | Analyze metadata cost (`--dump-json`) | Diagnosed — later | Short TTL cache / in-flight dedupe / progressive UI / lighter metadata |
+| **1** | TikTok-ready `full_transcode` avoidance | **Done — verified in production** | Prefer AVC/H.264 (+ AAC); HE-AACv2 → `audio_only`; see verified timings below |
+| **2** | Analyze metadata cost (`--dump-json`) | **Open (next)** | Dominates Analyze (~2.8–3.3s); cache/dedupe/progressive UI / lighter metadata later |
 | **3** | Analyze failure `classification=unknown` | Open — later | Improve yt-dlp stderr → typed classification |
 | **4** | Mobile cache finalize (large files) | Low | Streaming-to-disk if bytes grow |
 | **5** | Share / Save | **Not active** | Do not change |
 
-## TikTok-ready compatible-format preference (shipped in code)
+## TikTok-ready compatible-format preference (verified)
 
-**Scope:** `YT_DLP_FORMAT_PRIMARY.tiktok_ready` only (`YT_DLP_FORMAT_TIKTOK_READY` in `ytdlp.ts`). **`best` unchanged.**
+**Scope:** `YT_DLP_FORMAT_PRIMARY.tiktok_ready` only (`YT_DLP_FORMAT_TIKTOK_READY` in `ytdlp.ts`). **`best` unchanged** — production regression: ffmpeg `strategy=skipped`.
 
 Prefer progressive AVC/H.264 (+ AAC when tagged), then AVC video+audio merge, then the legacy chain:
 
@@ -139,9 +139,18 @@ bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best
 - Post-download **ffprobe + normalize still always runs** for TikTok-ready (`remux` / `audio_only` / `full_transcode`).
 - If only HEVC (or otherwise incompatible) formats exist, last arms match former behavior → `full_transcode` remains acceptable.
 - `availableQualities` still offers `tiktok_ready` whenever `best` is available (no AVC-only gating).
-- Worker logs: `tiktokReadyCompatiblePreferred=true` + selector + probe codecs/dims + final `strategy` (no URLs/paths/secrets).
+- Worker + file-stream logs are path-free (normalize + `GET /downloads/:id/file` hygiene verified in production).
 
-**Expected when optimization works:** `[Perf][Download] stage=ffmpeg strategy=remux` (or `audio_only`); `backend_total` drops vs prior ~16.5s samples. **Not every TikTok improves.**
+### Verified production measurements (2026-07)
+
+| Metric | Before (HEVC → full_transcode) | After (h264 + HE-AACv2 → audio_only) |
+|--------|--------------------------------|--------------------------------------|
+| `ffmpeg` | ~13400ms | **1019–1239ms** |
+| `backend_total` | ~16566ms | **3768–4124ms** |
+| `strategy` | `full_transcode` | `audio_only` |
+| `best` path | `strategy=skipped` | **unchanged** (`skipped`) |
+
+Not every TikTok improves (HEVC-only sources may still `full_transcode`).
 
 ## TikTok-ready full_transcode avoidance — investigation notes (2026-07-26)
 
@@ -230,13 +239,12 @@ total_to_saved_approx:   # total_to_ready + save
 
 **Recommended next targets:**
 
-1. **Re-benchmark TikTok-ready** after deploy (confirm `strategy=remux` / `audio_only` when AVC available).
-2. Analyze: short TTL cache / in-flight dedupe / progressive UI / lighter metadata.
-3. Analyze failure classification improvements.
-4. Large-file cache finalize streaming (if needed).
-5. Share/Save — no change.
+1. **Analyze metadata cost** (`analyze_ytdlp_metadata` / `--dump-json`) — open backlog #2.
+2. Analyze failure classification improvements.
+3. Large-file cache finalize streaming (if needed).
+4. Share/Save — no change.
 
-**Do not mark performance work Done until TikTok-ready improvement is measured on device.**
+TikTok-ready `full_transcode` avoidance is **Done — verified in production** (see table above).
 
 ## Related
 
