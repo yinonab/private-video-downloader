@@ -13,6 +13,7 @@ import "../core/models/download_models.dart";
 import "../core/network/api_client.dart";
 import "../core/storage/local_session.dart";
 import "../core/utils/download_media_naming.dart";
+import "../core/utils/download_perf_log.dart";
 import "../core/utils/file_utils.dart";
 
 void _downloadDebugPrint(String msg) => downloadDebugPrint(msg);
@@ -111,6 +112,13 @@ final class FileDownloadService {
               "[FinalFile] ensureLocalJobMedia result=reused_cache jobId=$jobId "
               "size=$len mediaStorePublished=$published",
             );
+            logMobileDownloadPerf(
+              stage: "cache_finalize",
+              durationMs: 0,
+              jobId: jobId,
+              bytes: len,
+              result: "reused_cache",
+            );
             return DownloadSaveOutcome(
               internalPath: path,
               publicUri: desc.publicUri,
@@ -124,10 +132,26 @@ final class FileDownloadService {
     debugPrint(
       "[FinalFile] ensureLocalJobMedia result=downloaded_to_cache START jobId=$jobId",
     );
+    final sw = Stopwatch()..start();
     final outcome = await downloadJobMedia(
       jobId: jobId,
       detail: detail,
       onProgress: onProgress,
+    );
+    sw.stop();
+    var outBytes = 0;
+    try {
+      outBytes = await File(outcome.internalPath).length();
+    } catch (_) {
+      outBytes = 0;
+    }
+    logMobileDownloadPerf(
+      stage: "cache_finalize",
+      durationMs: sw.elapsedMilliseconds,
+      jobId: jobId,
+      bytes: outBytes,
+      result: "downloaded_to_cache",
+      mbps: approxMbps(bytes: outBytes, durationMs: sw.elapsedMilliseconds),
     );
     debugPrint(
       "[FinalFile] ensureLocalJobMedia result=downloaded_to_cache DONE jobId=$jobId "
@@ -139,6 +163,7 @@ final class FileDownloadService {
   /// Publishes an already-local final file to Android Downloads (MediaStore).
   /// No HTTP transfer. Call only from explicit **Save to device**.
   Future<DownloadSaveOutcome?> publishLocalJobMediaToDevice({required String jobId}) async {
+    final sw = Stopwatch()..start();
     final desc = await _session.savedDownloadForJob(jobId);
     if (desc == null) return null;
     final path = desc.internalPath.trim();
@@ -160,6 +185,14 @@ final class FileDownloadService {
     if (desc.publicUri != null && desc.publicUri!.trim().isNotEmpty) {
       debugPrint(
         "[FinalFile] save result=already_published_to_device jobId=$jobId",
+      );
+      sw.stop();
+      logMobileDownloadPerf(
+        stage: "save_to_device",
+        durationMs: sw.elapsedMilliseconds,
+        jobId: jobId,
+        bytes: internalLen,
+        result: "already_published",
       );
       return DownloadSaveOutcome(
         internalPath: path,
@@ -225,6 +258,14 @@ final class FileDownloadService {
         );
         debugPrint(
           "[FinalFile] save result=published_to_device jobId=$jobId",
+        );
+        sw.stop();
+        logMobileDownloadPerf(
+          stage: "save_to_device",
+          durationMs: sw.elapsedMilliseconds,
+          jobId: jobId,
+          bytes: internalLen,
+          result: "published_to_device",
         );
         return DownloadSaveOutcome(
           internalPath: path,

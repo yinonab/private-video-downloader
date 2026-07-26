@@ -47,6 +47,11 @@ import {
 } from "../services/ytdlpProxy";
 import { logger } from "../services/logger";
 import { notifyDownloadWorkerBullUncaught, notifyDownloadWorkerFailed } from "../services/operationalAlerts";
+import {
+  formatSelectorSuggestsMerge,
+  logDownloadPerf,
+  startPerfTimer,
+} from "../services/downloadPerf";
 
 function mimeForExt(ext: string): string {
   const e = ext.toLowerCase();
@@ -133,6 +138,10 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
         "download worker job picked"
       );
 
+      const jobCreatedAtMs = jobRow?.createdAt ? jobRow.createdAt.getTime() : Date.now();
+      const workerPickedAtMs = Date.now();
+      const runningTimer = startPerfTimer();
+
       await updateDownloadJobProgress(
         prisma,
         jobId,
@@ -146,6 +155,14 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
         },
         { platform: platformLabel, requestedQuality: format, logMessage: "download picked — preparing" }
       );
+
+      logDownloadPerf({
+        stage: "queue_wait",
+        durationMs: Math.max(0, workerPickedAtMs - jobCreatedAtMs),
+        jobId,
+        platform: platformLabel,
+        quality: format,
+      });
 
       await ensureDeviceDirs(deviceId);
 
@@ -229,6 +246,7 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
       }
 
       let code: number;
+      const sourceDownloadTimer = startPerfTimer();
 
       if (facebookDirectFallback) {
         await updateDownloadJobProgress(
@@ -471,6 +489,23 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
         return;
       }
 
+      const sourceExt = path.extname(best).replace(/^\./, "") || "unknown";
+      logDownloadPerf({
+        stage: "ytdlp",
+        durationMs: sourceDownloadTimer.elapsedMs(),
+        jobId,
+        platform: platformLabel,
+        quality: format,
+        formatSelector: facebookDirectFallback ? "facebook_direct" : primaryFormatStr,
+        bytes: bestSize,
+        ext: sourceExt,
+        mime: mimeForExt(path.extname(best)),
+        mergeLikely: facebookDirectFallback
+          ? false
+          : formatSelectorSuggestsMerge(primaryFormatStr),
+        result: facebookDirectFallback ? "facebook_direct" : "ytdlp",
+      });
+
       let assetFilename = best;
       let assetSize = bestSize;
       let mimeType = mimeForExt(path.extname(best));
@@ -530,6 +565,7 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
             "normalization strategy selected"
           );
 
+          const ffmpegTimer = startPerfTimer();
           await updateDownloadJobProgress(
             prisma,
             jobId,
@@ -743,6 +779,19 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
             },
             "ffmpeg normalize succeeded"
           );
+          logDownloadPerf({
+            stage: "ffmpeg",
+            durationMs: ffmpegTimer.elapsedMs(),
+            jobId,
+            platform: platformLabel,
+            quality: format,
+            strategy,
+            bytes: finalSize,
+            ext: "mp4",
+            mime: "video/mp4",
+            mediaDurationMs: probe.durationMs,
+            result: "normalized",
+          });
         } else {
           await updateDownloadJobProgress(
             prisma,
@@ -771,6 +820,16 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
             },
             "download fast path — ffmpeg normalization skipped"
           );
+          logDownloadPerf({
+            stage: "ffmpeg",
+            durationMs: 0,
+            jobId,
+            platform: platformLabel,
+            quality: format,
+            strategy: "skipped",
+            bytes: bestSize,
+            result: "skipped",
+          });
         }
       } else {
         await updateDownloadJobProgress(
@@ -779,6 +838,16 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
           { processingStage: "finalizing", progress: null },
           { platform: platformLabel, requestedQuality: format, logMessage: "download stage updated — finalizing (audio)" }
         );
+        logDownloadPerf({
+          stage: "ffmpeg",
+          durationMs: 0,
+          jobId,
+          platform: platformLabel,
+          quality: format,
+          strategy: "skipped",
+          bytes: bestSize,
+          result: "skipped_audio",
+        });
       }
 
       const storageKey = path.posix.join("devices", deviceId, primaryBuilt.subdir, assetFilename);
@@ -836,6 +905,29 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
         },
         "download completed"
       );
+
+      const backendTotalMs = Math.max(0, Date.now() - jobCreatedAtMs);
+      logDownloadPerf({
+        stage: "running_to_done",
+        durationMs: runningTimer.elapsedMs(),
+        jobId,
+        platform: platformLabel,
+        quality: format,
+        bytes: assetSize,
+        mime: mimeType,
+        ext: path.extname(assetFilename).replace(/^\./, "") || "unknown",
+      });
+      logDownloadPerf({
+        stage: "backend_total",
+        durationMs: backendTotalMs,
+        jobId,
+        platform: platformLabel,
+        quality: format,
+        bytes: assetSize,
+        mime: mimeType,
+        ext: path.extname(assetFilename).replace(/^\./, "") || "unknown",
+        result: "done",
+      });
     },
     {
       connection,

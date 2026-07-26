@@ -14,6 +14,7 @@ import {
 } from "./download.service";
 import { AppError, codes } from "../../types/errors";
 import type { FileAsset } from "@prisma/client";
+import { logDownloadPerf, startPerfTimer } from "../../services/downloadPerf";
 
 type ReadableMediaPick = {
   asset: FileAsset;
@@ -203,6 +204,7 @@ const downloadRoutes: FastifyPluginAsync = async (app) => {
     const device = await app.prisma.device.findUnique({ where: { id: ctx.id } });
     const dailyLimit = device?.dailyLimit ?? ctx.dailyLimit;
 
+    const createTimer = startPerfTimer();
     const result = await createDownload({
       prisma: app.prisma,
       redis: app.redis,
@@ -210,6 +212,14 @@ const downloadRoutes: FastifyPluginAsync = async (app) => {
       deviceId: ctx.id,
       dailyLimit,
       body: parsed.data,
+    });
+    logDownloadPerf({
+      stage: "job_create",
+      durationMs: createTimer.elapsedMs(),
+      jobId: result.jobId,
+      quality: String(parsed.data.format ?? parsed.data.quality ?? "unknown"),
+      cached: result.cached === true,
+      result: result.cached === true ? "cache_hit" : "created",
     });
     reply.send(result);
   });

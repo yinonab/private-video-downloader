@@ -22,6 +22,7 @@ import "../../core/models/download_models.dart";
 import "../../core/models/quick_edit_models.dart";
 import "../../core/theme/linkclip_design_system.dart";
 import "../../core/theme/linkclip_palette.dart";
+import "../../core/utils/download_perf_log.dart";
 import "../../core/utils/download_error_display.dart";
 import "../../core/utils/format_bytes_ui.dart";
 import "../../core/utils/video_title_split.dart";
@@ -97,6 +98,9 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
   bool _devicePublished = false;
   bool _localLookupDone = false;
   bool _downloadWakelockHeld = false;
+  /// Wall time from job create / attach until backend `done` (perf only).
+  Stopwatch? _backendWaitSw;
+  bool _backendWaitLogged = false;
 
   bool _wantsDownloadWakelock() {
     if (_fileBusy || _finalizingLocal) return true;
@@ -172,6 +176,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrapPendingCreate());
     } else {
       _startPollingTimer();
+      _startBackendWaitTimer(reason: "open_existing_job");
       WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_onDownloadScreenReady()));
@@ -208,6 +213,35 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
     unawaited(_tickOnce(force: true));
   }
 
+  void _startBackendWaitTimer({String reason = "start"}) {
+    // [reason] reserved for future debug; timer starts once per screen session.
+    assert(() {
+      if (kDebugMode && reason.isNotEmpty) {
+        // no-op: keep reason referenced for call sites
+      }
+      return true;
+    }());
+    _backendWaitSw ??= Stopwatch()..start();
+    _backendWaitLogged = false;
+  }
+
+  void _maybeLogBackendWaitDone(DownloadDetailResponse detail) {
+    if (detail.status != "done") return;
+    if (_backendWaitLogged) return;
+    final sw = _backendWaitSw;
+    if (sw == null) return;
+    sw.stop();
+    _backendWaitLogged = true;
+    logMobileDownloadPerf(
+      stage: "poll_until_backend_done",
+      durationMs: sw.elapsedMilliseconds,
+      jobId: detail.id,
+      platform: detail.platform,
+      quality: detail.requestedFormat,
+      result: "done",
+    );
+  }
+
   void _applyDownloadDetail(DownloadDetailResponse detail) {
     if (!mounted || detail.id != _pollJobId) return;
     setState(() {
@@ -219,6 +253,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
       _timer?.cancel();
     }
     if (detail.status == "done") {
+      _maybeLogBackendWaitDone(detail);
       assert(() {
         if (kDebugMode) {
           debugPrint(
@@ -295,6 +330,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
       });
       await AppScope.read(context).session.rememberDownloadCreateRequest(existingId, req);
       unawaited(_syncDownloadWakelock());
+      _startBackendWaitTimer(reason: "reuse_existing");
       _startPollingTimer();
       WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
       return;
@@ -303,8 +339,17 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
       await ops.registerPendingDownloadCreate(req);
     }
     downloadDebugPrint("POST /downloads (pending screen) body=${req.toJson()}");
+    final createSw = Stopwatch()..start();
     try {
       final res = await svc.create(req);
+      createSw.stop();
+      logMobileDownloadPerf(
+        stage: "create_job",
+        durationMs: createSw.elapsedMilliseconds,
+        jobId: res.jobId,
+        quality: req.format,
+        result: res.cached ? "cached" : "created",
+      );
       downloadDebugPrint(
         "POST /downloads response selectedJobId=${res.jobId} status=${res.status} cached=${res.cached}",
       );
@@ -340,6 +385,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
         jobId: _pollJobId,
         payload: req.toJson(),
       );
+      _startBackendWaitTimer(reason: "after_create");
       _startPollingTimer();
       WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLocalSaved());
     } catch (e, st) {
@@ -709,6 +755,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
   }
 
   Future<void> _openLocal() async {
+    final sw = Stopwatch()..start();
     final ok = await _ensureLocalCopyForAction(_LocalFileAction.open);
     if (!mounted || !ok) return;
     debugPrint("[FinalFile] open result=opened_cache jobId=$_pollJobId");
@@ -717,6 +764,13 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
       session: AppScope.read(context).session,
       jobId: _pollJobId,
     );
+    sw.stop();
+    logMobileDownloadPerf(
+      stage: "open",
+      durationMs: sw.elapsedMilliseconds,
+      jobId: _pollJobId,
+      result: "opened_cache",
+    );
   }
 
   Future<void> _shareLocal() async {
@@ -724,6 +778,7 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
       "[FinalFile] share tapped jobId=$_pollJobId localSaved=$_localSaved "
       "devicePublished=$_devicePublished finalizing=$_finalizingLocal",
     );
+    final sw = Stopwatch()..start();
     final ok = await _ensureLocalCopyForAction(_LocalFileAction.share);
     if (!mounted || !ok) return;
     debugPrint("[FinalFile] share result=shared_cache jobId=$_pollJobId");
@@ -732,6 +787,13 @@ class _DownloadStatusScreenState extends State<DownloadStatusScreen>
       session: AppScope.read(context).session,
       jobId: _pollJobId,
       title: _detail?.title,
+    );
+    sw.stop();
+    logMobileDownloadPerf(
+      stage: "share",
+      durationMs: sw.elapsedMilliseconds,
+      jobId: _pollJobId,
+      result: "shared_cache",
     );
   }
 

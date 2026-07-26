@@ -6,6 +6,7 @@ import { AppError, codes } from "../../types/errors";
 import { assertUnderDailyAnalyzeLimit, incrementAnalyzeCount } from "../../services/rateLimit";
 import { config } from "../../config";
 import { notifyAnalyzeFailedGeneric, safeHostFromUrlString } from "../../services/operationalAlerts";
+import { logDownloadPerf, startPerfTimer } from "../../services/downloadPerf";
 
 const analyzeRoutes: FastifyPluginAsync = async (app) => {
   app.post("/analyze", { preHandler: authDevice }, async (request, reply) => {
@@ -37,8 +38,23 @@ const analyzeRoutes: FastifyPluginAsync = async (app) => {
       throw e;
     }
     await incrementAnalyzeCount(app.redis, ctx.id);
-    const result = await analyzeUrl(app.prisma, parsed.data.url);
-    reply.send(result);
+    const analyzeTimer = startPerfTimer();
+    try {
+      const result = await analyzeUrl(app.prisma, parsed.data.url);
+      logDownloadPerf({
+        stage: "analyze",
+        durationMs: analyzeTimer.elapsedMs(),
+        platform: (result.platform ?? "unknown").toString(),
+      });
+      reply.send(result);
+    } catch (e) {
+      logDownloadPerf({
+        stage: "analyze_failed",
+        durationMs: analyzeTimer.elapsedMs(),
+        platform: "unknown",
+      });
+      throw e;
+    }
   });
 };
 
