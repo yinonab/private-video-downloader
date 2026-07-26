@@ -212,6 +212,20 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
       const primaryBuilt = buildDownloadArgs({ url, deviceId, jobId, format });
       primaryFormatStr = extractFormatArg(primaryBuilt.args) ?? "(unknown)";
 
+      if (isTikTokReady) {
+        logger.info(
+          {
+            jobId,
+            platform: platformLabel,
+            quality: format,
+            formatSelector: primaryFormatStr,
+            tiktokReadyCompatiblePreferred: true,
+            normalizationEnabled: true,
+          },
+          "tiktok_ready using AVC/H.264-preferring format selector"
+        );
+      }
+
       if (facebookDirectFallback && format === "audio_mp3") {
         const msg =
           "Audio MP3 is not available for this Facebook video. Choose a video quality instead.";
@@ -537,7 +551,7 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
             {
               jobId,
               platform: platformLabel,
-              inputPath: bestPath,
+              quality: format,
               durationMs: probe.durationMs,
               videoCodec: probe.video?.codec,
               pixFmt: probe.video?.pixFmt,
@@ -546,6 +560,9 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
               videoProfile: probe.video?.profile,
               audioCodec: probe.audio?.codec,
               audioProfile: probe.audio?.profile,
+              formatName: probe.formatName,
+              formatSelector: primaryFormatStr,
+              tiktokReadyCompatiblePreferred: true,
               normalizationEnabled: true,
               isTikTokReady: true,
             },
@@ -557,7 +574,13 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
             {
               jobId,
               platform: platformLabel,
+              quality: format,
               strategy,
+              videoCodec: probe.video?.codec,
+              audioCodec: probe.audio?.codec,
+              width: probe.video?.width,
+              height: probe.video?.height,
+              tiktokReadyCompatiblePreferred: true,
               normalizationEnabled: true,
               normalizationStrategy: strategy,
               isTikTokReady: true,

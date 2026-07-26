@@ -602,11 +602,31 @@ export async function fetchMetadataJson(
 
 export type DownloadFormatKind = "best" | "1080p" | "720p" | "480p" | "audio_mp3" | "tiktok_ready";
 
+/** Legacy best/tiktok fallback arm (kept as last resort for `tiktok_ready`). */
+export const YT_DLP_FORMAT_BEST_FALLBACK =
+  "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best";
+
+/**
+ * Prefer progressive H.264/AVC (+ AAC when tagged) before HEVC “best”, then fall back to
+ * {@link YT_DLP_FORMAT_BEST_FALLBACK}. Used only for `tiktok_ready`.
+ */
+export const YT_DLP_FORMAT_TIKTOK_READY =
+  "best[ext=mp4][vcodec^=avc1][acodec^=mp4a]/" +
+  "best[ext=mp4][vcodec^=avc1]/" +
+  "best[ext=mp4][vcodec=h264][acodec^=mp4a]/" +
+  "best[ext=mp4][vcodec=h264]/" +
+  "bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/" +
+  "bestvideo[ext=mp4][vcodec^=h264]+bestaudio[ext=m4a]/" +
+  YT_DLP_FORMAT_BEST_FALLBACK;
+
 /** yt-dlp `-f` selector for worker logs / diagnostics */
 export const YT_DLP_FORMAT_PRIMARY: Record<Exclude<DownloadFormatKind, never>, string> = {
-  best: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-  /** Same source chain as best; TikTok normalization runs after download only for `tiktok_ready`. */
-  tiktok_ready: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+  best: YT_DLP_FORMAT_BEST_FALLBACK,
+  /**
+   * Prefer AVC/H.264 (+ AAC when available) so post-download normalize can remux/audio_only
+   * instead of full_transcode. Last arms match `best` so downloads never fail for lack of AVC.
+   */
+  tiktok_ready: YT_DLP_FORMAT_TIKTOK_READY,
   "1080p":
     "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[height<=1080]/best[ext=mp4]/best",
   "720p":

@@ -103,11 +103,58 @@ adb logcat | findstr /C:"[Perf][MobileDownload]" | findstr /C:"analyze_"
 Measured TikTok runs (instrumentation only; **no optimizations Done**):
 
 1. **Queue / job create** — not bottlenecks (~tens of ms).
-2. **TikTok `best`** — mostly Analyze (~3s) + yt-dlp (~3.8s); ffmpeg skipped; backend total ~3.9s; file response ~0.56s.
-3. **TikTok `tiktok_ready`** — slower mainly because HEVC → ffmpeg `full_transcode` (~5.2s); backend total ~9.3s.
-4. **Mobile `cache_finalize`** — ~2s in first sample (Stage B transfer).
-5. **Save to device** — fast (~0.4s).
-6. **Share (~7–10s with `shared_cache`)** — **suspicious under the old single timer**, which wrapped `Share.shareXFiles` until it returned. Use the split Share stages above before treating Share as a LinkClip bottleneck.
+2. **TikTok `best`** — mostly Analyze (~3s) + yt-dlp (~3.8–4.3s); ffmpeg **skipped** (non–TikTok-ready path); backend total ~4–4.4s.
+3. **TikTok `tiktok_ready`** — was the **highest bottleneck** (ffmpeg `full_transcode` ~13.4s on ~50s media). **Mitigation shipped:** AVC/H.264-preferring selector for `tiktok_ready` only; re-benchmark required to confirm remux/audio_only.
+4. **Analyze** — almost entirely `analyze_ytdlp_metadata` (~2.8–2.9s of ~2.9s total). UI/upsert/qualities ≈ 0–10ms. Mobile `analyze_http` ~3.3s; `analyze_ui_ready` 0ms.
+5. **Mobile `cache_finalize`** — ~1.2–2.0s (low priority for now).
+6. **Save** — ~0.2–0.4s — not a bottleneck.
+7. **Share** — prep ms-scale; prior 5–10s was native sheet / user time — **do not optimize Share**.
+
+## Performance backlog (priority order)
+
+| Priority | Area | Status | Notes |
+|----------|------|--------|--------|
+| **1** | TikTok-ready `full_transcode` avoidance | **Implemented (measure on device)** | `tiktok_ready` prefers AVC/H.264 (+ AAC) then falls back to former `best` selector; normalize unchanged |
+| **2** | Analyze metadata cost (`--dump-json`) | Diagnosed — later | Short TTL cache / in-flight dedupe / progressive UI / lighter metadata |
+| **3** | Analyze failure `classification=unknown` | Open — later | Improve yt-dlp stderr → typed classification |
+| **4** | Mobile cache finalize (large files) | Low | Streaming-to-disk if bytes grow |
+| **5** | Share / Save | **Not active** | Do not change |
+
+## TikTok-ready compatible-format preference (shipped in code)
+
+**Scope:** `YT_DLP_FORMAT_PRIMARY.tiktok_ready` only (`YT_DLP_FORMAT_TIKTOK_READY` in `ytdlp.ts`). **`best` unchanged.**
+
+Prefer progressive AVC/H.264 (+ AAC when tagged), then AVC video+audio merge, then the legacy chain:
+
+```text
+best[ext=mp4][vcodec^=avc1][acodec^=mp4a]/
+best[ext=mp4][vcodec^=avc1]/
+best[ext=mp4][vcodec=h264][acodec^=mp4a]/
+best[ext=mp4][vcodec=h264]/
+bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/
+bestvideo[ext=mp4][vcodec^=h264]+bestaudio[ext=m4a]/
+bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best
+```
+
+- Post-download **ffprobe + normalize still always runs** for TikTok-ready (`remux` / `audio_only` / `full_transcode`).
+- If only HEVC (or otherwise incompatible) formats exist, last arms match former behavior → `full_transcode` remains acceptable.
+- `availableQualities` still offers `tiktok_ready` whenever `best` is available (no AVC-only gating).
+- Worker logs: `tiktokReadyCompatiblePreferred=true` + selector + probe codecs/dims + final `strategy` (no URLs/paths/secrets).
+
+**Expected when optimization works:** `[Perf][Download] stage=ffmpeg strategy=remux` (or `audio_only`); `backend_total` drops vs prior ~16.5s samples. **Not every TikTok improves.**
+
+## TikTok-ready full_transcode avoidance — investigation notes (2026-07-26)
+
+Historical investigation that led to the selector above. Normalize rules unchanged:
+
+| Strategy | When | Notes |
+|----------|------|--------|
+| `full_transcode` | Video missing **or** not `h264` + `yuv420p` + even WxH | HEVC fails video gate → this path |
+| `audio_only` | Video OK for copy, audio not AAC-LC (e.g. HE-AAC) | Re-encode audio only |
+| `remux` | Video + audio both copy-compatible | `-c copy` + `faststart` |
+| `skipped` | **Only** non–`tiktok_ready` video (or audio jobs) | TikTok-ready **never** skips ffmpeg |
+
+Quality tradeoff: may pick lower resolution than HEVC “best” — intentional for social-ready intent.
 
 ## How to collect logs
 
@@ -181,13 +228,15 @@ total_to_saved_approx:   # total_to_ready + save
 4. If **`queue_wait`** high → worker concurrency / load.
 5. For **Share**: compare time to `share_native_call_start` vs `share_native_call_return` (see Share interpretation above).
 
-**Recommended next targets (not implemented):**
+**Recommended next targets:**
 
-- If Share prep is fast → next backend target is TikTok-ready `full_transcode` avoidance when safe.
-- If Share prep is slow before native → optimize pre-native Share path only.
-- If `cache_finalize` grows with larger files → later: true streaming-to-disk instead of full byte buffering.
+1. **Re-benchmark TikTok-ready** after deploy (confirm `strategy=remux` / `audio_only` when AVC available).
+2. Analyze: short TTL cache / in-flight dedupe / progressive UI / lighter metadata.
+3. Analyze failure classification improvements.
+4. Large-file cache finalize streaming (if needed).
+5. Share/Save — no change.
 
-**Next step after collecting data:** identify the highest-duration stage; only then design an optimization. Do not mark performance work Done until measured + shipped.
+**Do not mark performance work Done until TikTok-ready improvement is measured on device.**
 
 ## Related
 
