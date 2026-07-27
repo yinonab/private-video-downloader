@@ -1,17 +1,9 @@
 import type { CaptionsFontSize } from "../../modules/edit/edit.types";
+import { CAPTION_MAX_CHARS_PER_LINE } from "./dimensions";
 import { normalizeCaptionText } from "./tokenize";
 
 const MIN_VISIBLE_CHUNK_DURATION_SEC = 0.85;
 const MIN_CHUNK_DURATION_SEC = 0.16;
-
-const MAX_CHARS_PER_LINE: Record<CaptionsFontSize, number> = {
-  extra_small: 32,
-  small: 28,
-  medium: 24,
-  large: 20,
-  x_large: 16,
-  xx_large: 14,
-};
 
 function greedyWordWrap(words: readonly string[], maxChars: number): string[] {
   const linesOut: string[] = [];
@@ -72,7 +64,7 @@ export function chunkSegmentForHighlight(
   if (!(end > start)) end = start + Math.max(MIN_CHUNK_DURATION_SEC, 0.2);
   const dur = end - start;
 
-  let maxChars = Math.max(8, MAX_CHARS_PER_LINE[fontSize]);
+  let maxChars = Math.max(8, CAPTION_MAX_CHARS_PER_LINE[fontSize]);
 
   const buildChunks = (): string[] => {
     const words = plain.split(/\s+/).filter((w) => w.length > 0);
@@ -90,7 +82,7 @@ export function chunkSegmentForHighlight(
   let chunks = buildChunks();
   while (chunks.length > 1) {
     const per = dur / chunks.length;
-    if (per >= MIN_VISIBLE_CHUNK_DURATION_SEC || maxChars >= 48 + MAX_CHARS_PER_LINE[fontSize]) break;
+    if (per >= MIN_VISIBLE_CHUNK_DURATION_SEC || maxChars >= 48 + CAPTION_MAX_CHARS_PER_LINE[fontSize]) break;
     maxChars += 2;
     chunks = buildChunks();
   }

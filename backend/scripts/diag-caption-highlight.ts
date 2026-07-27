@@ -26,9 +26,13 @@ import {
   captionTokenMatchesWord,
   captionTokenDisplayText,
   validateOverlayFilterComplex,
+  captionFontSizePx,
+  captionMaxLineWidthPx,
   type TimedOverlayPlate,
 } from "../src/services/captionHighlight";
+import { layoutCaptionBlock } from "../src/services/captionHighlight/layout";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { captionFontCss, ensureCaptionFont } from "../src/services/captionHighlight/fonts";
 import { segmentsToAssContent } from "../src/services/assSubtitles.service";
 import { textColorToAssColour } from "../src/services/captionOutline.util";
 import type { TranscriptSegment } from "../src/services/transcription.service";
@@ -123,6 +127,71 @@ function assertKillSwitchStaticAss(): void {
     );
   }
   console.info("diag:caption-highlight ok kill-switch static ASS (flag-off / fallback path)");
+}
+
+/** F1: Hebrew wrap must keep multiple words per line on portrait + large fonts. */
+async function assertHebrewCaptionLayoutPolicy(): Promise<void> {
+  await ensureCaptionFont("heebo");
+  const portrait = { width: 1080, height: 1920 };
+  const landscape = { width: 1920, height: 1080 };
+  for (const fs of ["medium", "large", "xx_large"] as const) {
+    const fontPx = captionFontSizePx(fs, portrait);
+    const maxW = captionMaxLineWidthPx(fs, portrait);
+    assert.ok(maxW >= 900, `portrait safe width for ${fs}: ${maxW}`);
+    // Uniform scale: portrait font must not follow height-only blow-up (~85–156px previously).
+    assert.ok(fontPx <= 60, `portrait ${fs} fontPx=${fontPx} should use min(sx,sy)`);
+  }
+  assert.equal(captionFontSizePx("medium", landscape), 48);
+
+  const medium = "זה משפט קצת יותר ארוך שצריך להישבר בצורה טבעית";
+  const canvas = createCanvas(1080, 1920);
+  const ctx = canvas.getContext("2d");
+  const fontSize = captionFontSizePx("xx_large", portrait);
+  const maxLineWidthPx = captionMaxLineWidthPx("xx_large", portrait);
+  const familyLabel = await ensureCaptionFont("heebo");
+  ctx.font = captionFontCss(familyLabel, fontSize, 700);
+  const layout = layoutCaptionBlock(
+    ctx,
+    {
+      text: medium,
+      direction: "auto",
+      fontSize,
+      fontWeight: 700,
+      maxLines: 2,
+      canvasWidth: 1080,
+      canvasHeight: 1920,
+      position: "bottom",
+      maxLineWidthPx,
+      lineGapPx: 10,
+      tokenGapPx: 10,
+      canvas: portrait,
+    },
+    familyLabel,
+  );
+  assert.equal(layout.direction, "rtl");
+  assert.ok(layout.lines.length >= 1 && layout.lines.length <= 2, `lines=${layout.lines.length}`);
+  const wordsOnFirst = layout.lines[0]!.tokens.length;
+  assert.ok(
+    wordsOnFirst >= 2,
+    `xx_large portrait first line should keep ≥2 Hebrew words, got ${wordsOnFirst}`,
+  );
+
+  const ass = segmentsToAssContent(
+    [{ startSec: 0, endSec: 4, text: medium }],
+    {
+      ...baseCfg,
+      wordHighlight: "none",
+      fontSize: "medium",
+      title: "he-wrap",
+    },
+  );
+  assert.ok(ass.includes("WrapStyle: 0"), "ASS uses smart WrapStyle");
+  assert.ok(
+    ass.includes("זה משפט") || ass.includes("משפט קצת"),
+    "ASS keeps multi-word Hebrew phrase on a dialogue line",
+  );
+
+  console.info("diag:caption-highlight ok hebrew layout policy (portrait wrap + ASS)");
 }
 
 function syntheticTimedPlates(count: number, platePath: string): TimedOverlayPlate[] {
@@ -614,6 +683,7 @@ async function assertCaptionOutlineBehavior(): Promise<void> {
 
 async function main(): Promise<void> {
   assertKillSwitchStaticAss();
+  await assertHebrewCaptionLayoutPolicy();
   assertFilterComplexLabels();
   assertColorPropagation();
   await assertRtlPunctuationBehavior();

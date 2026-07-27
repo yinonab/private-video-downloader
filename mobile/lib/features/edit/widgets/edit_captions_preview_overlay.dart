@@ -126,7 +126,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
         color: stroke ? null : (textColor ?? normal),
         fontSize: fz,
         fontWeight: weight ?? boldStyle,
-        height: 1.15,
+        height: 1.25,
       );
       final withFont = _applyPreviewFont(fontFamily, style);
       if (!stroke || !outlineEnabled) return withFont;
@@ -160,7 +160,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
       resolvedText,
       highlightWordIndex: highlightWordIndex,
     );
-    final maxLines = layout == CaptionPreviewLayout.stage ? 1 : 2;
+    final maxLines = 2;
     final rtl = captionPreviewIsRtl(resolvedText);
 
     Widget buildCaptionText({Color? textColor, List<Shadow>? shadows, FontWeight? weight}) {
@@ -169,6 +169,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
           Text(
             resolvedText,
             textAlign: TextAlign.center,
+            textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+            softWrap: true,
             maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
             style: baseStyle(textColor: textColor, weight: weight).copyWith(shadows: shadows),
@@ -176,6 +178,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
           ({required bool stroke}) => Text(
             resolvedText,
             textAlign: TextAlign.center,
+            textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+            softWrap: true,
             maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
             style: baseStyle(textColor: textColor, weight: weight, stroke: stroke).copyWith(
@@ -200,7 +204,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
               alignment: PlaceholderAlignment.baseline,
               baseline: TextBaseline.alphabetic,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                 decoration: BoxDecoration(
                   color: boxFill.withValues(alpha: 0.92),
                   borderRadius: BorderRadius.circular(
@@ -222,6 +226,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
       return withOutlineLayer(
         RichText(
           textAlign: TextAlign.center,
+          textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+          softWrap: true,
           maxLines: maxLines,
           overflow: TextOverflow.ellipsis,
           text: TextSpan(
@@ -249,7 +255,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
                   alignment: PlaceholderAlignment.baseline,
                   baseline: TextBaseline.alphabetic,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                     decoration: BoxDecoration(
                       color: stroke ? Colors.transparent : boxFill.withValues(alpha: 0.92),
                       borderRadius: BorderRadius.circular(
@@ -269,6 +275,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
               : TextSpan(text: highlightParts.highlight, style: layerHi);
           return RichText(
             textAlign: TextAlign.center,
+            textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+            softWrap: true,
             maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
             text: TextSpan(
@@ -422,7 +430,7 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
           offsetXAss: offsetXAss,
           offsetYAss: offsetYAss,
         );
-        final hPad = isStage ? 12.0 : 18.0;
+        final hPad = math.max(8.0, w * (kCaptionAssMarginH / kCaptionAssPlayResX));
         final bottom = position == QuickEditCaptionPosition.bottom;
 
         final positioned = Padding(

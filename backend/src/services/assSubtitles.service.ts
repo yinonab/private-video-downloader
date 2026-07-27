@@ -1,6 +1,13 @@
 import type { CaptionsBurnInV1Resolved } from "../modules/edit/edit.types";
 import type { TranscriptSegment } from "./transcription.service";
 import { resolveCaptionOutline, type ResolvedCaptionOutline } from "./captionOutline.util";
+import {
+  CAPTION_MARGIN_H,
+  CAPTION_MARGIN_V,
+  CAPTION_MAX_CHARS_PER_LINE,
+  CAPTION_PLAY_H,
+  CAPTION_PLAY_W,
+} from "./captionHighlight/dimensions";
 
 /**
  * ASS dialogue hard line break token (literal backslash + N in subtitle file).
@@ -9,8 +16,8 @@ import { resolveCaptionOutline, type ResolvedCaptionOutline } from "./captionOut
 const ASS_HARD_BREAK = "\\N";
 
 /** Logical script grid — ffmpeg/libass scales to output video. */
-const PLAY_RES_X = 960;
-const PLAY_RES_Y = 540;
+const PLAY_RES_X = CAPTION_PLAY_W;
+const PLAY_RES_Y = CAPTION_PLAY_H;
 
 const FONT_SIZES: Record<CaptionsBurnInV1Resolved["fontSize"], number> = {
   extra_small: 16,
@@ -21,19 +28,9 @@ const FONT_SIZES: Record<CaptionsBurnInV1Resolved["fontSize"], number> = {
   xx_large: 44,
 };
 
-/** Per-line grapheme-ish limits — keeps ≤2 rendered lines via manual wrap (`WrapStyle: 2`). */
-const MAX_CHARS_PER_LINE: Record<CaptionsBurnInV1Resolved["fontSize"], number> = {
-  extra_small: 32,
-  small: 28,
-  medium: 24,
-  large: 20,
-  x_large: 16,
-  xx_large: 14,
-};
-
-const MARGIN_H = 52;
+const MARGIN_H = CAPTION_MARGIN_H;
 /** Safe vertical margin from top/bottom (script pixels) — avoids edge-glued captions. */
-const MARGIN_V = 96;
+const MARGIN_V = CAPTION_MARGIN_V;
 
 /** Sub-event floor when splitting one Whisper segment across multiple Dialogue lines (smooth read, avoid flicker). */
 const MIN_VISIBLE_CHUNK_DURATION_SEC = 0.85;
@@ -62,7 +59,7 @@ export function segmentsToAssContent(segments: TranscriptSegment[], opts: Segmen
 export function segmentsToAssContentWithMeta(segments: TranscriptSegment[], opts: SegmentsToAssOpts): SegmentsToAssMeta {
   const title = opts.title ?? "linkclip-caption";
   const fontSize = FONT_SIZES[opts.fontSize];
-  const maxLen = MAX_CHARS_PER_LINE[opts.fontSize];
+  const maxLen = CAPTION_MAX_CHARS_PER_LINE[opts.fontSize];
   const align = opts.position === "top" ? 8 : 2;
   const styleRow = buildDefaultStyleRow({
     fontSize,
@@ -79,7 +76,7 @@ Title: ${title.replace(/[^\w\- ]+/g, "").slice(0, 80)}
 ScriptType: v4.00+
 PlayResX: ${PLAY_RES_X}
 PlayResY: ${PLAY_RES_Y}
-WrapStyle: 2
+WrapStyle: 0
 ScaledBorderAndShadow: yes
 
 [V4+ Styles]

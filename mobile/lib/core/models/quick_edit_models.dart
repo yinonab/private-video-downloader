@@ -1317,6 +1317,9 @@ const int kQuickEditCaptionsOffsetYMax = 180;
 const double kCaptionAssPlayResX = 960;
 const double kCaptionAssPlayResY = 540;
 
+/// Horizontal safe margin each side in ASS PlayRes px (matches backend CAPTION_MARGIN_H).
+const double kCaptionAssMarginH = 52;
+
 /// Trim + speed only — mirrors final caption timeline basis for draft transcription.
 List<Map<String, dynamic>> buildCaptionsDraftRequestOperations({
   required double videoDurationSec,

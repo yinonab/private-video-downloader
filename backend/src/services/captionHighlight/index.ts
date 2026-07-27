@@ -18,7 +18,7 @@ export {
   CAPTION_OVERLAY_MAX_PLATES,
   type OverlayFilterBuild,
 } from "./ffmpegOverlay";
-export { resolveCaptionCanvasSize, CAPTION_PLAY_W, CAPTION_PLAY_H } from "./dimensions";
+export { resolveCaptionCanvasSize, CAPTION_PLAY_W, CAPTION_PLAY_H, CAPTION_MARGIN_H, CAPTION_MAX_CHARS_PER_LINE, captionFontSizePx, captionMaxLineWidthPx } from "./dimensions";
 export { renderCaptionHighlightPlate } from "./renderPlate";
 export { tokenizeCaptionText, resolveTextDirection, captionTokenDisplayText, captionTokenMatchesWord } from "./tokenize";
 export { resolveWordTimingCues, alignWordsForChunk } from "./timing";

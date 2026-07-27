@@ -28,7 +28,7 @@ Related implementation: `ActiveOperationStore`, `OperationController`, `operatio
 
 | ID | Area | Priority | Status | Summary | Last Updated | Notes |
 | -- | ---- | -------- | ------ | ------- | ------------ | ----- |
-| F1 | Captions | High | Open | Hebrew/RTL captions can wrap badly (unnatural line breaks / word stacking). Fix preview and final export behavior. | 2026-07-20 | Preview + burn/export consistency |
+| F1 | Captions | High | Done | Hebrew/RTL wrapping fixed: uniform font scale (`min(sx,sy)`), safe-area max line width, shared char wrap budgets, ASS `WrapStyle: 0`, preview maxLines=2 + PlayRes-relative horizontal padding. Colors/outline/highlight styling unchanged. | 2026-07-27 | Device QA: preview vs export |
 | F2 | Thumbnails / preview | High-Medium | Failed QA / Partially Done | Prior “cover + image aspect” still failed device QA: Captain Marvel TikTok thumb is a **portrait canvas with baked letterbox bars**. Aspect-from-bitmap alone kept a portrait tile. New fix: letterbox content detection + crop + landscape tile from **content** aspect. Device QA pending. | 2026-07-21 | Large preview screens unchanged |
 | F3 | Edit performance | High | Open | Edit/export (especially with captions) can take a long time. Need instrumentation before optimization. | 2026-07-20 | Measure first; no premature optimization |
 | F4 | Progress UX / ETA | Medium-High | Partially Done | Progress reliability improved; still need clearer elapsed time, stages, and honest ETA. | 2026-07-20 | Build on `edit_progress_display` |
@@ -104,13 +104,13 @@ _None yet in this tracking phase. Prior work (active operation resume, Operation
 ## Current Recommended Order
 
 1. **QA and commit** the current clean UI / large-preview changes if they pass (F9).
-2. **Caption text layout / wrapping** (F1).
-3. **External output thumbnail consistency** (F2).
-4. **Edit/export performance instrumentation** (F3).
-5. **Progress UX / ETA** (F4).
-6. **Moovit-like external floating window / PiP design** (F5) — design first.
-7. **Background final-file DownloadManager** if needed (F6).
-8. **AudioEditScreen parity** (F8).
+2. **External output thumbnail consistency** (F2).
+3. **Edit/export performance instrumentation** (F3).
+4. **Progress UX / ETA** (F4).
+5. **Moovit-like external floating window / PiP design** (F5) — design first.
+6. **Background final-file DownloadManager** if needed (F6).
+7. **AudioEditScreen parity** (F8).
+8. Device QA for **caption wrap** (F1 Done) — preview vs export on portrait/landscape.
 
 _(F7 remains deferred until async job design exists.)_
 

@@ -1,8 +1,29 @@
 import type { CaptionsBurnInV1Resolved, CaptionsFontSize } from "../../modules/edit/edit.types";
 
-/** PoC / ASS script reference resolution only — production uses probed video size. */
+/**
+ * Shared caption layout policy (PlayRes reference).
+ * Preview (Flutter) and burn-in (ASS / highlight canvas) should track these ratios.
+ */
 export const CAPTION_PLAY_W = 960;
 export const CAPTION_PLAY_H = 540;
+
+/** Horizontal safe margin in PlayRes px (each side). */
+export const CAPTION_MARGIN_H = 52;
+/** Vertical safe margin in PlayRes px. */
+export const CAPTION_MARGIN_V = 96;
+
+/**
+ * Soft wrap budgets for ASS `\N` / highlight chunking (code points).
+ * Tuned so typical Hebrew phrases keep multiple words per line (not one-word stacks).
+ */
+export const CAPTION_MAX_CHARS_PER_LINE: Record<CaptionsFontSize, number> = {
+  extra_small: 42,
+  small: 38,
+  medium: 34,
+  large: 28,
+  x_large: 24,
+  xx_large: 20,
+};
 
 export type CaptionCanvasSize = {
   readonly width: number;
@@ -17,18 +38,6 @@ const FONT_SIZES: Record<CaptionsFontSize, number> = {
   x_large: 36,
   xx_large: 44,
 };
-
-const MAX_CHARS_PER_LINE: Record<CaptionsFontSize, number> = {
-  extra_small: 32,
-  small: 28,
-  medium: 24,
-  large: 20,
-  x_large: 16,
-  xx_large: 14,
-};
-
-const MARGIN_H = 52;
-const MARGIN_V = 96;
 
 /** Resolve burn canvas from ffprobe video stream (fallback to PlayRes for tests). */
 export function resolveCaptionCanvasSize(video?: { width?: number; height?: number }): CaptionCanvasSize {
@@ -47,18 +56,30 @@ function scaleFromPlayRes(canvas: CaptionCanvasSize): { sx: number; sy: number }
   };
 }
 
-export function captionFontSizePx(fontSize: CaptionsFontSize, canvas: CaptionCanvasSize): number {
-  const base = FONT_SIZES[fontSize];
-  const { sy } = scaleFromPlayRes(canvas);
-  return Math.max(12, Math.round(base * sy));
+/**
+ * Uniform scale (min of axes) so portrait video does not inflate fonts by height alone —
+ * that previously forced ~1 Hebrew word per line at large sizes on 9:16 canvases.
+ */
+export function captionUniformScale(canvas: CaptionCanvasSize): number {
+  const { sx, sy } = scaleFromPlayRes(canvas);
+  return Math.min(sx, sy);
 }
 
-export function captionMaxLineWidthPx(fontSize: CaptionsFontSize, canvas: CaptionCanvasSize): number {
-  const chars = MAX_CHARS_PER_LINE[fontSize];
-  const px = captionFontSizePx(fontSize, canvas);
+export function captionFontSizePx(fontSize: CaptionsFontSize, canvas: CaptionCanvasSize): number {
+  const base = FONT_SIZES[fontSize];
+  return Math.max(12, Math.round(base * captionUniformScale(canvas)));
+}
+
+/**
+ * Max line width = video safe area (full width minus scaled horizontal margins).
+ * Avoids Latin-centric `chars × glyph` estimates that were too narrow on landscape
+ * and still left portrait large fonts stacking single words.
+ */
+export function captionMaxLineWidthPx(_fontSize: CaptionsFontSize, canvas: CaptionCanvasSize): number {
   const { sx } = scaleFromPlayRes(canvas);
-  const marginH = Math.round(MARGIN_H * sx);
-  return Math.min(canvas.width - marginH * 2, Math.max(200, Math.round(chars * px * 0.58)));
+  const marginH = Math.round(CAPTION_MARGIN_H * sx);
+  const safe = canvas.width - marginH * 2;
+  return Math.max(200, safe);
 }
 
 /** Vertical anchor adjustment from offsetY (scaled to canvas height). */
@@ -69,7 +90,7 @@ export function captionBlockTopBase(
   canvas: CaptionCanvasSize,
 ): number {
   const { sy } = scaleFromPlayRes(canvas);
-  const marginV = Math.round(MARGIN_V * sy);
+  const marginV = Math.round(CAPTION_MARGIN_V * sy);
   const oy = Math.round(offsetY * sy);
 
   if (position === "top") {
