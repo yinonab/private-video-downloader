@@ -1,6 +1,7 @@
-FROM node:20-bookworm
+FROM node:22-bookworm
 
-# Node is required for yt-dlp YouTube n/sig challenge solving (external JS via yt-dlp-ejs).
+# Node 22+ is required for yt-dlp YouTube n/sig challenge solving (external JS via yt-dlp-ejs).
+# yt-dlp 2026.07+ marks Node < 22 as unsupported → n-challenge fails → only storyboard formats.
 # Official image provides `node` under /usr/local/bin; some tooling probes /usr/bin/node first.
 RUN if [ -x /usr/local/bin/node ] && [ ! -e /usr/bin/node ]; then ln -sf /usr/local/bin/node /usr/bin/node; fi
 
