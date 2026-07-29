@@ -43,18 +43,18 @@ function drawTokenText(
   ctx: SKRSContext2D,
   token: CaptionToken,
   box: { x: number; y: number; width: number; height: number },
+  baselineY: number,
   direction: "rtl" | "ltr",
   fillStyle: string,
-  fontSize: number,
   outline?: { enabled: boolean; color: string; widthPx: number },
 ): void {
   const display = captionTokenDisplayText(token);
   ctx.direction = direction;
   ctx.textAlign = "left";
-  const m = ctx.measureText(display);
-  const ascent = m.actualBoundingBoxAscent ?? m.emHeightAscent ?? fontSize;
+  ctx.textBaseline = "alphabetic";
   const x = box.x;
-  const y = box.y + ascent;
+  // Shared line baseline — not per-token actualBoundingBoxAscent.
+  const y = baselineY;
 
   if (outline?.enabled && outline.widthPx > 0) {
     ctx.strokeStyle = outline.color;
@@ -129,9 +129,9 @@ export async function renderCaptionHighlightPlate(input: RenderPlateInput): Prom
         ctx,
         token,
         box,
+        line.baselineY,
         layout.direction,
         isActive ? input.activeTextColor : input.normalTextColor,
-        input.fontSize,
         outline,
       );
       if (isActive) activeDrawn += 1;

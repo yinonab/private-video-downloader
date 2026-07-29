@@ -175,6 +175,39 @@ async function assertHebrewCaptionLayoutPolicy(): Promise<void> {
     wordsOnFirst >= 2,
     `xx_large portrait first line should keep ≥2 Hebrew words, got ${wordsOnFirst}`,
   );
+  for (const line of layout.lines) {
+    assert.equal(line.baselineY, line.y + line.ascent, "baselineY = line top + shared ascent");
+    assert.ok(line.boxes.every((b) => b.y === line.y), "highlight boxes keep shared line top");
+    assert.ok(line.boxes.every((b) => b.height === line.lineHeight), "box height = lineHeight");
+  }
+
+  // Phase 1: punctuation + mixed glyphs share one baseline (no per-glyph Y).
+  const bobSample = "סליחה, יש לכם";
+  const bobFont = captionFontSizePx("large", portrait);
+  ctx.font = captionFontCss(familyLabel, bobFont, 700);
+  const bobLayout = layoutCaptionBlock(
+    ctx,
+    {
+      text: bobSample,
+      direction: "auto",
+      fontSize: bobFont,
+      fontWeight: 700,
+      maxLines: 2,
+      canvasWidth: 1080,
+      canvasHeight: 1920,
+      position: "bottom",
+      maxLineWidthPx: captionMaxLineWidthPx("large", portrait),
+      lineGapPx: 10,
+      tokenGapPx: 10,
+      canvas: portrait,
+    },
+    familyLabel,
+  );
+  assert.ok(bobLayout.lines.length >= 1);
+  const bobLine = bobLayout.lines[0]!;
+  assert.ok(bobLine.tokens.length >= 2, "bob sample multi-token");
+  assert.equal(bobLine.baselineY, bobLine.y + bobLine.ascent);
+  assert.ok(bobLine.boxes.every((b) => b.y === bobLine.y));
 
   const ass = segmentsToAssContent(
     [{ startSec: 0, endSec: 4, text: medium }],
@@ -191,7 +224,7 @@ async function assertHebrewCaptionLayoutPolicy(): Promise<void> {
     "ASS keeps multi-word Hebrew phrase on a dialogue line",
   );
 
-  console.info("diag:caption-highlight ok hebrew layout policy (portrait wrap + ASS)");
+  console.info("diag:caption-highlight ok hebrew layout policy (portrait wrap + shared baseline)");
 }
 
 function syntheticTimedPlates(count: number, platePath: string): TimedOverlayPlate[] {

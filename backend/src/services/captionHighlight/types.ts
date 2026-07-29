@@ -33,6 +33,10 @@ export type CaptionLineLayout = {
   }[];
   readonly y: number;
   readonly lineHeight: number;
+  /** Shared alphabetic ascent (line top → baseline). Used for text draw only. */
+  readonly ascent: number;
+  /** Absolute alphabetic baseline Y for every token on this line. */
+  readonly baselineY: number;
 };
 
 export type CaptionLayoutResult = {

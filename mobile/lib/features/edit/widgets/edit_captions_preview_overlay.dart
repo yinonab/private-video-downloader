@@ -235,6 +235,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
               if (highlightParts.before.isNotEmpty)
                 TextSpan(text: highlightParts.before, style: normalStyle),
               highlightSpan,
+              if (highlightParts.after.isNotEmpty)
+                TextSpan(text: highlightParts.after, style: normalStyle),
             ],
           ),
         ),
@@ -284,6 +286,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
                 if (highlightParts.before.isNotEmpty)
                   TextSpan(text: highlightParts.before, style: layerNormal),
                 layerHighlightSpan,
+                if (highlightParts.after.isNotEmpty)
+                  TextSpan(text: highlightParts.after, style: layerNormal),
               ],
             ),
           );
@@ -589,19 +593,20 @@ bool captionPreviewIsRtl(String text) {
   return false;
 }
 
-({String before, String highlight}) captionPreviewHighlightParts(
+({String before, String highlight, String after}) captionPreviewHighlightParts(
   String full, {
   int? highlightWordIndex,
 }) {
   final trimmed = full.trim();
   final parts = trimmed.split(RegExp(r"\s+"));
-  if (parts.isEmpty) return (before: "", highlight: "");
-  if (parts.length == 1) return (before: "", highlight: parts.first);
+  if (parts.isEmpty) return (before: "", highlight: "", after: "");
+  if (parts.length == 1) return (before: "", highlight: parts.first, after: "");
   final idx = highlightWordIndex ?? parts.length - 1;
   final safe = idx.clamp(0, parts.length - 1);
   final highlight = parts[safe];
   final before = safe > 0 ? "${parts.sublist(0, safe).join(" ")} " : "";
-  return (before: before, highlight: highlight);
+  final after = safe < parts.length - 1 ? " ${parts.sublist(safe + 1).join(" ")}" : "";
+  return (before: before, highlight: highlight, after: after);
 }
 
 Color _accentColor(QuickEditCaptionColor color) {

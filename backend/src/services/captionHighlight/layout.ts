@@ -66,6 +66,10 @@ function layoutLine(
   tokenGapPx: number,
 ): CaptionLineLayout {
   const metrics = lineTokens.map((t) => ({ token: t, ...measureToken(ctx, t) }));
+  // Shared ascent for the line — text draw must use this, not per-glyph ascent
+  // (per-glyph actualBoundingBoxAscent caused vertical "bobbing").
+  const ascent = Math.max(1, ...metrics.map((m) => m.ascent));
+  const baselineY = lineY + ascent;
 
   const boxes: {
     tokenIndex: number;
@@ -104,7 +108,7 @@ function layoutLine(
     }
   }
 
-  return { tokens: lineTokens, boxes, y: lineY, lineHeight };
+  return { tokens: lineTokens, boxes, y: lineY, lineHeight, ascent, baselineY };
 }
 
 export function layoutCaptionBlock(
