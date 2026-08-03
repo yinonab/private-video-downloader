@@ -137,6 +137,9 @@ const CAPTIONS_FONT_SIZE = [
   "large",
   "x_large",
   "xx_large",
+  "xxx_large",
+  "mega",
+  "ultra",
 ] as const;
 
 const CAPTIONS_COLOR = ["white", "yellow", "purple", "mint", "pink"] as const;

@@ -110,6 +110,9 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
       QuickEditCaptionFontSize.large => 14.8,
       QuickEditCaptionFontSize.xLarge => 17.2,
       QuickEditCaptionFontSize.xxLarge => 20.0,
+      QuickEditCaptionFontSize.xxxLarge => 24.5,
+      QuickEditCaptionFontSize.mega => 30.0,
+      QuickEditCaptionFontSize.ultra => 36.4,
     };
 
     final boldStyle = switch (stylePreset) {
@@ -121,7 +124,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
       _ => FontWeight.w500,
     };
 
-    TextStyle baseStyle({Color? textColor, FontWeight? weight, bool stroke = false}) {
+    TextStyle baseStyle(
+        {Color? textColor, FontWeight? weight, bool stroke = false}) {
       final style = TextStyle(
         color: stroke ? null : (textColor ?? normal),
         fontSize: fz,
@@ -130,7 +134,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
       );
       final withFont = _applyPreviewFont(fontFamily, style);
       if (!stroke || !outlineEnabled) return withFont;
-      final strokeColor = _accentColor(outlineColor ?? QuickEditCaptionColor.white);
+      final strokeColor =
+          _accentColor(outlineColor ?? QuickEditCaptionColor.white);
       return withFont.copyWith(
         foreground: Paint()
           ..style = PaintingStyle.stroke
@@ -139,7 +144,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
       );
     }
 
-    Widget withOutlineLayer(Widget child, Widget Function({required bool stroke}) buildLayer) {
+    Widget withOutlineLayer(
+        Widget child, Widget Function({required bool stroke}) buildLayer) {
       if (!outlineEnabled) return child;
       return Stack(
         alignment: Alignment.center,
@@ -151,8 +157,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
     }
 
     final sampleFull = l10n.editCaptionsSampleLabel;
-    final resolvedText = displayText ??
-        (allowSampleFallback ? sampleFull : null);
+    final resolvedText =
+        displayText ?? (allowSampleFallback ? sampleFull : null);
     if (resolvedText == null || resolvedText.trim().isEmpty) {
       return const SizedBox.shrink();
     }
@@ -163,7 +169,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
     final maxLines = 2;
     final rtl = captionPreviewIsRtl(resolvedText);
 
-    Widget buildCaptionText({Color? textColor, List<Shadow>? shadows, FontWeight? weight}) {
+    Widget buildCaptionText(
+        {Color? textColor, List<Shadow>? shadows, FontWeight? weight}) {
       if (wordHighlight == QuickEditCaptionWordHighlight.none) {
         return withOutlineLayer(
           Text(
@@ -173,7 +180,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
             softWrap: true,
             maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
-            style: baseStyle(textColor: textColor, weight: weight).copyWith(shadows: shadows),
+            style: baseStyle(textColor: textColor, weight: weight)
+                .copyWith(shadows: shadows),
           ),
           ({required bool stroke}) => Text(
             resolvedText,
@@ -182,16 +190,20 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
             softWrap: true,
             maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
-            style: baseStyle(textColor: textColor, weight: weight, stroke: stroke).copyWith(
+            style:
+                baseStyle(textColor: textColor, weight: weight, stroke: stroke)
+                    .copyWith(
               shadows: stroke ? null : shadows,
             ),
           ),
         );
       }
 
-      final normalStyle = baseStyle(textColor: normal, weight: weight).copyWith(shadows: shadows);
+      final normalStyle = baseStyle(textColor: normal, weight: weight)
+          .copyWith(shadows: shadows);
       final hiStyle = switch (wordHighlight) {
-        QuickEditCaptionWordHighlight.color => normalStyle.copyWith(color: active),
+        QuickEditCaptionWordHighlight.color =>
+          normalStyle.copyWith(color: active),
         QuickEditCaptionWordHighlight.box => normalStyle.copyWith(
             color: active,
             backgroundColor: boxFill.withValues(alpha: 0.92),
@@ -241,25 +253,33 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
           ),
         ),
         ({required bool stroke}) {
-          final layerNormal = baseStyle(textColor: normal, weight: weight, stroke: stroke).copyWith(
+          final layerNormal =
+              baseStyle(textColor: normal, weight: weight, stroke: stroke)
+                  .copyWith(
             shadows: stroke ? null : shadows,
           );
           final layerHi = switch (wordHighlight) {
-            QuickEditCaptionWordHighlight.color => layerNormal.copyWith(color: stroke ? null : active),
+            QuickEditCaptionWordHighlight.color =>
+              layerNormal.copyWith(color: stroke ? null : active),
             QuickEditCaptionWordHighlight.box => layerNormal.copyWith(
                 color: stroke ? null : active,
-                backgroundColor: stroke ? null : boxFill.withValues(alpha: 0.92),
+                backgroundColor:
+                    stroke ? null : boxFill.withValues(alpha: 0.92),
               ),
             QuickEditCaptionWordHighlight.none => layerNormal,
           };
-          final layerHighlightSpan = wordHighlight == QuickEditCaptionWordHighlight.box
+          final layerHighlightSpan = wordHighlight ==
+                  QuickEditCaptionWordHighlight.box
               ? WidgetSpan(
                   alignment: PlaceholderAlignment.baseline,
                   baseline: TextBaseline.alphabetic,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                     decoration: BoxDecoration(
-                      color: stroke ? Colors.transparent : boxFill.withValues(alpha: 0.92),
+                      color: stroke
+                          ? Colors.transparent
+                          : boxFill.withValues(alpha: 0.92),
                       borderRadius: BorderRadius.circular(
                         switch (boxShape) {
                           QuickEditCaptionBoxShape.pill => 999,
@@ -270,7 +290,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
                     ),
                     child: Text(
                       highlightParts.highlight,
-                      style: layerHi.copyWith(backgroundColor: Colors.transparent),
+                      style:
+                          layerHi.copyWith(backgroundColor: Colors.transparent),
                     ),
                   ),
                 )
@@ -302,7 +323,9 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
         captionBody = DecoratedBox(
           decoration: BoxDecoration(
             color: Colors.black.withValues(
-              alpha: stylePreset == QuickEditCaptionsStylePreset.darkBubble ? 0.72 : 0.78,
+              alpha: stylePreset == QuickEditCaptionsStylePreset.darkBubble
+                  ? 0.72
+                  : 0.78,
             ),
             borderRadius: BorderRadius.circular(8),
           ),
@@ -403,7 +426,9 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
     final captionColumn = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (showPreviewLabel && !isStage && position != QuickEditCaptionPosition.bottom) ...[
+        if (showPreviewLabel &&
+            !isStage &&
+            position != QuickEditCaptionPosition.bottom) ...[
           previewLabel,
           const SizedBox(height: 4),
         ],
@@ -415,7 +440,9 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
                 child: KeyedSubtree(key: styleKey, child: captionBody),
               )
             : captionBody,
-        if (showPreviewLabel && !isStage && position == QuickEditCaptionPosition.bottom) ...[
+        if (showPreviewLabel &&
+            !isStage &&
+            position == QuickEditCaptionPosition.bottom) ...[
           const SizedBox(height: 4),
           previewLabel,
         ],
@@ -434,7 +461,8 @@ class EditCaptionsPreviewOverlay extends StatelessWidget {
           offsetXAss: offsetXAss,
           offsetYAss: offsetYAss,
         );
-        final hPad = math.max(8.0, w * (kCaptionAssMarginH / kCaptionAssPlayResX));
+        final hPad =
+            math.max(8.0, w * (kCaptionAssMarginH / kCaptionAssPlayResX));
         final bottom = position == QuickEditCaptionPosition.bottom;
 
         final positioned = Padding(
@@ -511,7 +539,8 @@ class _AnimatedCaptionTranslate extends StatefulWidget {
   final Widget child;
 
   @override
-  State<_AnimatedCaptionTranslate> createState() => _AnimatedCaptionTranslateState();
+  State<_AnimatedCaptionTranslate> createState() =>
+      _AnimatedCaptionTranslateState();
 }
 
 class _AnimatedCaptionTranslateState extends State<_AnimatedCaptionTranslate>
@@ -605,7 +634,8 @@ bool captionPreviewIsRtl(String text) {
   final safe = idx.clamp(0, parts.length - 1);
   final highlight = parts[safe];
   final before = safe > 0 ? "${parts.sublist(0, safe).join(" ")} " : "";
-  final after = safe < parts.length - 1 ? " ${parts.sublist(safe + 1).join(" ")}" : "";
+  final after =
+      safe < parts.length - 1 ? " ${parts.sublist(safe + 1).join(" ")}" : "";
   return (before: before, highlight: highlight, after: after);
 }
 
@@ -647,7 +677,8 @@ TextStyle _applyPreviewFont(QuickEditCaptionFontFamily family, TextStyle base) {
   return switch (family) {
     QuickEditCaptionFontFamily.heebo => GoogleFonts.heebo(textStyle: base),
     QuickEditCaptionFontFamily.rubik => GoogleFonts.rubik(textStyle: base),
-    QuickEditCaptionFontFamily.assistant => GoogleFonts.assistant(textStyle: base),
+    QuickEditCaptionFontFamily.assistant =>
+      GoogleFonts.assistant(textStyle: base),
     QuickEditCaptionFontFamily.notoSansHebrew =>
       GoogleFonts.notoSansHebrew(textStyle: base),
     QuickEditCaptionFontFamily.defaultFamily =>

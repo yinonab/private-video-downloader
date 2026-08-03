@@ -26,6 +26,9 @@ const FONT_SIZES: Record<CaptionsBurnInV1Resolved["fontSize"], number> = {
   large: 30,
   x_large: 36,
   xx_large: 44,
+  xxx_large: 54,
+  mega: 66,
+  ultra: 80,
 };
 
 const MARGIN_H = CAPTION_MARGIN_H;

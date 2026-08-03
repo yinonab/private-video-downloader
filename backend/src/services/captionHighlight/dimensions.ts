@@ -23,6 +23,9 @@ export const CAPTION_MAX_CHARS_PER_LINE: Record<CaptionsFontSize, number> = {
   large: 28,
   x_large: 24,
   xx_large: 20,
+  xxx_large: 16,
+  mega: 14,
+  ultra: 12,
 };
 
 export type CaptionCanvasSize = {
@@ -37,6 +40,9 @@ const FONT_SIZES: Record<CaptionsFontSize, number> = {
   large: 30,
   x_large: 36,
   xx_large: 44,
+  xxx_large: 54,
+  mega: 66,
+  ultra: 80,
 };
 
 /** Resolve burn canvas from ffprobe video stream (fallback to PlayRes for tests). */
@@ -65,9 +71,15 @@ export function captionUniformScale(canvas: CaptionCanvasSize): number {
   return Math.min(sx, sy);
 }
 
+/**
+ * Word-highlight canvas export only — boost after uniform scale so portrait burn-in
+ * stays readable (~4.5% frame height at XXL on 9:16). Does not affect ASS PlayRes sizes.
+ */
+export const CAPTION_HIGHLIGHT_FONT_SCALE = 1.75;
+
 export function captionFontSizePx(fontSize: CaptionsFontSize, canvas: CaptionCanvasSize): number {
   const base = FONT_SIZES[fontSize];
-  return Math.max(12, Math.round(base * captionUniformScale(canvas)));
+  return Math.max(12, Math.round(base * captionUniformScale(canvas) * CAPTION_HIGHLIGHT_FONT_SCALE));
 }
 
 /**

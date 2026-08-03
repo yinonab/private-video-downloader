@@ -134,14 +134,57 @@ async function assertHebrewCaptionLayoutPolicy(): Promise<void> {
   await ensureCaptionFont("heebo");
   const portrait = { width: 1080, height: 1920 };
   const landscape = { width: 1920, height: 1080 };
-  for (const fs of ["medium", "large", "xx_large"] as const) {
+  const ladder = [
+    "extra_small",
+    "small",
+    "medium",
+    "large",
+    "x_large",
+    "xx_large",
+    "xxx_large",
+    "mega",
+    "ultra",
+  ] as const;
+  const expected1080: Record<(typeof ladder)[number], number> = {
+    extra_small: 32,
+    small: 39,
+    medium: 47,
+    large: 59,
+    x_large: 71,
+    xx_large: 87,
+    xxx_large: 106,
+    mega: 130,
+    ultra: 158,
+  };
+  const portraitPx = ladder.map((fs) => captionFontSizePx(fs, portrait));
+  for (const fs of ladder) {
     const fontPx = captionFontSizePx(fs, portrait);
     const maxW = captionMaxLineWidthPx(fs, portrait);
     assert.ok(maxW >= 900, `portrait safe width for ${fs}: ${maxW}`);
-    // Uniform scale: portrait font must not follow height-only blow-up (~85–156px previously).
-    assert.ok(fontPx <= 60, `portrait ${fs} fontPx=${fontPx} should use min(sx,sy)`);
+    assert.equal(fontPx, expected1080[fs], `1080x1920 ${fs} fontPx`);
+    // Uniform scale (min sx/sy), not height-only ASS-like blow-up for the size ladder.
+    assert.ok(fontPx < 220, `portrait ${fs} fontPx=${fontPx} must stay below height-only scale`);
   }
-  assert.equal(captionFontSizePx("medium", landscape), 48);
+  for (let i = 0; i < portraitPx.length - 1; i++) {
+    assert.ok(
+      portraitPx[i]! < portraitPx[i + 1]!,
+      `strict mono ${ladder[i]}=${portraitPx[i]} < ${ladder[i + 1]}=${portraitPx[i + 1]}`,
+    );
+    assert.ok(
+      portraitPx[i]! !== portraitPx[i + 1]!,
+      `adjacent sizes must differ: ${ladder[i]} vs ${ladder[i + 1]}`,
+    );
+  }
+  assert.ok(expected1080.xxx_large > expected1080.xx_large);
+  assert.ok(expected1080.mega > expected1080.xxx_large);
+  assert.ok(expected1080.ultra > expected1080.mega);
+  const xsXxRatio = expected1080.xx_large / expected1080.extra_small;
+  assert.ok(
+    Math.abs(xsXxRatio - 44 / 16) < 0.05,
+    `XS→XXL ratio ~2.75 (got ${xsXxRatio})`,
+  );
+  // Landscape medium: 24 * min(2,2) * 1.75 = 84
+  assert.equal(captionFontSizePx("medium", landscape), 84);
 
   const medium = "זה משפט קצת יותר ארוך שצריך להישבר בצורה טבעית";
   const canvas = createCanvas(1080, 1920);

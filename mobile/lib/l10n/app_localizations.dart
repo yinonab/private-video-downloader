@@ -2696,6 +2696,24 @@ abstract class AppLocalizations {
   /// **'XXL'**
   String get editCaptionsV32SizeXXL;
 
+  /// No description provided for @editCaptionsSizeXXXL.
+  ///
+  /// In en, this message translates to:
+  /// **'XXXL'**
+  String get editCaptionsSizeXXXL;
+
+  /// No description provided for @editCaptionsSizeMega.
+  ///
+  /// In en, this message translates to:
+  /// **'Mega'**
+  String get editCaptionsSizeMega;
+
+  /// No description provided for @editCaptionsSizeUltra.
+  ///
+  /// In en, this message translates to:
+  /// **'Ultra'**
+  String get editCaptionsSizeUltra;
+
   /// No description provided for @editCaptionsV32FontLabel.
   ///
   /// In en, this message translates to:

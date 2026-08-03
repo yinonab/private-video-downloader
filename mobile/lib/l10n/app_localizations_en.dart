@@ -1433,6 +1433,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCaptionsV32SizeXXL => 'XXL';
 
   @override
+  String get editCaptionsSizeXXXL => 'XXXL';
+
+  @override
+  String get editCaptionsSizeMega => 'Mega';
+
+  @override
+  String get editCaptionsSizeUltra => 'Ultra';
+
+  @override
   String get editCaptionsV32FontLabel => 'Font';
 
   @override

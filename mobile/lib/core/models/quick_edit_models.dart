@@ -132,8 +132,10 @@ final class CaptionDraftSegment {
   final double startSec;
   final double endSec;
   final String text;
+
   /// Whisper draft start before user timing edits (V2.4B reset).
   final double originalStartSec;
+
   /// Whisper draft end before user timing edits (V2.4B reset).
   final double originalEndSec;
   final List<CaptionDraftWord>? words;
@@ -506,6 +508,9 @@ enum QuickEditCaptionFontSize {
   large,
   xLarge,
   xxLarge,
+  xxxLarge,
+  mega,
+  ultra,
 }
 
 extension QuickEditCaptionFontSizeApi on QuickEditCaptionFontSize {
@@ -516,6 +521,9 @@ extension QuickEditCaptionFontSizeApi on QuickEditCaptionFontSize {
         QuickEditCaptionFontSize.large => "large",
         QuickEditCaptionFontSize.xLarge => "x_large",
         QuickEditCaptionFontSize.xxLarge => "xx_large",
+        QuickEditCaptionFontSize.xxxLarge => "xxx_large",
+        QuickEditCaptionFontSize.mega => "mega",
+        QuickEditCaptionFontSize.ultra => "ultra",
       };
 }
 
@@ -715,7 +723,8 @@ final class CaptionPresetFields {
       this.offsetX == offsetX &&
       this.offsetY == offsetY &&
       (normalTextColor ?? color) == effectiveNormalTextColor &&
-      (activeTextColor ?? _defaultActiveForPreset(this)) == effectiveActiveTextColor &&
+      (activeTextColor ?? _defaultActiveForPreset(this)) ==
+          effectiveActiveTextColor &&
       (boxColor ?? _defaultBoxForPreset(this)) == effectiveBoxColor &&
       this.boxShape == boxShape;
 }
@@ -737,7 +746,9 @@ QuickEditCaptionColor _defaultActiveForPreset(CaptionPresetFields p) {
     return switch (normal) {
       QuickEditCaptionColor.yellow => QuickEditCaptionColor.purple,
       QuickEditCaptionColor.white => QuickEditCaptionColor.yellow,
-      QuickEditCaptionColor.purple || QuickEditCaptionColor.pink => QuickEditCaptionColor.white,
+      QuickEditCaptionColor.purple ||
+      QuickEditCaptionColor.pink =>
+        QuickEditCaptionColor.white,
       _ => QuickEditCaptionColor.yellow,
     };
   }
@@ -956,7 +967,8 @@ CaptionLookSnapshot captionLookSnapshotFrom({
   QuickEditCaptionBoxShape boxShape = QuickEditCaptionBoxShape.pill,
   bool outlineEnabled = false,
   QuickEditCaptionColor? outlineColor,
-  QuickEditCaptionOutlineWidth outlineWidth = QuickEditCaptionOutlineWidth.medium,
+  QuickEditCaptionOutlineWidth outlineWidth =
+      QuickEditCaptionOutlineWidth.medium,
 }) =>
     CaptionLookSnapshot(
       style: style,
@@ -1029,7 +1041,9 @@ QuickEditCaptionColor effectiveCaptionActiveTextColor({
     return switch (normal) {
       QuickEditCaptionColor.yellow => QuickEditCaptionColor.purple,
       QuickEditCaptionColor.white => QuickEditCaptionColor.yellow,
-      QuickEditCaptionColor.purple || QuickEditCaptionColor.pink => QuickEditCaptionColor.white,
+      QuickEditCaptionColor.purple ||
+      QuickEditCaptionColor.pink =>
+        QuickEditCaptionColor.white,
       _ => QuickEditCaptionColor.yellow,
     };
   }
@@ -1057,7 +1071,8 @@ void applyCaptionOutlineFieldsToJson(
   Map<String, dynamic> op, {
   required bool outlineEnabled,
   QuickEditCaptionColor? outlineColor,
-  QuickEditCaptionOutlineWidth outlineWidth = QuickEditCaptionOutlineWidth.medium,
+  QuickEditCaptionOutlineWidth outlineWidth =
+      QuickEditCaptionOutlineWidth.medium,
 }) {
   if (!outlineEnabled) return;
   op["outlineEnabled"] = true;
@@ -1373,7 +1388,8 @@ Map<String, dynamic> quickEditCaptionsV22Operation({
   QuickEditCaptionBoxShape boxShape = QuickEditCaptionBoxShape.pill,
   bool outlineEnabled = false,
   QuickEditCaptionColor? outlineColor,
-  QuickEditCaptionOutlineWidth outlineWidth = QuickEditCaptionOutlineWidth.medium,
+  QuickEditCaptionOutlineWidth outlineWidth =
+      QuickEditCaptionOutlineWidth.medium,
 }) {
   final burnColor = captionBurnAccentColor(
     color: color,
@@ -1429,7 +1445,8 @@ Map<String, dynamic> quickEditCaptionsSegmentsV24Operation({
   QuickEditCaptionBoxShape boxShape = QuickEditCaptionBoxShape.pill,
   bool outlineEnabled = false,
   QuickEditCaptionColor? outlineColor,
-  QuickEditCaptionOutlineWidth outlineWidth = QuickEditCaptionOutlineWidth.medium,
+  QuickEditCaptionOutlineWidth outlineWidth =
+      QuickEditCaptionOutlineWidth.medium,
 }) {
   final burnColor = captionBurnAccentColor(
     color: color,
@@ -1479,12 +1496,15 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   required QuickEditRotation rotation,
   required QuickEditSpeedFactor speedFactor,
   required bool captionsAutoEnabled,
-  QuickEditCaptionsStylePreset captionsStyle = QuickEditCaptionsStylePreset.cleanPro,
+  QuickEditCaptionsStylePreset captionsStyle =
+      QuickEditCaptionsStylePreset.cleanPro,
   QuickEditCaptionFontSize captionsFontSize = QuickEditCaptionFontSize.medium,
-  QuickEditCaptionFontFamily captionsFontFamily = QuickEditCaptionFontFamily.defaultFamily,
+  QuickEditCaptionFontFamily captionsFontFamily =
+      QuickEditCaptionFontFamily.defaultFamily,
   QuickEditCaptionPosition captionsPosition = QuickEditCaptionPosition.bottom,
   QuickEditCaptionColor captionsColor = QuickEditCaptionColor.white,
-  QuickEditCaptionWordHighlight captionsWordHighlight = QuickEditCaptionWordHighlight.none,
+  QuickEditCaptionWordHighlight captionsWordHighlight =
+      QuickEditCaptionWordHighlight.none,
   int captionsOffsetX = 0,
   int captionsOffsetY = 0,
   QuickEditCaptionColor? captionsNormalTextColor,
@@ -1493,7 +1513,8 @@ List<Map<String, dynamic>> buildQuickEditOperations({
   QuickEditCaptionBoxShape captionsBoxShape = QuickEditCaptionBoxShape.pill,
   bool captionsOutlineEnabled = false,
   QuickEditCaptionColor? captionsOutlineColor,
-  QuickEditCaptionOutlineWidth captionsOutlineWidth = QuickEditCaptionOutlineWidth.medium,
+  QuickEditCaptionOutlineWidth captionsOutlineWidth =
+      QuickEditCaptionOutlineWidth.medium,
   List<CaptionDraftSegment>? captionsDraftForBurn,
   required bool mute,
   required QuickEditCompressPreset compressPreset,
@@ -1600,12 +1621,15 @@ bool quickEditHasChanges({
   required QuickEditRotation rotation,
   required QuickEditSpeedFactor speedFactor,
   required bool captionsAutoEnabled,
-  QuickEditCaptionsStylePreset captionsStyle = QuickEditCaptionsStylePreset.cleanPro,
+  QuickEditCaptionsStylePreset captionsStyle =
+      QuickEditCaptionsStylePreset.cleanPro,
   QuickEditCaptionFontSize captionsFontSize = QuickEditCaptionFontSize.medium,
-  QuickEditCaptionFontFamily captionsFontFamily = QuickEditCaptionFontFamily.defaultFamily,
+  QuickEditCaptionFontFamily captionsFontFamily =
+      QuickEditCaptionFontFamily.defaultFamily,
   QuickEditCaptionPosition captionsPosition = QuickEditCaptionPosition.bottom,
   QuickEditCaptionColor captionsColor = QuickEditCaptionColor.white,
-  QuickEditCaptionWordHighlight captionsWordHighlight = QuickEditCaptionWordHighlight.none,
+  QuickEditCaptionWordHighlight captionsWordHighlight =
+      QuickEditCaptionWordHighlight.none,
   int captionsOffsetX = 0,
   int captionsOffsetY = 0,
   required bool mute,

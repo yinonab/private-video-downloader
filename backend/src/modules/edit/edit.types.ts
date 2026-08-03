@@ -43,7 +43,10 @@ export type CaptionsFontSize =
   | "medium"
   | "large"
   | "x_large"
-  | "xx_large";
+  | "xx_large"
+  | "xxx_large"
+  | "mega"
+  | "ultra";
 
 export type CaptionsPosition = "top" | "bottom";
 

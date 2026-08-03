@@ -18,7 +18,8 @@ class CaptionLookEditorScreen extends StatefulWidget {
   final CaptionLookSnapshot initial;
 
   @override
-  State<CaptionLookEditorScreen> createState() => _CaptionLookEditorScreenState();
+  State<CaptionLookEditorScreen> createState() =>
+      _CaptionLookEditorScreenState();
 }
 
 class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
@@ -168,7 +169,8 @@ class _CaptionLookEditorScreenState extends State<CaptionLookEditorScreen>
           controller: _tabs,
           isScrollable: true,
           tabAlignment: TabAlignment.start,
-          labelStyle: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+          labelStyle:
+              theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
           unselectedLabelStyle: theme.textTheme.titleSmall,
           indicatorSize: TabBarIndicatorSize.label,
           tabs: [
@@ -321,7 +323,8 @@ class _TextTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(LcSpace.xl, LcSpace.lg, LcSpace.xl, LcSpace.xl),
+      padding: const EdgeInsets.fromLTRB(
+          LcSpace.xl, LcSpace.lg, LcSpace.xl, LcSpace.xl),
       children: [
         CaptionLookSectionCard(
           dense: true,
@@ -366,6 +369,9 @@ class _TextTab extends StatelessWidget {
                 QuickEditCaptionFontSize.large,
                 QuickEditCaptionFontSize.xLarge,
                 QuickEditCaptionFontSize.xxLarge,
+                QuickEditCaptionFontSize.xxxLarge,
+                QuickEditCaptionFontSize.mega,
+                QuickEditCaptionFontSize.ultra,
               ])
                 _SizeChip(
                   label: _sizeLabel(l10n, s),
@@ -459,11 +465,14 @@ class _TextTab extends StatelessWidget {
     );
   }
 
-  String _outlineWidthLabel(AppLocalizations l10n, QuickEditCaptionOutlineWidth w) {
+  String _outlineWidthLabel(
+      AppLocalizations l10n, QuickEditCaptionOutlineWidth w) {
     return switch (w) {
       QuickEditCaptionOutlineWidth.thin => l10n.editCaptionsV35OutlineWidthThin,
-      QuickEditCaptionOutlineWidth.medium => l10n.editCaptionsV35OutlineWidthMedium,
-      QuickEditCaptionOutlineWidth.thick => l10n.editCaptionsV35OutlineWidthThick,
+      QuickEditCaptionOutlineWidth.medium =>
+        l10n.editCaptionsV35OutlineWidthMedium,
+      QuickEditCaptionOutlineWidth.thick =>
+        l10n.editCaptionsV35OutlineWidthThick,
     };
   }
 
@@ -475,6 +484,9 @@ class _TextTab extends StatelessWidget {
       QuickEditCaptionFontSize.large => l10n.editCaptionsSizeLarge,
       QuickEditCaptionFontSize.xLarge => l10n.editCaptionsV32SizeXL,
       QuickEditCaptionFontSize.xxLarge => l10n.editCaptionsV32SizeXXL,
+      QuickEditCaptionFontSize.xxxLarge => l10n.editCaptionsSizeXXXL,
+      QuickEditCaptionFontSize.mega => l10n.editCaptionsSizeMega,
+      QuickEditCaptionFontSize.ultra => l10n.editCaptionsSizeUltra,
     };
   }
 }
@@ -559,7 +571,8 @@ class _HighlightTab extends StatelessWidget {
     );
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(LcSpace.xl, LcSpace.lg, LcSpace.xl, LcSpace.xl),
+      padding: const EdgeInsets.fromLTRB(
+          LcSpace.xl, LcSpace.lg, LcSpace.xl, LcSpace.xl),
       children: [
         CaptionLookSectionCard(
           dense: true,
@@ -641,19 +654,26 @@ class _HighlightTab extends StatelessWidget {
     );
   }
 
-  String _highlightLabel(AppLocalizations l10n, QuickEditCaptionWordHighlight h) {
+  String _highlightLabel(
+      AppLocalizations l10n, QuickEditCaptionWordHighlight h) {
     return switch (h) {
-      QuickEditCaptionWordHighlight.none => l10n.editCaptionsV33WordHighlightOff,
-      QuickEditCaptionWordHighlight.color => l10n.editCaptionsV33WordHighlightColor,
+      QuickEditCaptionWordHighlight.none =>
+        l10n.editCaptionsV33WordHighlightOff,
+      QuickEditCaptionWordHighlight.color =>
+        l10n.editCaptionsV33WordHighlightColor,
       QuickEditCaptionWordHighlight.box => l10n.editCaptionsV33WordHighlightBox,
     };
   }
 
-  String _highlightSubtitle(AppLocalizations l10n, QuickEditCaptionWordHighlight h) {
+  String _highlightSubtitle(
+      AppLocalizations l10n, QuickEditCaptionWordHighlight h) {
     return switch (h) {
-      QuickEditCaptionWordHighlight.none => l10n.editCaptionsV34HighlightModeOffHint,
-      QuickEditCaptionWordHighlight.color => l10n.editCaptionsV34HighlightModeColorHint,
-      QuickEditCaptionWordHighlight.box => l10n.editCaptionsV34HighlightModeBoxHint,
+      QuickEditCaptionWordHighlight.none =>
+        l10n.editCaptionsV34HighlightModeOffHint,
+      QuickEditCaptionWordHighlight.color =>
+        l10n.editCaptionsV34HighlightModeColorHint,
+      QuickEditCaptionWordHighlight.box =>
+        l10n.editCaptionsV34HighlightModeBoxHint,
     };
   }
 }
@@ -681,7 +701,8 @@ class _HighlightModeIcon extends StatelessWidget {
                 TextSpan(text: "Ab"),
                 TextSpan(
                   text: "c",
-                  style: TextStyle(color: Color(0xFFFFD966), fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                      color: Color(0xFFFFD966), fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -696,7 +717,8 @@ class _HighlightModeIcon extends StatelessWidget {
                   alignment: PlaceholderAlignment.baseline,
                   baseline: TextBaseline.alphabetic,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFF5C8A).withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(4),
@@ -740,7 +762,8 @@ class _PositionTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(LcSpace.xl, LcSpace.lg, LcSpace.xl, LcSpace.xl),
+      padding: const EdgeInsets.fromLTRB(
+          LcSpace.xl, LcSpace.lg, LcSpace.xl, LcSpace.xl),
       children: [
         Text(
           l10n.editCaptionsPositionLabel,

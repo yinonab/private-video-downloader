@@ -14,15 +14,18 @@ Color captionColorToFlutter(QuickEditCaptionColor color) {
   };
 }
 
-String captionPresetTitle(AppLocalizations l10n, QuickEditCaptionPreset preset) {
+String captionPresetTitle(
+    AppLocalizations l10n, QuickEditCaptionPreset preset) {
   return switch (preset) {
     QuickEditCaptionPreset.minimal => l10n.editCaptionsPresetMinimal,
     QuickEditCaptionPreset.social => l10n.editCaptionsPresetSocial,
     QuickEditCaptionPreset.boldYellow => l10n.editCaptionsPresetBoldYellow,
     QuickEditCaptionPreset.darkBox => l10n.editCaptionsPresetDarkBox,
     QuickEditCaptionPreset.topClean => l10n.editCaptionsPresetTopClean,
-    QuickEditCaptionPreset.creatorHighlight => l10n.editCaptionsV32PresetCreatorHighlight,
-    QuickEditCaptionPreset.newsHeadline => l10n.editCaptionsV32PresetNewsHeadline,
+    QuickEditCaptionPreset.creatorHighlight =>
+      l10n.editCaptionsV32PresetCreatorHighlight,
+    QuickEditCaptionPreset.newsHeadline =>
+      l10n.editCaptionsV32PresetNewsHeadline,
     QuickEditCaptionPreset.pinkPop => l10n.editCaptionsV34PresetPinkPop,
     QuickEditCaptionPreset.yellowViral => l10n.editCaptionsV34PresetYellowViral,
     QuickEditCaptionPreset.cleanFocus => l10n.editCaptionsV34PresetCleanFocus,
@@ -41,7 +44,8 @@ String captionColorLabel(AppLocalizations l10n, QuickEditCaptionColor color) {
   };
 }
 
-String captionBoxShapeLabel(AppLocalizations l10n, QuickEditCaptionBoxShape shape) {
+String captionBoxShapeLabel(
+    AppLocalizations l10n, QuickEditCaptionBoxShape shape) {
   return switch (shape) {
     QuickEditCaptionBoxShape.rectangle => l10n.editCaptionsV34BoxShapeRectangle,
     QuickEditCaptionBoxShape.rounded => l10n.editCaptionsV34BoxShapeRounded,
@@ -58,7 +62,8 @@ String captionFontFamilyShortLabel(
     QuickEditCaptionFontFamily.heebo => l10n.editCaptionsV32FontHeebo,
     QuickEditCaptionFontFamily.rubik => l10n.editCaptionsV32FontRubik,
     QuickEditCaptionFontFamily.assistant => l10n.editCaptionsV32FontAssistant,
-    QuickEditCaptionFontFamily.notoSansHebrew => l10n.editCaptionsV32FontNotoSansHebrew,
+    QuickEditCaptionFontFamily.notoSansHebrew =>
+      l10n.editCaptionsV32FontNotoSansHebrew,
   };
 }
 
@@ -148,6 +153,9 @@ String captionFontSizeShortLabel(
     QuickEditCaptionFontSize.large => l10n.editCaptionsSizeLarge,
     QuickEditCaptionFontSize.xLarge => l10n.editCaptionsV32SizeXL,
     QuickEditCaptionFontSize.xxLarge => l10n.editCaptionsV32SizeXXL,
+    QuickEditCaptionFontSize.xxxLarge => l10n.editCaptionsSizeXXXL,
+    QuickEditCaptionFontSize.mega => l10n.editCaptionsSizeMega,
+    QuickEditCaptionFontSize.ultra => l10n.editCaptionsSizeUltra,
   };
 }
 

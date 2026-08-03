@@ -1414,6 +1414,15 @@ class AppLocalizationsHe extends AppLocalizations {
   String get editCaptionsV32SizeXXL => 'ענק';
 
   @override
+  String get editCaptionsSizeXXXL => 'ענק מאוד';
+
+  @override
+  String get editCaptionsSizeMega => 'מגה';
+
+  @override
+  String get editCaptionsSizeUltra => 'אולטרה';
+
+  @override
   String get editCaptionsV32FontLabel => 'פונט';
 
   @override
