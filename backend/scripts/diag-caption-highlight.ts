@@ -20,6 +20,7 @@ import {
   captionsConfigForAssBurn,
   inspectCaptionPlate,
   renderCaptionHighlightPlate,
+  highlightPlateBoxFromBaseline,
   resolveHighlightStyle,
   textColorToCss,
   tokenizeCaptionText,
@@ -251,6 +252,34 @@ async function assertHebrewCaptionLayoutPolicy(): Promise<void> {
   assert.ok(bobLine.tokens.length >= 2, "bob sample multi-token");
   assert.equal(bobLine.baselineY, bobLine.y + bobLine.ascent);
   assert.ok(bobLine.boxes.every((b) => b.y === bobLine.y));
+
+  // Plate-only optical centering: active plate hugs font/ink around shared baseline.
+  const padY = 5;
+  for (const tok of bobLine.tokens) {
+    const measured = ctx.measureText(captionTokenDisplayText(tok));
+    const lineDescent = Math.max(0, bobLine.lineHeight - bobLine.ascent);
+    const plate = highlightPlateBoxFromBaseline(
+      bobLine.baselineY,
+      measured,
+      bobLine.ascent,
+      lineDescent,
+    );
+    assert.equal(plate.y + plate.ascent, bobLine.baselineY, "plate top + ascent = shared baseline");
+    assert.equal(plate.height, plate.ascent + plate.descent, "plate height = ascent+descent");
+    const drawnTop = plate.y - padY;
+    const drawnBottom = plate.y + plate.height + padY;
+    assert.ok(drawnTop < bobLine.baselineY, "padded plate extends above baseline");
+    assert.ok(drawnBottom > bobLine.baselineY, "padded plate extends below baseline");
+    const above = bobLine.baselineY - drawnTop;
+    const below = drawnBottom - bobLine.baselineY;
+    assert.equal(above, plate.ascent + padY, "above-baseline pad = ascent+padY");
+    assert.equal(below, plate.descent + padY, "below-baseline pad = descent+padY");
+    const inkDescent = Math.ceil(measured.actualBoundingBoxDescent ?? plate.descent);
+    assert.ok(
+      plate.descent >= inkDescent,
+      `plate descent covers active ink descenders (${plate.descent} >= ${inkDescent})`,
+    );
+  }
 
   const ass = segmentsToAssContent(
     [{ startSec: 0, endSec: 4, text: medium }],

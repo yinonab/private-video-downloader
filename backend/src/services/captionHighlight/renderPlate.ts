@@ -4,6 +4,42 @@ import { layoutCaptionBlock } from "./layout";
 import { ensureCaptionFont, captionFontCss } from "./fonts";
 import { captionTokenDisplayText, tokenizeCaptionText } from "./tokenize";
 
+/**
+ * Active highlight plate top/height from the shared alphabetic baseline.
+ * Uses font bounding metrics with an ink floor so the plate optically hugs the
+ * active word without changing text draw Y / baselineY.
+ */
+export function highlightPlateBoxFromBaseline(
+  baselineY: number,
+  metrics: {
+    readonly fontBoundingBoxAscent?: number;
+    readonly fontBoundingBoxDescent?: number;
+    readonly emHeightAscent?: number;
+    readonly emHeightDescent?: number;
+    readonly actualBoundingBoxAscent?: number;
+    readonly actualBoundingBoxDescent?: number;
+  },
+  fallbackAscent: number,
+  fallbackDescent: number,
+): { readonly y: number; readonly height: number; readonly ascent: number; readonly descent: number } {
+  const fontAscent = Math.ceil(
+    metrics.fontBoundingBoxAscent ?? metrics.emHeightAscent ?? fallbackAscent,
+  );
+  const fontDescent = Math.ceil(
+    metrics.fontBoundingBoxDescent ?? metrics.emHeightDescent ?? fallbackDescent,
+  );
+  const inkAscent = Math.ceil(metrics.actualBoundingBoxAscent ?? fontAscent);
+  const inkDescent = Math.ceil(metrics.actualBoundingBoxDescent ?? fontDescent);
+  const ascent = Math.max(1, fontAscent, inkAscent);
+  const descent = Math.max(0, fontDescent, inkDescent);
+  return {
+    y: baselineY - ascent,
+    height: ascent + descent,
+    ascent,
+    descent,
+  };
+}
+
 function drawHighlightBox(
   ctx: SKRSContext2D,
   x: number,
@@ -105,12 +141,22 @@ export async function renderCaptionHighlightPlate(input: RenderPlateInput): Prom
     for (const line of layout.lines) {
       for (const box of line.boxes) {
         if (box.tokenIndex !== activeIdx) continue;
+        const token = tokens[box.tokenIndex];
+        if (!token) continue;
+        const measured = ctx.measureText(captionTokenDisplayText(token));
+        const lineDescent = Math.max(0, line.lineHeight - line.ascent);
+        const plate = highlightPlateBoxFromBaseline(
+          line.baselineY,
+          measured,
+          line.ascent,
+          lineDescent,
+        );
         drawHighlightBox(
           ctx,
           box.x,
-          box.y,
+          plate.y,
           box.width,
-          box.height,
+          plate.height,
           input.boxShape,
           input.boxPaddingXPx,
           input.boxPaddingYPx,

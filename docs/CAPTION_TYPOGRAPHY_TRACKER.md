@@ -48,9 +48,9 @@ Do **not** mark ✅ Verified until a full manual QA pass is recorded.
 - **Description:** Confirm all words in the same visual line truly share one baseline in export (and preview where applicable). Investigate any remaining visual misalignment after Phase 1.
 - **Evidence / symptoms:** Some exports/previews may still show slight vertical jitter or uneven word seats even after `baselineY`.
 - **Suspected root cause:** Per-glyph metrics, highlight plate geometry, font ascent/descent differences, or preview WidgetSpan vs canvas draw path drift.
-- **Status:** ☐ Not started
-- **Notes:** Phase 1 code is in (`layout` / `renderPlate` / preview after-span). This issue is **verification + residual fix**, not a rewrite of the shared-baseline approach.
-- **Date updated:** 2026-08-03
+- **Status:** ✅ Verified by manual QA
+- **Notes:** Shared baseline verified. Plate optical centering improved without clipping or baseline regression. Minor optical variance between Hebrew glyphs is accepted and no further work is planned unless future regressions appear. Implementation: `highlightPlateBoxFromBaseline` (font bounds + active ink floor); text draw Y / `baselineY` / layout boxes / Preview unchanged.
+- **Date updated:** 2026-08-04
 
 ### Optical vertical alignment
 
@@ -198,3 +198,6 @@ Copy a dated checklist subsection under the issue when marking **✅ Verified**.
 | ---- | ------ |
 | 2026-08-03 | Tracker created at stable checkpoint (baseline + `1.75` scale + nine sizes). Remaining polish issues seeded as ☐ Not started. |
 | 2026-08-03 | Checkpoint items set to ☑ Fixed only — no ✅ Verified until formal manual QA. |
+| 2026-08-03 | **Shared word baseline — residual verification** → 🔄 In progress (investigation only; no code changes). |
+| 2026-08-03 | **Shared word baseline — residual verification** → ☑ Fixed (plate-only optical centering; not ✅ Verified). |
+| 2026-08-04 | **Shared word baseline — residual verification** → ✅ Verified by manual QA (plate centering + baseline; Hebrew glyph variance accepted). |
