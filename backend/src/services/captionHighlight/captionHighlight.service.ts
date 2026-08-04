@@ -47,14 +47,15 @@ function plateCacheKey(
 }
 
 function buildPlateInput(
-  text: string,
+  lines: readonly string[],
   activeWordIndex: number,
   cfg: CaptionsBurnInV1Resolved,
   style: ReturnType<typeof resolveHighlightStyle>,
   canvas: CaptionCanvasSize,
 ): RenderPlateInput {
-  const displayText = text.replace(/\n/g, " ");
+  const displayText = lines.join(" ");
   return {
+    lines: [...lines],
     text: displayText,
     activeWordIndex,
     direction: resolveTextDirection(displayText, "auto"),
@@ -138,7 +139,7 @@ export async function buildCaptionHighlightBurnPlan(
         const key = plateCacheKey(chunk.text, cue.activeWordIndex, style, cfg, canvas);
         let platePath = cache.get(key);
         if (!platePath) {
-          const input = buildPlateInput(chunk.text, cue.activeWordIndex, cfg, style, canvas);
+          const input = buildPlateInput(chunk.lines, cue.activeWordIndex, cfg, style, canvas);
           const rendered = await renderCaptionHighlightPlate(input);
           if (rendered.activeTokenCount !== 1) {
             throw new Error(

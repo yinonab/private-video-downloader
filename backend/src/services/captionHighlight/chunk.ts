@@ -1,54 +1,23 @@
 import type { CaptionsFontSize } from "../../modules/edit/edit.types";
 import { CAPTION_MAX_CHARS_PER_LINE } from "./dimensions";
 import { normalizeCaptionText } from "./tokenize";
+import { breakCaptionLines } from "../captionLineBreak";
 
 const MIN_VISIBLE_CHUNK_DURATION_SEC = 0.85;
 const MIN_CHUNK_DURATION_SEC = 0.16;
 
-function greedyWordWrap(words: readonly string[], maxChars: number): string[] {
-  const linesOut: string[] = [];
-  let cur = "";
-
-  const flushLine = (): void => {
-    const trimmed = cur.trim();
-    if (trimmed.length) linesOut.push(trimmed);
-    cur = "";
-  };
-
-  const pushWord = (w: string): void => {
-    if (cur.length === 0) cur = w;
-    else cur = `${cur} ${w}`;
-  };
-
-  const lineCharLen = (s: string): number => [...s].length;
-
-  for (const w of words) {
-    if (lineCharLen(w) > maxChars) {
-      flushLine();
-      for (let i = 0; i < [...w].length; i += maxChars) {
-        pushWord([...w].slice(i, i + maxChars).join(""));
-        if (lineCharLen(cur) >= maxChars) flushLine();
-      }
-      continue;
-    }
-    if (cur.length === 0 || lineCharLen(cur) + 1 + lineCharLen(w) <= maxChars) pushWord(w);
-    else {
-      flushLine();
-      pushWord(w);
-    }
-  }
-  flushLine();
-  return linesOut;
-}
-
 export type TextTimeChunk = {
+  /** Forced logical lines from the shared line-break SoT (1–2 per timed event). */
+  readonly lines: readonly string[];
+  /** Same lines joined with `\n` (timing/align; not a second wrap source). */
   readonly text: string;
   readonly startSec: number;
   readonly endSec: number;
 };
 
 /**
- * Split segment into timed text chunks (≤2 lines per chunk) — mirrors ASS segment chunking.
+ * Split segment into timed text chunks (≤2 lines per chunk).
+ * Line breaks come only from `breakCaptionLines` (shared SoT).
  */
 export function chunkSegmentForHighlight(
   text: string,
@@ -66,38 +35,49 @@ export function chunkSegmentForHighlight(
 
   let maxChars = Math.max(8, CAPTION_MAX_CHARS_PER_LINE[fontSize]);
 
-  const buildChunks = (): string[] => {
-    const words = plain.split(/\s+/).filter((w) => w.length > 0);
-    const wrappedLines = greedyWordWrap(words, maxChars);
-    const chunks: string[] = [];
+  const buildChunks = (): string[][] => {
+    const wrappedLines = breakCaptionLines(plain, maxChars);
+    const chunks: string[][] = [];
     for (let i = 0; i < wrappedLines.length; i += 2) {
       const line1 = wrappedLines[i] ?? "";
       const line2 = wrappedLines[i + 1];
-      const dlg = line2?.trim().length ? `${line1}\n${line2}` : line1;
-      if (dlg.length > 0) chunks.push(dlg);
+      const lines = line2?.trim().length ? [line1, line2] : [line1];
+      if (lines.some((l) => l.length > 0)) chunks.push(lines);
     }
     return chunks;
   };
 
-  let chunks = buildChunks();
-  while (chunks.length > 1) {
-    const per = dur / chunks.length;
-    if (per >= MIN_VISIBLE_CHUNK_DURATION_SEC || maxChars >= 48 + CAPTION_MAX_CHARS_PER_LINE[fontSize]) break;
+  let lineChunks = buildChunks();
+  while (lineChunks.length > 1) {
+    const per = dur / lineChunks.length;
+    if (per >= MIN_VISIBLE_CHUNK_DURATION_SEC || maxChars >= 48 + CAPTION_MAX_CHARS_PER_LINE[fontSize]) {
+      break;
+    }
     maxChars += 2;
-    chunks = buildChunks();
+    lineChunks = buildChunks();
   }
-  while (chunks.length > 1 && dur / chunks.length < MIN_VISIBLE_CHUNK_DURATION_SEC && maxChars < 96) {
+  while (
+    lineChunks.length > 1 &&
+    dur / lineChunks.length < MIN_VISIBLE_CHUNK_DURATION_SEC &&
+    maxChars < 96
+  ) {
     maxChars += 2;
-    chunks = buildChunks();
+    lineChunks = buildChunks();
   }
 
-  if (!chunks.length) return [];
-  const k = chunks.length;
+  if (!lineChunks.length) return [];
+  const k = lineChunks.length;
   const out: TextTimeChunk[] = [];
   for (let i = 0; i < k; i++) {
     const t0 = start + (dur * i) / k;
     const t1 = i === k - 1 ? end : start + (dur * (i + 1)) / k;
-    out.push({ text: chunks[i]!, startSec: t0, endSec: t1 });
+    const lines = lineChunks[i]!;
+    out.push({
+      lines,
+      text: lines.join("\n"),
+      startSec: t0,
+      endSec: t1,
+    });
   }
   return out;
 }

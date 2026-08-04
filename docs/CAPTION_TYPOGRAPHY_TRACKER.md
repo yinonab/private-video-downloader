@@ -58,9 +58,9 @@ Do **not** mark ✅ Verified until a full manual QA pass is recorded.
 - **Description:** Investigate why some words still appear to float even when the mathematical baseline is shared.
 - **Evidence / symptoms:** Highlighted or neighboring words look optically high/low relative to the line; yellow highlight plates may read as vertically “loose.”
 - **Suspected root cause:** Optical center vs baseline; plate padding; bold/weight metrics; Hebrew vs Latin glyph boxes; outline/shadow drawing offsets.
-- **Status:** ☐ Not started
-- **Notes:** Do not conflate with “baseline not shared.” Fix only after shared-baseline residual verification.
-- **Date updated:** 2026-08-03
+- **Status:** ✅ Verified by manual QA
+- **Notes:** No remaining rendering defect. All tokens share one alphabetic `baselineY`; outline and plate do not alter text Y. Remaining visual differences are natural Hebrew glyph variance; no further rendering work is planned unless future regressions appear.
+- **Date updated:** 2026-08-04
 
 ---
 
@@ -78,13 +78,23 @@ Do **not** mark ✅ Verified until a full manual QA pass is recorded.
 
 ### Line balancing
 
-- **Title:** Line balancing across valid wraps
-- **Description:** Improve choice among multiple valid wrapping solutions; avoid very short last lines.
-- **Evidence / symptoms:** Two-line cues with a long first line and a one-word (or very short) second line; uneven visual weight.
-- **Suspected root cause:** Greedy wrap / char budgets (`CAPTION_MAX_CHARS_PER_LINE`) without balance scoring; time-chunking interaction with wrap.
-- **Status:** ☐ Not started
-- **Notes:** Hebrew multi-word-per-line policy must be preserved. Existing six wrap budgets are frozen unless this issue explicitly revises policy.
-- **Date updated:** 2026-08-03
+- **Title:** Caption block balancing (line balancing)
+- **Description:** Improve choice among multiple valid wrapping solutions; avoid very short last lines. Produce CapCut-/Captions-like visual balance without shortening captions.
+- **Evidence / symptoms:** Greedy wrap fills line 1 to max width then dumps remainder on line 2 (e.g. long first line + short question on second).
+- **Suspected root cause:** Greedy wrap / char budgets (`CAPTION_MAX_CHARS_PER_LINE`) without balance scoring; time-chunking interaction with wrap; Preview may wrap independently of export.
+- **Status:** 🔄 In progress
+- **Notes:** Backend/export line-break SoT completed (Phase A — still greedy, no balancing). Balancing algorithm not implemented. Flutter Preview still uses engine softWrap — Phase B Preview parity required before this item can be ✅ Verified. Do not treat Phase A as product Preview/Export parity.
+- **Date updated:** 2026-08-04
+
+### Backend/export line-break Source of Truth
+
+- **Title:** Backend/export line-break Source of Truth
+- **Description:** Unify ASS, highlight timing, and highlight plate under one greedy `breakCaptionLines` SoT; plate consumes forced `lines[]` (no flatten / no pixel re-wrap for breaks).
+- **Evidence / symptoms:** Multiple independent wrap engines caused Preview/Export and ASS/plate divergence risk.
+- **Suspected root cause:** Duplicated greedy wrap + plate `wrapTokensToLines` + newline flatten.
+- **Status:** ✅ Verified by manual QA
+- **Notes:** Backend/export consumers (ASS, highlight timing, highlight plate) now share a single logical line-break source (`breakCaptionLines` in `captionLineBreak.ts`). Manual QA: stable shared breaks; no independent wrap decisions; no newline-flatten / baseline / plate-centering / export regressions. Preview still uses Flutter softWrap (Phase B). Balancing not included — see Caption block balancing.
+- **Date updated:** 2026-08-04
 
 ### Caption block width
 
@@ -201,3 +211,9 @@ Copy a dated checklist subsection under the issue when marking **✅ Verified**.
 | 2026-08-03 | **Shared word baseline — residual verification** → 🔄 In progress (investigation only; no code changes). |
 | 2026-08-03 | **Shared word baseline — residual verification** → ☑ Fixed (plate-only optical centering; not ✅ Verified). |
 | 2026-08-04 | **Shared word baseline — residual verification** → ✅ Verified by manual QA (plate centering + baseline; Hebrew glyph variance accepted). |
+| 2026-08-04 | **Optical vertical alignment** → 🔄 In progress (investigation only; no code yet). |
+| 2026-08-04 | **Optical vertical alignment** → ✅ Verified by manual QA (natural Hebrew glyph variance accepted; no further rendering work unless regressions). |
+| 2026-08-04 | **Caption block balancing (line balancing)** → 🔄 In progress (investigation only; no code yet). |
+| 2026-08-04 | **Backend/export line-break Source of Truth** → ☑ Fixed (Phase A greedy SoT; Preview parity + balancing still pending). |
+| 2026-08-04 | **Caption block balancing** remains 🔄 In progress (SoT done; balancing + Preview Phase B not done). |
+| 2026-08-04 | **Backend/export line-break Source of Truth** → ✅ Verified by manual QA. Caption block balancing remains 🔄 (composition). |

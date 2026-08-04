@@ -29,14 +29,27 @@ import {
   validateOverlayFilterComplex,
   captionFontSizePx,
   captionMaxLineWidthPx,
+  CAPTION_MAX_CHARS_PER_LINE,
+  breakCaptionLines,
+  breakCaptionLinesForFontSize,
+  chunkSegmentForHighlight,
   type TimedOverlayPlate,
 } from "../src/services/captionHighlight";
 import { layoutCaptionBlock } from "../src/services/captionHighlight/layout";
+import { normalizeCaptionText as highlightNormalizeCaptionText } from "../src/services/captionHighlight/tokenize";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { captionFontCss, ensureCaptionFont } from "../src/services/captionHighlight/fonts";
-import { segmentsToAssContent } from "../src/services/assSubtitles.service";
+import {
+  segmentsToAssContent,
+  normalizeCaptionText as assNormalizeCaptionText,
+} from "../src/services/assSubtitles.service";
 import { textColorToAssColour } from "../src/services/captionOutline.util";
 import type { TranscriptSegment } from "../src/services/transcription.service";
+import type { CaptionsFontSize } from "../src/modules/edit/edit.types";
+
+function forcedLinesForPlate(text: string, fontSize: CaptionsFontSize = "medium"): string[] {
+  return breakCaptionLinesForFontSize(highlightNormalizeCaptionText(text), fontSize);
+}
 
 const baseCfg: CaptionsBurnInV1Resolved = {
   mode: "segments",
@@ -130,6 +143,75 @@ function assertKillSwitchStaticAss(): void {
   console.info("diag:caption-highlight ok kill-switch static ASS (flag-off / fallback path)");
 }
 
+/** Phase A: shared line-break SoT wiring (ASS + highlight timing + plate). */
+function assertLineBreakSourceOfTruth(): void {
+  const root = path.join(__dirname, "..", "src", "services");
+  const assSrc = readFileSync(path.join(root, "assSubtitles.service.ts"), "utf8");
+  const chunkSrc = readFileSync(path.join(root, "captionHighlight", "chunk.ts"), "utf8");
+  const svcSrc = readFileSync(path.join(root, "captionHighlight", "captionHighlight.service.ts"), "utf8");
+  const layoutSrc = readFileSync(path.join(root, "captionHighlight", "layout.ts"), "utf8");
+  const sotSrc = readFileSync(path.join(root, "captionLineBreak.ts"), "utf8");
+
+  assert.ok(assSrc.includes("breakCaptionLines"), "ASS imports shared SoT");
+  assert.ok(!/function greedyWordWrap\s*\(/.test(assSrc), "ASS local greedyWordWrap removed");
+  assert.ok(chunkSrc.includes("breakCaptionLines"), "chunk imports shared SoT");
+  assert.ok(!/function greedyWordWrap\s*\(/.test(chunkSrc), "chunk local greedyWordWrap removed");
+  assert.ok(sotSrc.includes("hardSplitUnits"), "SoT keeps ASS hard-split");
+  assert.ok(!svcSrc.includes("replace(/\\n/g"), "no production newline flattening");
+  assert.ok(!layoutSrc.includes("wrapTokensToLines"), "layout no longer chooses breaks via wrapTokensToLines");
+
+  const samples = [
+    "זה משפט קצת יותר ארוך שצריך להישבר בצורה טבעית",
+    "סליחה, יש לכם כזה במדיום?",
+    "Hello, world.",
+    `${"a".repeat(55)}`,
+  ];
+  for (const raw of samples) {
+    const hiPlain = highlightNormalizeCaptionText(raw);
+    const assPlain = assNormalizeCaptionText(raw);
+    for (const fs of ["medium", "xx_large", "ultra"] as const) {
+      const budget = CAPTION_MAX_CHARS_PER_LINE[fs];
+      const sotFromHi = breakCaptionLines(hiPlain, budget);
+      const chunks = chunkSegmentForHighlight(raw, 0, 40, fs);
+      const fromChunks = chunks.flatMap((c) => [...c.lines]);
+      assert.deepEqual(fromChunks, sotFromHi, `highlight timing lines === SoT (${fs})`);
+      if (hiPlain === assPlain) {
+        assert.deepEqual(
+          breakCaptionLines(assPlain, budget),
+          sotFromHi,
+          `ASS-plain SoT === highlight-plain SoT (${fs})`,
+        );
+      }
+      for (const ln of sotFromHi) {
+        assert.ok([...ln].length <= Math.max(budget, [...ln].length), "line length bounded");
+        if (!raw.includes(" ".repeat(1)) && raw.length > budget) {
+          /* oversized single token */
+        }
+      }
+    }
+  }
+
+  const oversized = "x".repeat(60);
+  const overLines = breakCaptionLines(oversized, 24);
+  assert.ok(overLines.length >= 2, "oversized word hard-splits");
+  assert.ok(
+    overLines.every((ln) => [...ln].length <= 24),
+    "oversized pieces ≤ maxChars (ASS hard-split)",
+  );
+
+  // Adaptive 0.85s path: still SoT — each timed chunk carries forced lines from breakCaptionLines
+  const longHe = "מילה ".repeat(40).trim();
+  const shortDurChunks = chunkSegmentForHighlight(longHe, 0, 1.2, "medium");
+  const longDurChunks = chunkSegmentForHighlight(longHe, 0, 40, "medium");
+  assert.ok(shortDurChunks.length >= 1 && longDurChunks.length >= 1);
+  for (const c of [...shortDurChunks, ...longDurChunks]) {
+    assert.ok(c.lines.length >= 1 && c.lines.length <= 2, "≤2 forced lines per timed chunk");
+    assert.equal(c.text, c.lines.join("\n"), "chunk.text mirrors forced lines");
+  }
+
+  console.info("diag:caption-highlight ok line-break SoT (ASS+timing+plate wiring)");
+}
+
 /** F1: Hebrew wrap must keep multiple words per line on portrait + large fonts. */
 async function assertHebrewCaptionLayoutPolicy(): Promise<void> {
   await ensureCaptionFont("heebo");
@@ -194,10 +276,12 @@ async function assertHebrewCaptionLayoutPolicy(): Promise<void> {
   const maxLineWidthPx = captionMaxLineWidthPx("xx_large", portrait);
   const familyLabel = await ensureCaptionFont("heebo");
   ctx.font = captionFontCss(familyLabel, fontSize, 700);
+  const mediumLines = forcedLinesForPlate(medium, "xx_large");
   const layout = layoutCaptionBlock(
     ctx,
     {
-      text: medium,
+      text: mediumLines.join(" "),
+      lines: mediumLines,
       direction: "auto",
       fontSize,
       fontWeight: 700,
@@ -229,10 +313,12 @@ async function assertHebrewCaptionLayoutPolicy(): Promise<void> {
   const bobSample = "סליחה, יש לכם";
   const bobFont = captionFontSizePx("large", portrait);
   ctx.font = captionFontCss(familyLabel, bobFont, 700);
+  const bobLines = forcedLinesForPlate(bobSample, "large");
   const bobLayout = layoutCaptionBlock(
     ctx,
     {
-      text: bobSample,
+      text: bobLines.join(" "),
+      lines: bobLines,
       direction: "auto",
       fontSize: bobFont,
       fontWeight: 700,
@@ -639,8 +725,11 @@ async function assertRtlPunctuationBehavior(): Promise<void> {
   assert.ok(rtlLeft! < ltrLeft, `RTL comma should be further left (rtlLeft=${rtlLeft} ltrLeft=${ltrLeft})`);
   assert.ok(ltrRight > rtlRight!, `LTR comma should extend further right (ltrRight=${ltrRight} rtlRight=${rtlRight})`);
 
+  const plateHeText = "בלבנון, ברעיון, רביבי בוא נראה אותך:";
+  const plateHeLines = forcedLinesForPlate(plateHeText, "medium");
   const plate = await renderCaptionHighlightPlate({
-    text: "בלבנון, ברעיון, רביבי בוא נראה אותך:",
+    text: plateHeLines.join(" "),
+    lines: plateHeLines,
     activeWordIndex: 1,
     direction: "rtl",
     fontFamily: "heebo",
@@ -664,8 +753,10 @@ async function assertRtlPunctuationBehavior(): Promise<void> {
   assert.equal(plate.activeTokenCount, 1, "QA phrase one active token");
   assert.equal(plate.layout.direction, "rtl");
 
+  const enLines = forcedLinesForPlate("Hello, world.", "medium");
   const enPlate = await renderCaptionHighlightPlate({
-    text: "Hello, world.",
+    text: enLines.join(" "),
+    lines: enLines,
     activeWordIndex: 0,
     direction: "ltr",
     fontFamily: "heebo",
@@ -709,8 +800,10 @@ async function assertCaptionOutlineBehavior(): Promise<void> {
   assert.ok(ass.includes(textColorToAssColour("white")), "ASS custom outline colour");
   assert.ok(ass.includes(",3.50,"), "ASS medium outline width");
 
+  const plateBaseLines = forcedLinesForPlate("Hello world", "medium");
   const plateBase = {
-    text: "Hello world",
+    text: plateBaseLines.join(" "),
+    lines: plateBaseLines,
     activeWordIndex: 0,
     direction: "ltr" as const,
     fontFamily: "heebo" as const,
@@ -742,9 +835,11 @@ async function assertCaptionOutlineBehavior(): Promise<void> {
   assert.ok(withOutline.png.length > without.png.length, "outline plate larger png");
   assert.equal(withOutline.activeTokenCount, 1);
 
+  const heOutlineLines = forcedLinesForPlate("בלבנון, ברעיון,", "medium");
   const heOutline = await renderCaptionHighlightPlate({
     ...plateBase,
-    text: "בלבנון, ברעיון,",
+    text: heOutlineLines.join(" "),
+    lines: heOutlineLines,
     activeWordIndex: 1,
     direction: "rtl",
     drawBox: true,
@@ -768,9 +863,12 @@ async function assertCaptionOutlineBehavior(): Promise<void> {
     };
     const style = resolveHighlightStyle(cfg);
     assert.ok(style.outlineEnabled);
+    const twoLineSample = "Two line caption sample here";
+    const twoLineLines = forcedLinesForPlate(twoLineSample, "medium");
     const plate = await renderCaptionHighlightPlate({
       ...plateBase,
-      text: "Two line caption sample here",
+      text: twoLineLines.join(" "),
+      lines: twoLineLines,
       activeWordIndex: 2,
       drawBox: mode === "box",
       normalTextColor: style.normalCss,
@@ -781,12 +879,18 @@ async function assertCaptionOutlineBehavior(): Promise<void> {
       outlineWidthPx: style.outlineWidthPx(32),
     });
     assert.equal(plate.activeTokenCount, 1, `outline + ${mode}`);
+    assert.deepEqual(
+      plate.layout.lines.map((ln) => ln.tokens.map((t) => t.fullText).join(" ")),
+      twoLineLines,
+      `plate forced lines honored (${mode})`,
+    );
   }
 
   console.info("diag:caption-highlight ok caption-outline ass+canvas");
 }
 
 async function main(): Promise<void> {
+  assertLineBreakSourceOfTruth();
   assertKillSwitchStaticAss();
   await assertHebrewCaptionLayoutPolicy();
   assertFilterComplexLabels();
@@ -901,8 +1005,10 @@ async function main(): Promise<void> {
       console.info(`diag:caption-highlight ok shape=${shape} mode=box`);
     }
 
+    const he1Lines = forcedLinesForPlate(he1, "medium");
     const single = await renderCaptionHighlightPlate({
-      text: he1,
+      text: he1Lines.join(" "),
+      lines: he1Lines,
       activeWordIndex: 0,
       direction: "rtl",
       fontFamily: "heebo",
@@ -926,6 +1032,11 @@ async function main(): Promise<void> {
     assert.equal(single.activeTokenCount, 1, "single plate one active token");
     const order = single.layout.lines.flatMap((ln) => ln.boxes.map((b) => b.tokenIndex));
     assert.deepEqual(order, [0, 1, 2, 3], "hebrew logical token order in layout");
+    assert.deepEqual(
+      single.layout.lines.map((ln) => ln.tokens.map((t) => t.fullText).join(" ")),
+      he1Lines,
+      "single plate uses forced SoT lines",
+    );
 
     const ff = spawnSync("ffmpeg", ["-version"], { encoding: "utf8" });
     if (ff.status === 0) {

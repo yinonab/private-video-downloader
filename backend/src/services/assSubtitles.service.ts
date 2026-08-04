@@ -8,6 +8,7 @@ import {
   CAPTION_PLAY_H,
   CAPTION_PLAY_W,
 } from "./captionHighlight/dimensions";
+import { breakCaptionLines } from "./captionLineBreak";
 
 /**
  * ASS dialogue hard line break token (literal backslash + N in subtitle file).
@@ -419,8 +420,7 @@ function segmentToDialogueEvents(
   }
 
   const buildChunks = (): BuildResult => {
-    const words = plain.split(/\s+/).filter((w) => w.length > 0);
-    const wrappedLines = greedyWordWrap(words, maxChars);
+    const wrappedLines = breakCaptionLines(plain, maxChars);
     const chunks: string[] = [];
     for (let i = 0; i < wrappedLines.length; i += 2) {
       const line1 = wrappedLines[i] ?? "";
@@ -610,61 +610,6 @@ function applyWordHighlight(
 
 function escapeRegExp(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/** Greedy word wrap → lines (respect word boundaries when possible). */
-function greedyWordWrap(words: readonly string[], maxChars: number): string[] {
-  const linesOut: string[] = [];
-  let cur = "";
-
-  const flushLine = (): void => {
-    const trimmed = cur.trim();
-    if (trimmed.length) linesOut.push(trimmed);
-    cur = "";
-  };
-
-  const pushWord = (w: string): void => {
-    if (cur.length === 0) cur = w;
-    else cur = `${cur} ${w}`;
-  };
-
-  const unitsOf = (s: string): string[] => [...s];
-
-  const hardSplitUnits = (s: string, maxUnits: number): string[] => {
-    const u = unitsOf(s);
-    if (u.length <= maxUnits) return [s];
-    const chunks: string[] = [];
-    for (let i = 0; i < u.length; i += maxUnits) chunks.push(u.slice(i, i + maxUnits).join(""));
-    return chunks;
-  };
-
-  const lineCharLen = (s: string): number => unitsOf(s).length;
-
-  for (const w of words) {
-    if (lineCharLen(w) > maxChars) {
-      flushLine();
-      const parts = hardSplitUnits(w, maxChars);
-      for (let p = 0; p < parts.length; p++) {
-        const piece = parts[p]!;
-        if (lineCharLen(cur) === 0) pushWord(piece);
-        else if (lineCharLen(cur) + 1 + lineCharLen(piece) <= maxChars) pushWord(piece);
-        else {
-          flushLine();
-          pushWord(piece);
-        }
-        if (lineCharLen(cur) >= maxChars) flushLine();
-      }
-      continue;
-    }
-
-    if (cur.length === 0 || lineCharLen(cur) + 1 + lineCharLen(w) <= maxChars) pushWord(w);
-    else {
-      flushLine();
-      pushWord(w);
-    }
-  }
-  flushLine();
-  return linesOut;
 }
 
 /** Convert fractional seconds → `H:MM:SS.cc` ASS event time base. */

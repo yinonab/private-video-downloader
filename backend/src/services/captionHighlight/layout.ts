@@ -14,46 +14,42 @@ function measureToken(ctx: MeasureCtx, token: CaptionToken): { width: number; as
   return { width: Math.ceil(m.width), ascent: Math.ceil(ascent), descent: Math.ceil(descent) };
 }
 
-function wrapTokensToLines(
-  ctx: MeasureCtx,
-  tokens: readonly CaptionToken[],
-  maxLineWidthPx: number,
-  maxLines: number,
-  tokenGapPx: number,
-): CaptionToken[][] {
-  const lines: CaptionToken[][] = [];
-  let current: CaptionToken[] = [];
-
-  const lineWidth = (line: CaptionToken[]): number => {
-    if (!line.length) return 0;
-    let w = 0;
-    for (let i = 0; i < line.length; i++) {
-      w += measureToken(ctx, line[i]!).width;
-      if (i < line.length - 1) w += tokenGapPx;
-    }
-    return w;
-  };
-
-  const flush = (): void => {
-    if (current.length) {
-      lines.push(current);
-      current = [];
-    }
-  };
-
-  for (const token of tokens) {
-    const tw = measureToken(ctx, token).width;
-    const curW = lineWidth(current);
-    const extra = current.length ? tokenGapPx + tw : tw;
-    if (current.length && curW + extra > maxLineWidthPx) {
-      flush();
-      if (lines.length >= maxLines) break;
-    }
-    current.push(token);
+function measureLineWidthPx(ctx: MeasureCtx, tokens: readonly CaptionToken[], tokenGapPx: number): number {
+  if (!tokens.length) return 0;
+  let w = 0;
+  for (let i = 0; i < tokens.length; i++) {
+    w += measureToken(ctx, tokens[i]!).width;
+    if (i < tokens.length - 1) w += tokenGapPx;
   }
-  flush();
+  return w;
+}
 
-  return lines.length > maxLines ? lines.slice(0, maxLines) : lines;
+/**
+ * Tokenize forced logical lines with contiguous global token indices.
+ * Does not choose new break points — `logicalLines` is the SoT output.
+ */
+function tokenizeForcedLines(
+  logicalLines: readonly string[],
+  maxLines: number,
+): { tokens: CaptionToken[]; lineTokenGroups: CaptionToken[][] } {
+  const lineTokenGroups: CaptionToken[][] = [];
+  const tokens: CaptionToken[] = [];
+  let nextIndex = 0;
+  const capped = logicalLines.slice(0, Math.max(1, maxLines));
+  for (const line of capped) {
+    const local = tokenizeCaptionText(line);
+    if (!local.length) continue;
+    const remapped = local.map((t) => {
+      const copy: CaptionToken = {
+        ...t,
+        index: nextIndex++,
+      };
+      return copy;
+    });
+    lineTokenGroups.push(remapped);
+    tokens.push(...remapped);
+  }
+  return { tokens, lineTokenGroups };
 }
 
 function layoutLine(
@@ -116,6 +112,7 @@ export function layoutCaptionBlock(
   input: Pick<
     RenderPlateInput,
     | "text"
+    | "lines"
     | "direction"
     | "fontSize"
     | "fontWeight"
@@ -129,11 +126,21 @@ export function layoutCaptionBlock(
   > & { offsetY?: number; canvas: CaptionCanvasSize },
   fontFamilyLabel: string,
 ): CaptionLayoutResult {
-  const tokens = tokenizeCaptionText(input.text);
   const direction = resolveTextDirection(input.text, input.direction);
   ctx.font = captionFontCss(fontFamilyLabel, input.fontSize, input.fontWeight);
 
-  const lineTokenGroups = wrapTokensToLines(ctx, tokens, input.maxLineWidthPx, input.maxLines, input.tokenGapPx);
+  const { tokens, lineTokenGroups } = tokenizeForcedLines(input.lines, input.maxLines);
+
+  // Overflow diagnostics only — do not invent new break points.
+  for (let i = 0; i < lineTokenGroups.length; i++) {
+    const group = lineTokenGroups[i]!;
+    const w = measureLineWidthPx(ctx, group, input.tokenGapPx);
+    if (w > input.maxLineWidthPx && process.env.LINKCLIP_CAPTION_WRAP_DEBUG === "true") {
+      console.info(
+        `caption layout overflow diag: line=${i} widthPx=${w} max=${input.maxLineWidthPx}`,
+      );
+    }
+  }
 
   const lineHeights = lineTokenGroups.map((group) => {
     let maxH = 0;
@@ -141,20 +148,13 @@ export function layoutCaptionBlock(
       const m = measureToken(ctx, t);
       maxH = Math.max(maxH, m.ascent + m.descent);
     }
-    return maxH;
+    return maxH || input.fontSize;
   });
 
   const blockHeight =
     lineHeights.reduce((a, b) => a + b, 0) + Math.max(0, lineTokenGroups.length - 1) * input.lineGapPx;
 
-  const lineWidths = lineTokenGroups.map((group) => {
-    let w = 0;
-    for (let i = 0; i < group.length; i++) {
-      w += measureToken(ctx, group[i]!).width;
-      if (i < group.length - 1) w += input.tokenGapPx;
-    }
-    return w;
-  });
+  const lineWidths = lineTokenGroups.map((group) => measureLineWidthPx(ctx, group, input.tokenGapPx));
   const blockWidth = Math.max(...lineWidths, 0);
 
   const blockTop = captionBlockTopBase(

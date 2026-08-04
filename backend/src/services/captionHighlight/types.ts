@@ -50,6 +50,12 @@ export type CaptionLayoutResult = {
 };
 
 export type RenderPlateInput = {
+  /**
+   * Forced logical lines from the shared line-break SoT.
+   * Layout must not re-wrap; pixel measure is placement/overflow only.
+   */
+  readonly lines: readonly string[];
+  /** Flat text for direction / tokenization identity (`lines` joined with spaces). */
   readonly text: string;
   readonly activeWordIndex: number;
   readonly direction: TextDirection;
