@@ -32,6 +32,7 @@ import {
   CAPTION_MAX_CHARS_PER_LINE,
   breakCaptionLines,
   breakCaptionLinesForFontSize,
+  scoreTwoLineCaption,
   chunkSegmentForHighlight,
   type TimedOverlayPlate,
 } from "../src/services/captionHighlight";
@@ -209,7 +210,37 @@ function assertLineBreakSourceOfTruth(): void {
     assert.equal(c.text, c.lines.join("\n"), "chunk.text mirrors forced lines");
   }
 
-  console.info("diag:caption-highlight ok line-break SoT (ASS+timing+plate wiring)");
+  // v1 caption block balancing (inside SoT only)
+  assert.ok(sotSrc.includes("scoreTwoLineCaption") || sotSrc.includes("tryBalanceTwoLines"), "SoT hosts balancing");
+  const oneLine = breakCaptionLines("שלום עולם", 34);
+  assert.deepEqual(oneLine, ["שלום עולם"], "one-line cue unchanged when it fits");
+
+  const unbalancedSample = "סליחה, יש לכם כזה במדיום?";
+  const medBudget = CAPTION_MAX_CHARS_PER_LINE.medium;
+  const balanced = breakCaptionLines(highlightNormalizeCaptionText(unbalancedSample), medBudget);
+  assert.ok(balanced.length === 1 || balanced.length === 2, "balance yields ≤2 lines when possible");
+  if (balanced.length === 2) {
+    const [a, b] = balanced;
+    assert.ok([...a!].length <= medBudget && [...b!].length <= medBudget, "balanced lines within budget");
+    const words2 = b!.split(/\s+/).filter(Boolean).length;
+    assert.ok(words2 >= 2, `avoid single-word orphan last line when possible (got ${words2})`);
+    // Prefer not dramatically worse than a mid split when multiple splits exist
+    const words = highlightNormalizeCaptionText(unbalancedSample).split(/\s+/).filter(Boolean);
+    assert.ok(words.length >= 3);
+    const mid = Math.floor(words.length / 2);
+    const greedyLike = [words.slice(0, words.length - 1).join(" "), words[words.length - 1]!];
+    if ([...greedyLike[0]!].length <= medBudget && [...greedyLike[1]!].length <= medBudget) {
+      const chosen = scoreTwoLineCaption(a!, b!);
+      const orphanHeavy = scoreTwoLineCaption(greedyLike[0]!, greedyLike[1]!);
+      assert.ok(chosen <= orphanHeavy, "chosen split scores ≤ orphan-heavy greedy-like split");
+    }
+    void mid;
+  }
+
+  const overStill = breakCaptionLines("x".repeat(60), 24);
+  assert.ok(overStill.every((ln) => [...ln].length <= 24), "oversized still hard-splits via greedy fallback");
+
+  console.info("diag:caption-highlight ok line-break SoT + caption block balancing v1");
 }
 
 /** F1: Hebrew wrap must keep multiple words per line on portrait + large fonts. */

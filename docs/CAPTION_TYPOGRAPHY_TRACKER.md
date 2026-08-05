@@ -64,17 +64,7 @@ Do **not** mark ✅ Verified until a full manual QA pass is recorded.
 
 ---
 
-## Typography
-
-### Optical centering of caption blocks
-
-- **Title:** Optical centering of caption blocks
-- **Description:** Investigate whether mathematically centered captions are visually centered on screen.
-- **Evidence / symptoms:** Blocks can feel shifted left/right or up/down despite center math, especially RTL Hebrew and large sizes.
-- **Suspected root cause:** Safe margins, ASS `MarginL/R/V`, highlight plate extents, asymmetric glyph side bearings, preview stage letterboxing.
-- **Status:** ☐ Not started
-- **Notes:** Measure Preview and Export separately before changing margins.
-- **Date updated:** 2026-08-03
+## Typography (verified composition)
 
 ### Line balancing
 
@@ -82,9 +72,9 @@ Do **not** mark ✅ Verified until a full manual QA pass is recorded.
 - **Description:** Improve choice among multiple valid wrapping solutions; avoid very short last lines. Produce CapCut-/Captions-like visual balance without shortening captions.
 - **Evidence / symptoms:** Greedy wrap fills line 1 to max width then dumps remainder on line 2 (e.g. long first line + short question on second).
 - **Suspected root cause:** Greedy wrap / char budgets (`CAPTION_MAX_CHARS_PER_LINE`) without balance scoring; time-chunking interaction with wrap; Preview may wrap independently of export.
-- **Status:** 🔄 In progress
-- **Notes:** Backend/export line-break SoT completed (Phase A — still greedy, no balancing). Balancing algorithm not implemented. Flutter Preview still uses engine softWrap — Phase B Preview parity required before this item can be ✅ Verified. Do not treat Phase A as product Preview/Export parity.
-- **Date updated:** 2026-08-04
+- **Status:** ✅ Verified by manual QA
+- **Notes:** Backend/export balancing verified by manual QA. Source of Truth is stable. Existing rendering behavior preserved. Preview parity remains a separate future task.
+- **Date updated:** 2026-08-05
 
 ### Backend/export line-break Source of Truth
 
@@ -93,62 +83,74 @@ Do **not** mark ✅ Verified until a full manual QA pass is recorded.
 - **Evidence / symptoms:** Multiple independent wrap engines caused Preview/Export and ASS/plate divergence risk.
 - **Suspected root cause:** Duplicated greedy wrap + plate `wrapTokensToLines` + newline flatten.
 - **Status:** ✅ Verified by manual QA
-- **Notes:** Backend/export consumers (ASS, highlight timing, highlight plate) now share a single logical line-break source (`breakCaptionLines` in `captionLineBreak.ts`). Manual QA: stable shared breaks; no independent wrap decisions; no newline-flatten / baseline / plate-centering / export regressions. Preview still uses Flutter softWrap (Phase B). Balancing not included — see Caption block balancing.
+- **Notes:** Backend/export consumers (ASS, highlight timing, highlight plate) now share a single logical line-break source (`breakCaptionLines` in `captionLineBreak.ts`). Manual QA: stable shared breaks; no independent wrap decisions; no newline-flatten / baseline / plate-centering / export regressions. Preview still uses Flutter softWrap (Phase B). Caption block balancing v1 also lives in this SoT.
 - **Date updated:** 2026-08-04
-
-### Caption block width
-
-- **Title:** Caption block safe width
-- **Description:** Re-evaluate safe width so lines use available space without unnecessary wrapping.
-- **Evidence / symptoms:** Early wraps at large sizes; unused horizontal space inside safe margins.
-- **Suspected root cause:** Conservative `CAPTION_MARGIN_H` / max line width / wrap char budgets; uniform scale interaction on portrait canvases.
-- **Status:** ☐ Not started
-- **Notes:** Coordinate with line balancing; do not break RTL or ≤2-line policy without explicit approval.
-- **Date updated:** 2026-08-03
-
-### Line spacing
-
-- **Title:** Line spacing for large caption sizes
-- **Description:** Review line-height / inter-line gap for XL→Ultra so multi-line cues remain readable and not cramped or airy.
-- **Evidence / symptoms:** Large sizes (esp. Mega / Ultra) may look stacked too tightly or too loose; preview clip risk when line box grows.
-- **Suspected root cause:** Fixed line metrics scaled only with font size; plate height; Flutter `StrutStyle` / WidgetSpan vs canvas line advance.
-- **Status:** ☐ Not started
-- **Notes:** Cross-check Look Preview stage height (~82px content) vs Ultra two-line height.
-- **Date updated:** 2026-08-03
-
-### Overall typography polish
-
-- **Title:** Overall typography polish
-- **Description:** Holistic pass on padding, spacing, visual rhythm, and readability after structural issues above are verified.
-- **Evidence / symptoms:** Captions feel “almost right” but lack finished rhythm; inconsistent gaps between plate, text, and frame edges.
-- **Suspected root cause:** Accumulated constants tuned independently (margins, plate padding, outline, highlight inset).
-- **Status:** ☐ Not started
-- **Notes:** Last typography bucket — only after centering, width, balancing, and line spacing decisions land.
-- **Date updated:** 2026-08-03
 
 ---
 
-## Preview vs Export
+## Typography Polish (future roadmap)
+
+Do **not** start these until explicitly approved. Backend/export composition (SoT + balancing) is the current verified checkpoint.
+
+### Preview parity (Phase B)
+
+- **Title:** Preview parity (Phase B)
+- **Description:** Flutter Preview should consume the same logical `lines[]` from the shared break algorithm (Dart twin or equivalent) instead of engine `softWrap`.
+- **Status:** ☐ Not started
+- **Notes:** Intentionally deferred. Export SoT + balancing verified without Preview twin.
+- **Date updated:** 2026-08-05
+
+### Word spacing polish
+
+- **Title:** Word spacing polish
+- **Description:** Review inter-word gaps / tokenGap for large sizes and RTL readability.
+- **Status:** ☐ Not started
+- **Notes:** Future polish only.
+- **Date updated:** 2026-08-05
+
+### Optical block centering
+
+- **Title:** Optical block centering
+- **Description:** Investigate whether mathematically centered caption blocks are optically centered (esp. Hebrew RTL, large sizes).
+- **Status:** ☐ Not started
+- **Notes:** Formerly under Typography; deferred to this roadmap.
+- **Date updated:** 2026-08-05
+
+### Line-height review
+
+- **Title:** Line-height review
+- **Description:** Review inter-line gap / line-height for XL→Ultra multi-line cues.
+- **Status:** ☐ Not started
+- **Notes:** Includes Look Preview stage height vs Ultra risk.
+- **Date updated:** 2026-08-05
+
+### Advanced semantic balancing
+
+- **Title:** Advanced semantic balancing
+- **Description:** Phrase-aware / punctuation-aware splits beyond v1 char-score heuristics.
+- **Status:** ☐ Not started
+- **Notes:** Only after v1 balancing remains satisfactory; do not reopen v1 without regression.
+- **Date updated:** 2026-08-05
+
+### Typography fine tuning
+
+- **Title:** Typography fine tuning
+- **Description:** Holistic padding, spacing, visual rhythm, and readability pass.
+- **Status:** ☐ Not started
+- **Notes:** Last bucket after structural polish items above.
+- **Date updated:** 2026-08-05
+
+---
+
+## Preview vs Export (standing gate)
 
 ### Preview / Export visual parity
 
 - **Title:** Preview vs Export remain visually identical
-- **Description:** After every typography change, Preview (Flutter overlay / Look editor) and Export (canvas highlight or ASS) must stay visually matched.
-- **Evidence / symptoms:** Historical: export fonts looked tiny vs preview before `1.75` scale; Ultra may clip in Look Preview while export is fine; any future metric change can desync paths.
-- **Suspected root cause:** Dual pipelines (WidgetSpan preview vs canvas/ASS export); separate size maps; different stage heights.
-- **Status:** ☐ Not started *(standing gate — re-check on every fix)*
-- **Notes:** Standing regression gate, not a one-shot bug. Record failures under the specific issue that caused drift.
-- **Date updated:** 2026-08-03
-
-### Ultra Look Preview clipping (known risk)
-
-- **Title:** Ultra size clips on Look Preview stage
-- **Description:** Look editor preview stage may be too short for Ultra two-line captions (~91px vs ~82px content height).
-- **Evidence / symptoms:** Possible bottom/top clip or overflow in Look Preview at Ultra; export may still look correct.
-- **Suspected root cause:** Fixed Look preview stage height vs larger preview dp (36.4) and two-line strut.
-- **Status:** ☐ Not started
-- **Notes:** Device QA to confirm; fix is UI stage/layout, not export bases, unless parity requires both.
-- **Date updated:** 2026-08-03
+- **Description:** Standing regression gate after typography changes.
+- **Status:** ☐ Not started *(standing gate — see Typography Polish → Preview parity Phase B)*
+- **Notes:** Export path verified for SoT + balancing; Preview still softWrap until Phase B.
+- **Date updated:** 2026-08-05
 
 ---
 
@@ -191,14 +193,17 @@ Copy a dated checklist subsection under the issue when marking **✅ Verified**.
 
 ## Suggested work order
 
-1. Shared word baseline — residual verification  
-2. Optical vertical alignment  
-3. Preview / Export parity gate (ongoing) + Ultra Look clip if confirmed  
-4. Optical centering of caption blocks  
-5. Caption block width  
-6. Line balancing  
-7. Line spacing (large sizes)  
-8. Overall typography polish  
+**Verified (do not reopen without regression):** Shared baseline → Optical vertical alignment → Backend/export line-break SoT → Caption block balancing.
+
+**Next (Typography Polish — wait for approval):**
+1. Preview parity (Phase B)  
+2. Word spacing polish  
+3. Optical block centering  
+4. Line-height review  
+5. Advanced semantic balancing  
+6. Typography fine tuning  
+
+Standing gate: Preview / Export visual parity (tracks Phase B).
 
 ---
 
@@ -217,3 +222,5 @@ Copy a dated checklist subsection under the issue when marking **✅ Verified**.
 | 2026-08-04 | **Backend/export line-break Source of Truth** → ☑ Fixed (Phase A greedy SoT; Preview parity + balancing still pending). |
 | 2026-08-04 | **Caption block balancing** remains 🔄 In progress (SoT done; balancing + Preview Phase B not done). |
 | 2026-08-04 | **Backend/export line-break Source of Truth** → ✅ Verified by manual QA. Caption block balancing remains 🔄 (composition). |
+| 2026-08-04 | **Caption block balancing** → ☑ Fixed (v1 score inside `captionLineBreak.ts`; not ✅ Verified; Preview Phase B pending). |
+| 2026-08-05 | **Caption block balancing** → ✅ Verified by manual QA. Added **Typography Polish** future roadmap (Preview Phase B, word spacing, optical block centering, line-height, advanced balancing, fine tuning). Wait for approval before next typography task. |

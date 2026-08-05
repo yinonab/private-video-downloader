@@ -20,7 +20,7 @@ export {
 } from "./ffmpegOverlay";
 export { resolveCaptionCanvasSize, CAPTION_PLAY_W, CAPTION_PLAY_H, CAPTION_MARGIN_H, CAPTION_MAX_CHARS_PER_LINE, captionFontSizePx, captionMaxLineWidthPx } from "./dimensions";
 export { renderCaptionHighlightPlate, highlightPlateBoxFromBaseline } from "./renderPlate";
-export { breakCaptionLines, breakCaptionLinesForFontSize } from "../captionLineBreak";
+export { breakCaptionLines, breakCaptionLinesForFontSize, scoreTwoLineCaption } from "../captionLineBreak";
 export { chunkSegmentForHighlight } from "./chunk";
 export { tokenizeCaptionText, resolveTextDirection, captionTokenDisplayText, captionTokenMatchesWord } from "./tokenize";
 export { resolveWordTimingCues, alignWordsForChunk } from "./timing";
