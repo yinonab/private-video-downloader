@@ -2,7 +2,7 @@
 
 | Metadata | |
 |----------|--|
-| **Last updated** | 2026-08-04 |
+| **Last updated** | 2026-08-09 |
 | **Status** | Android Quick Edit MVP implemented; in QA/polish. |
 | **Primary platform** | Android |
 | **Backend** | Production Docker Compose deployment (see `backend/docker-compose.prod.yml`, `backend/DEPLOY_HETZNER.md`) |
@@ -24,7 +24,7 @@ Polished technical overview of the **private-video-downloader** / **LinkClip** r
 | API | Node.js, TypeScript, **Fastify** (`backend/src/`) |
 | Jobs | **Redis** + **BullMQ** (download queue + edit queue) |
 | Database | **PostgreSQL** via **Prisma** |
-| Acquisition | **yt-dlp**, **yt-dlp-ejs** (explicit pip in Docker image), **ffmpeg** / **ffprobe** |
+| Acquisition | **yt-dlp** with **`[default,curl-cffi]`** (browser impersonation support for extractors such as TikTok — **does not by itself fully solve** intermittent TikTok rehydration failures), **yt-dlp-ejs**, **ffmpeg** / **ffprobe** |
 | Production deploy | **Docker Compose** (documented for Hetzner VPS + Caddy TLS) |
 
 **Documented production API host:** `https://api.linkclip.win` (see `backend/DEPLOY_HETZNER.md`).
@@ -302,7 +302,7 @@ mobile/build/app/outputs/flutter-apk/app-release.apk
 
 - **`COOKIES_FILE`:** Points to Netscape-format cookies (e.g. `/app/secrets/cookies/global.txt`); diagnostics validate existence, non-empty, heuristic Netscape shape (`ADMIN_DIAGNOSTICS.md`).
 - **Writable copy:** yt-dlp invocations use a **temp copy** so the mounted secret stays read-only (`linkclip-cookies-*.txt` pattern in `ytdlp.ts`).
-- **Install:** Docker image installs **`yt-dlp`** and **`yt-dlp-ejs`** explicitly via pip (build fails if either is missing — `yt-dlp --version` + `pip show` in image build). **Caption fonts (V3.2):** **`fontconfig`**, **`fonts-noto-core`/`extra`**, OFL variable **Heebo/Rubik/Assistant** TTFs + **`fc-cache`** for ASS burn-in. **Runtime check:** `cd backend && npm run diag:runtime` (yt-dlp, yt-dlp-ejs, node, ffmpeg; caption fonts when fontconfig is present).
+- **Install:** Docker image installs **`yt-dlp[default,curl-cffi]`**, **`yt-dlp-ejs`**, and **`bgutil-ytdlp-pot-provider`** via pip (build fails if packages missing, **`curl_cffi`** cannot import, or **`yt-dlp --list-impersonate-targets`** shows no usable target). This removes the **`no impersonate target available`** warning and enables Chrome/Safari/Firefox-style impersonation clients. **It is not a complete TikTok reliability fix** — intermittent **`Unable to extract universal data for rehydration`** can still occur; further work (e.g. classified retry) remains open. **Caption fonts (V3.2):** **`fontconfig`**, **`fonts-noto-core`/`extra`**, OFL variable **Heebo/Rubik/Assistant** TTFs + **`fc-cache`** for ASS burn-in. **Runtime check:** `cd backend && npm run diag:runtime` (yt-dlp, yt-dlp-ejs, **curl_cffi** / impersonate targets, node, ffmpeg; caption fonts when fontconfig is present).
 - **Node as JS runtime:** Docker image is **`node:22-bookworm`** (Node **22+** required). Current yt-dlp / yt-dlp-ejs mark Node **< 22** as unsupported; without a supported runtime, YouTube **n-challenge** fails and only storyboard/image formats appear (Analyze then fails as `format_unavailable`). Image ensures `node` on PATH; yt-dlp gets **`--no-js-runtimes --js-runtimes node`** (`YTDLP_JS_RUNTIME_ARGS`).
 - **Diagnostics:** `youtubeReady` combines yt-dlp version, Node, `yt-dlp-ejs` import, and JS args match (`diagnostics.service.ts`).
 
@@ -388,15 +388,18 @@ No `linkclip_ios_build_instructions.md` file exists **in this repository** (draf
 
 **Caption typography checkpoint (2026-08-05):** Shared export `baselineY` + plate optical centering verified earlier. **Unified backend line-break Source of Truth** (`captionLineBreak.ts`): ASS, highlight timing, and highlight plate share one `breakCaptionLines`. **Caption block balancing** integrated in that SoT (valid two-line splits + score); manual QA passed — balanced two-liners improved, no baseline/plate/highlight/RTL/export regression. **Preview parity intentionally deferred to Phase B** (Flutter still softWrap). Remaining polish tracked under Typography Polish in `docs/CAPTION_TYPOGRAPHY_TRACKER.md` — wait for approval before next item.
 
+**yt-dlp browser impersonation checkpoint (Rank 1, 2026-08-05 deploy / 2026-08-09 verified):** Production image now installs **`yt-dlp[default,curl-cffi]`**. Post-deploy checks: **`curl_cffi`** present, impersonation targets available, **`no impersonate target available` eliminated**, infra healthy, no YouTube Analyze regression. **Partial effectiveness only** — TikTok **`Unable to extract universal data for rehydration`** still occurs intermittently; Analyze success for TikTok remains below an acceptable reliability bar. **Do not treat as “TikTok reliability fixed.”** Further work (Rank 2 classified retry / related) requires separate approval — not implemented.
+
 Until (1) and (2) are done, **this summary + source code** supersede conflicting statements elsewhere.
 
 ### Product / engineering
 
 1. **Android QA pass** — analyze → download → open/share/save → Quick Edit (trim/**speed**/format fill & fit-blur/**captions**/mute/compress/combo) → expired → redownload → edit.
-2. **Server-driven edit eligibility** — Expose `editableUntil` / `canEdit` from backend instead of pure heuristics.
-3. **Policy & product** — Decide scope for **local upload/edit** (heavy product + infra implications).
-4. **iOS** — If pursued: Mac CI, signing, TestFlight checklist, Share Extension design.
-5. **Monitoring** — Optional: aggregate `recentFailures` from diagnostics or structured logging dashboards.
+2. **TikTok Analyze reliability (open)** — After Rank 1 impersonation support, rehydration failures remain; Rank 2 (narrow retry / related) not started — wait for approval.
+3. **Server-driven edit eligibility** — Expose `editableUntil` / `canEdit` from backend instead of pure heuristics.
+4. **Policy & product** — Decide scope for **local upload/edit** (heavy product + infra implications).
+5. **iOS** — If pursued: Mac CI, signing, TestFlight checklist, Share Extension design.
+6. **Monitoring** — Optional: aggregate `recentFailures` from diagnostics or structured logging dashboards.
 
 ---
 

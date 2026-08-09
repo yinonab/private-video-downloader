@@ -75,6 +75,7 @@ Paths are **redacted** unless they look like standard Docker paths (`/app/storag
 | **COOKIES_FILE is missing** | Set `COOKIES_FILE` to the mounted Netscape cookies path (e.g. `/app/secrets/cookies/global.txt`) |
 | **Cookies file does not look like valid Netscape** | Export cookies as Netscape format; ensure non-empty tab-separated rows |
 | **yt-dlp-ejs is not installed** | Rebuild image / run `pip install "yt-dlp[default,curl-cffi]"` (see Dockerfile) |
+| **curl_cffi / no impersonate targets** | Rebuild image with **`yt-dlp[default,curl-cffi]`** (bare `pip install curl_cffi` is insufficient). Confirm with `yt-dlp --list-impersonate-targets`. Note: usable targets remove the impersonation warning but **do not guarantee** TikTok Analyze success — intermittent **rehydration** extract errors can still appear. |
 | **Node.js runtime is missing** | Use Node-based API image; ensure `node` on `PATH` |
 | **YouTube JS runtime / yt-dlp-ejs readiness** | Install **`yt-dlp[default]`**, ensure app passes `--no-js-runtimes --js-runtimes node` (see `YTDLP_JS_RUNTIME_ARGS`) |
 | **Storage is not writable** | Fix `STORAGE_DIR` permissions / volume mount |

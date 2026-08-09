@@ -122,6 +122,36 @@ async function main(): Promise<void> {
       if (!ytdlpPkg.ok) {
         record("yt-dlp (pip)", false, ytdlpPkg.detail);
       }
+      const curlCffi = pipShow("curl_cffi");
+      record("curl_cffi", curlCffi.ok, curlCffi.detail);
+      if (curlCffi.ok) {
+        const imp = commandOk("yt-dlp", ["--list-impersonate-targets"]);
+        const out = (() => {
+          try {
+            const r = spawnSync("yt-dlp", ["--list-impersonate-targets"], {
+              encoding: "utf8",
+              timeout: 30_000,
+            });
+            return `${r.stdout || ""}\n${r.stderr || ""}`;
+          } catch {
+            return "";
+          }
+        })();
+        const available = out
+          .split(/\r?\n/)
+          .filter((ln) => /curl_cffi\s*$/.test(ln) && !/unavailable/i.test(ln)).length;
+        record(
+          "yt-dlp impersonate targets",
+          available >= 1,
+          available >= 1
+            ? `${available} available via curl_cffi`
+            : imp.ok
+              ? "curl_cffi installed but no usable impersonate targets"
+              : imp.detail
+        );
+      } else {
+        record("yt-dlp impersonate targets", false, "curl_cffi required for TikTok impersonation");
+      }
     } else {
       record("yt-dlp-ejs", false, "python3 required for pip show");
     }

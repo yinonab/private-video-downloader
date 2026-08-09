@@ -28,10 +28,23 @@ RUN mkdir -p /usr/share/fonts/truetype/linkclip \
 
 RUN ffmpeg -version && ffprobe -version
 
-RUN python3 -m pip install --break-system-packages --no-cache-dir -U yt-dlp yt-dlp-ejs bgutil-ytdlp-pot-provider
+# Browser impersonation for extractors (e.g. TikTok): curl_cffi via the yt-dlp extra.
+# Bare `pip install curl_cffi` alone does not enable usable targets.
+# Enables impersonation clients; does not by itself eliminate all TikTok rehydration failures.
+RUN python3 -m pip install --break-system-packages --no-cache-dir -U \
+      "yt-dlp[default,curl-cffi]" \
+      yt-dlp-ejs \
+      bgutil-ytdlp-pot-provider
 
-RUN yt-dlp --version \
-    && python3 -m pip show yt-dlp yt-dlp-ejs bgutil-ytdlp-pot-provider >/dev/null
+# Fail the image build if impersonation is still unavailable (TikTok reliability).
+RUN YT_VER="$(yt-dlp --version | tr -d '\r')" \
+    && echo "yt-dlp version=${YT_VER}" \
+    && python3 -m pip show yt-dlp yt-dlp-ejs bgutil-ytdlp-pot-provider curl_cffi >/dev/null \
+    && python3 -c "import curl_cffi; import yt_dlp_ejs; print('curl_cffi', getattr(curl_cffi,'__version__','?'))" \
+    && yt-dlp --list-impersonate-targets 2>&1 | tee /tmp/impersonate-targets.txt \
+    && AVAILABLE="$(grep -E 'curl_cffi[[:space:]]*$' /tmp/impersonate-targets.txt | grep -cv 'unavailable' || true)" \
+    && test "${AVAILABLE}" -ge 1 \
+    && rm -f /tmp/impersonate-targets.txt
 
 WORKDIR /app
 
