@@ -349,6 +349,7 @@ export type YtdlpStderrKind =
   | "unsupported_url"
   | "format_unavailable"
   | "drm_protected"
+  | "tiktok_rehydration"
   | "unknown";
 
 /** Safe operational flags for analyze failure logs (no cookie values). */
@@ -467,6 +468,10 @@ export function classifyYtDlpStderr(stderr: string): YtdlpStderrKind {
     /no longer available|video unavailable|does not exist|removed by|removed|this video is unavailable/.test(s)
   ) {
     return "not_available";
+  }
+  // TikTok extractor intermittent failure — distinct from unsupported/photo/auth.
+  if (/unable to extract universal data for rehydration/i.test(s)) {
+    return "tiktok_rehydration";
   }
   return "unknown";
 }

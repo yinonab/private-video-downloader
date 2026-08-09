@@ -19,6 +19,7 @@
     "diag:caption-highlight": "tsx scripts/diag-caption-highlight.ts",
     "diag:audio-edit": "tsx scripts/diag-audio-edit.ts",
     "diag:ytdlp-classify": "tsx scripts/diag-ytdlp-classify.ts",
+    "diag:analyze-tiktok-retry": "tsx scripts/diag-analyze-tiktok-retry.ts",
     "diag:youtube-matrix": "tsx scripts/diag-youtube-matrix.ts",
     "diag:youtube-pot": "tsx scripts/diag-youtube-pot.ts",
     "diag:youtube-proxy": "tsx scripts/diag-youtube-proxy.ts",

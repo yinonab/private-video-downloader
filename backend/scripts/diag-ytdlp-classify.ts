@@ -90,7 +90,25 @@ async function main(): Promise<void> {
     passed++;
   }
 
-  console.log(`diag:ytdlp-classify OK (${passed}/${cases.length} cases)`);
+  // TikTok rehydration: classified explicitly; no specialized client mapping (ANALYZE_FAILED path).
+  {
+    const stderr =
+      "ERROR: [TikTok] abc: Unable to extract universal data for rehydration; please report this issue";
+    const classification = classifyYtDlpStderr(stderr);
+    assert.equal(classification, "tiktok_rehydration", "TikTok rehydration classification");
+    const mapped = mapYtdlpAnalyzeFailure(classification, "www.tiktok.com", stderr);
+    assert.equal(mapped, null, "TikTok rehydration keeps generic Analyze failure mapping");
+    passed++;
+  }
+
+  // Must not confuse unsupported URL with rehydration.
+  {
+    const classification = classifyYtDlpStderr("ERROR: Unsupported URL: https://example.com/x");
+    assert.equal(classification, "unsupported_url");
+    passed++;
+  }
+
+  console.log(`diag:ytdlp-classify OK (${passed}/${cases.length + 2} cases)`);
 }
 
 main().catch((err) => {

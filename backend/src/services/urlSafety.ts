@@ -66,6 +66,12 @@ export function hostnameIsThreads(hostname: string): boolean {
   );
 }
 
+/** tiktok.com / www.tiktok.com / vt.tiktok.com / vm.tiktok.com etc. */
+export function hostnameIsTikTok(hostname: string): boolean {
+  const h = hostname.trim().toLowerCase();
+  return h === "tiktok.com" || h.endsWith(".tiktok.com");
+}
+
 export function normalizeUrl(urlString: string): string {
   const trimmed = urlString.trim();
   if (!trimmed) {

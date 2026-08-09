@@ -14,6 +14,11 @@ export type AnalyzePerfFields = {
   cacheHit?: boolean;
   result?: string;
   classification?: string;
+  /** 1-based yt-dlp metadata attempt (Analyze TikTok rehydration retry). */
+  attempt?: number;
+  retryEligible?: boolean;
+  /** success | failure | not_attempted */
+  retryResult?: string;
 };
 
 /**
@@ -32,6 +37,9 @@ export function logAnalyzePerf(fields: AnalyzePerfFields): void {
     cacheHit,
     result,
     classification,
+    attempt,
+    retryEligible,
+    retryResult,
   } = fields;
 
   const parts = [`[Perf][Analyze] stage=${stage}`, `durationMs=${Math.round(durationMs)}`];
@@ -43,6 +51,9 @@ export function logAnalyzePerf(fields: AnalyzePerfFields): void {
   if (cacheHit != null) parts.push(`cacheHit=${cacheHit}`);
   if (result) parts.push(`result=${result}`);
   if (classification) parts.push(`classification=${classification}`);
+  if (attempt != null) parts.push(`attempt=${attempt}`);
+  if (retryEligible != null) parts.push(`retryEligible=${retryEligible}`);
+  if (retryResult) parts.push(`retryResult=${retryResult}`);
 
   logger.info({ perfAnalyze: true, ...fields }, parts.join(" "));
 }

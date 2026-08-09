@@ -1,9 +1,24 @@
 import { codes } from "../types/errors";
-import { hostnameIsFacebook, hostnameIsYouTube } from "./urlSafety";
+import { hostnameIsFacebook, hostnameIsTikTok, hostnameIsYouTube } from "./urlSafety";
 import {
   stderrIndicatesYouTubeAuthChallenge,
   type YtdlpStderrKind,
 } from "./ytdlp";
+
+/**
+ * Analyze-only: exactly one retry after a first-attempt TikTok rehydration failure.
+ * Worker / download paths must not use this.
+ */
+export function isAnalyzeTikTokRehydrationRetryEligible(opts: {
+  urlHost: string;
+  classification: YtdlpStderrKind;
+  /** 1-based attempt that just failed */
+  attempt: number;
+}): boolean {
+  if (opts.attempt !== 1) return false;
+  if (opts.classification !== "tiktok_rehydration") return false;
+  return hostnameIsTikTok(opts.urlHost);
+}
 
 export type YtdlpAnalyzeFailureMapping = {
   code: string;

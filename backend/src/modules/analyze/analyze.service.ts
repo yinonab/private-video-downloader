@@ -1,13 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 import { computeAvailableQualities } from "../../services/availableQualities";
 import {
-  fetchMetadataJson,
   stderrIndicatesFacebookCannotParseData,
   YtdlpMetadataError,
   ytDlpCookiesOperationalFlags,
   type YtdlpFormatRow,
   type YtdlpVideoInfo,
 } from "../../services/ytdlp";
+import { fetchMetadataJsonForAnalyze } from "../../services/analyzeTikTokRehydrationRetry";
 import {
   analyzeFailureCooldownKey,
   mapYtdlpAnalyzeFailure,
@@ -255,8 +255,35 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
   let usedFacebookFallback = false;
 
   const ytdlpTimer = startPerfTimer();
+  let fetched;
   try {
-    meta = await fetchMetadataJson(normalized);
+    fetched = await fetchMetadataJsonForAnalyze(normalized, urlHost);
+  } catch (err) {
+    const ytdlpMs = ytdlpTimer.elapsedMs();
+    logAnalyzePerf({
+      stage: "analyze_ytdlp_metadata",
+      durationMs: ytdlpMs,
+      urlHost,
+      result: "failure",
+      classification: "unexpected_metadata_error",
+    });
+    logger.warn({ err }, "analyze unexpected failure");
+    notifyAnalyzeFailedGeneric({
+      urlHost,
+      classification: "unexpected_metadata_error",
+      errorCode: codes.ANALYZE_FAILED,
+      actionHint: "Non-yt-dlp error during metadata fetch — inspect logs.",
+    });
+    logAnalyzeFailureTotal({
+      totalMs: totalTimer.elapsedMs(),
+      urlHost,
+      classification: "unexpected_metadata_error",
+    });
+    throw new AppError(codes.ANALYZE_FAILED, "Could not analyze URL", 502);
+  }
+
+  if (fetched.ok) {
+    meta = fetched.meta;
     logAnalyzePerf({
       stage: "analyze_ytdlp_metadata",
       durationMs: ytdlpTimer.elapsedMs(),
@@ -264,31 +291,13 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
       formatCount: countYtdlpFormats(meta),
       result: "success",
       cacheHit: false,
+      attempt: fetched.attempts,
+      retryEligible: fetched.retryEligible,
+      retryResult: fetched.retryResult,
     });
-  } catch (err) {
+  } else {
+    const err = fetched.error;
     const ytdlpMs = ytdlpTimer.elapsedMs();
-    if (!(err instanceof YtdlpMetadataError)) {
-      logAnalyzePerf({
-        stage: "analyze_ytdlp_metadata",
-        durationMs: ytdlpMs,
-        urlHost,
-        result: "failure",
-        classification: "unexpected_metadata_error",
-      });
-      logger.warn({ err }, "analyze unexpected failure");
-      notifyAnalyzeFailedGeneric({
-        urlHost,
-        classification: "unexpected_metadata_error",
-        errorCode: codes.ANALYZE_FAILED,
-        actionHint: "Non-yt-dlp error during metadata fetch — inspect logs.",
-      });
-      logAnalyzeFailureTotal({
-        totalMs: totalTimer.elapsedMs(),
-        urlHost,
-        classification: "unexpected_metadata_error",
-      });
-      throw new AppError(codes.ANALYZE_FAILED, "Could not analyze URL", 502);
-    }
 
     const mapped = mapYtdlpAnalyzeFailure(err.classification, urlHost, err.stderrTail);
     const errorCode =
@@ -306,6 +315,9 @@ export async function analyzeUrl(prisma: PrismaClient, urlRaw: string) {
       platform: platform ?? undefined,
       result: "failure",
       classification: logClassification,
+      attempt: fetched.attempts,
+      retryEligible: fetched.retryEligible,
+      retryResult: fetched.retryResult,
     });
 
     logger.warn(
