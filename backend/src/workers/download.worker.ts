@@ -46,7 +46,12 @@ import {
   ytdlpProxyContextFromUrl,
 } from "../services/ytdlpProxy";
 import { logger } from "../services/logger";
-import { notifyDownloadWorkerBullUncaught, notifyDownloadWorkerFailed } from "../services/operationalAlerts";
+import {
+  notifyDownloadWorkerBullUncaught,
+  notifyDownloadWorkerFailed,
+  safeHostFromUrlString,
+} from "../services/operationalAlerts";
+import { runPrimaryYtDlpWithTikTokRehydrationRetry } from "../services/downloadTikTokRehydrationRetry";
 import {
   formatSelectorSuggestsMerge,
   logDownloadPerf,
@@ -303,7 +308,30 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
             { platform: platformLabel, requestedQuality: format }
           );
 
-          let innerCode = (await runYtDlpOnce(prefixArgs(primaryBuilt.args))) ?? 1;
+          const urlHost = safeHostFromUrlString(url);
+          const primaryRetry = await runPrimaryYtDlpWithTikTokRehydrationRetry({
+            jobId,
+            urlHost,
+            platformLabel: String(platformLabel),
+            runAttempt: async () => (await runYtDlpOnce(prefixArgs(primaryBuilt.args))) ?? 1,
+            classifyAfterAttempt: () => classifyYtDlpStderr(lastStderr),
+            clearPartials: async () => {
+              const outDir =
+                primaryBuilt.subdir === "videos" ? getVideoDir(deviceId) : getAudioDir(deviceId);
+              try {
+                const names = await fs.readdir(outDir);
+                for (const n of names) {
+                  if (n.startsWith(`${jobId}.`)) {
+                    await fs.unlink(path.join(outDir, n)).catch(() => {});
+                  }
+                }
+              } catch {
+                /* ignore */
+              }
+            },
+          });
+
+          let innerCode = primaryRetry.code;
 
           if (
             innerCode !== 0 &&

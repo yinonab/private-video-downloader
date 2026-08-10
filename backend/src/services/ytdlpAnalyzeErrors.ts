@@ -6,10 +6,10 @@ import {
 } from "./ytdlp";
 
 /**
- * Analyze-only: exactly one retry after a first-attempt TikTok rehydration failure.
- * Worker / download paths must not use this.
+ * Exactly one retry after a first-attempt TikTok rehydration failure.
+ * Shared gate for Analyze (Rank 2) and download worker (Rank 3).
  */
-export function isAnalyzeTikTokRehydrationRetryEligible(opts: {
+export function isTikTokRehydrationRetryEligible(opts: {
   urlHost: string;
   classification: YtdlpStderrKind;
   /** 1-based attempt that just failed */
@@ -18,6 +18,27 @@ export function isAnalyzeTikTokRehydrationRetryEligible(opts: {
   if (opts.attempt !== 1) return false;
   if (opts.classification !== "tiktok_rehydration") return false;
   return hostnameIsTikTok(opts.urlHost);
+}
+
+/** @deprecated Prefer {@link isTikTokRehydrationRetryEligible} — Analyze Rank 2 alias. */
+export function isAnalyzeTikTokRehydrationRetryEligible(opts: {
+  urlHost: string;
+  classification: YtdlpStderrKind;
+  attempt: number;
+}): boolean {
+  return isTikTokRehydrationRetryEligible(opts);
+}
+
+/**
+ * Download-worker Rank 3: same eligibility as Analyze Rank 2 (TikTok host + rehydration + attempt 1).
+ */
+export function isWorkerTikTokRehydrationRetryEligible(opts: {
+  urlHost: string;
+  platformLabel?: string;
+  classification: YtdlpStderrKind;
+  attempt: number;
+}): boolean {
+  return isTikTokRehydrationRetryEligible(opts);
 }
 
 export type YtdlpAnalyzeFailureMapping = {
