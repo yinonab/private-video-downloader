@@ -1,4 +1,8 @@
-import { isWorkerTikTokRehydrationRetryEligible } from "./ytdlpAnalyzeErrors";
+import {
+  isTikTokTransientExtractionFailure,
+  isTikTokTransientExtractionRetryEligible,
+  TIKTOK_TRANSIENT_EXTRACTION_MAX_ATTEMPTS,
+} from "./ytdlpAnalyzeErrors";
 import { hostnameIsTikTok } from "./urlSafety";
 import { logger } from "./logger";
 import { startPerfTimer } from "./downloadPerf";
@@ -8,15 +12,16 @@ export type DownloadYtDlpAttemptFn = () => Promise<number>;
 
 export type DownloadTikTokRetryOutcome = {
   code: number;
-  /** Total primary-selector yt-dlp calls (1 or 2). Does not count format-unavailable fallbacks. */
+  /** Total primary-selector yt-dlp calls (1–3). Does not count format-unavailable fallbacks. */
   attempts: number;
   retryEligible: boolean;
   retryResult: "success" | "failure" | "not_attempted";
 };
 
 /**
- * Runs the primary download yt-dlp invocation with at most one TikTok rehydration retry.
- * Immediate retry. Max 2 attempts. Format-unavailable fallbacks stay outside this helper.
+ * Primary download yt-dlp with TikTok transient-family retries (Rank 4).
+ * Eligible: tiktok_rehydration | tiktok_webpage_unexpected.
+ * Immediate retries. Max 3 primary attempts. Format-unavailable fallbacks stay outside.
  */
 export async function runPrimaryYtDlpWithTikTokRehydrationRetry(opts: {
   runAttempt: DownloadYtDlpAttemptFn;
@@ -34,100 +39,93 @@ export async function runPrimaryYtDlpWithTikTokRehydrationRetry(opts: {
       ? "tiktok"
       : opts.platformLabel || "unknown";
 
-  const attempt1Timer = startPerfTimer();
-  const code1 = (await opts.runAttempt()) ?? 1;
-  const attempt1Ms = attempt1Timer.elapsedMs();
+  const maxAttempts = TIKTOK_TRANSIENT_EXTRACTION_MAX_ATTEMPTS;
+  let sawRetryEligible = false;
+  let lastCode = 1;
 
-  if (code1 === 0) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const timer = startPerfTimer();
+    const code = (await opts.runAttempt()) ?? 1;
+    const durationMs = timer.elapsedMs();
+    lastCode = code;
+
+    if (code === 0) {
+      const retryResult = sawRetryEligible ? "success" : "not_attempted";
+      logger.info(
+        {
+          downloadTikTokRetry: true,
+          platform,
+          context: "download_worker",
+          attempt,
+          maxAttempts,
+          transientFamily: false,
+          durationMs: Math.round(durationMs),
+          retryEligible: false,
+          retryStarted: false,
+          retryResult,
+          ...(opts.jobId ? { jobId: opts.jobId } : {}),
+        },
+        attempt === 1
+          ? "download yt-dlp first attempt success"
+          : "download yt-dlp TikTok transient retry success"
+      );
+      return {
+        code: 0,
+        attempts: attempt,
+        retryEligible: sawRetryEligible,
+        retryResult,
+      };
+    }
+
+    const classification = opts.classifyAfterAttempt();
+    const transientFamily = isTikTokTransientExtractionFailure(classification);
+    const retryEligible = isTikTokTransientExtractionRetryEligible({
+      urlHost: opts.urlHost,
+      classification,
+      attempt,
+      maxAttempts,
+    });
+
     logger.info(
       {
         downloadTikTokRetry: true,
         platform,
         context: "download_worker",
-        attempt: 1,
-        durationMs: Math.round(attempt1Ms),
-        retryEligible: false,
+        attempt,
+        maxAttempts,
+        classification,
+        transientFamily,
+        durationMs: Math.round(durationMs),
+        retryEligible,
+        retryStarted: retryEligible,
         retryResult: "not_attempted",
         ...(opts.jobId ? { jobId: opts.jobId } : {}),
       },
-      "download yt-dlp first attempt success"
+      retryEligible
+        ? "download yt-dlp TikTok transient failure; retrying"
+        : "download yt-dlp non-retryable or final failure"
     );
-    return {
-      code: 0,
-      attempts: 1,
-      retryEligible: false,
-      retryResult: "not_attempted",
-    };
+
+    if (!retryEligible) {
+      return {
+        code,
+        attempts: attempt,
+        retryEligible: sawRetryEligible,
+        retryResult: sawRetryEligible ? "failure" : "not_attempted",
+      };
+    }
+
+    sawRetryEligible = true;
+    if (opts.clearPartials) {
+      await opts.clearPartials();
+    }
+    // Immediate next attempt (no artificial delay).
   }
-
-  const classification = opts.classifyAfterAttempt();
-  const retryEligible = isWorkerTikTokRehydrationRetryEligible({
-    urlHost: opts.urlHost,
-    platformLabel: opts.platformLabel,
-    classification,
-    attempt: 1,
-  });
-
-  logger.info(
-    {
-      downloadTikTokRetry: true,
-      platform,
-      context: "download_worker",
-      attempt: 1,
-      classification,
-      durationMs: Math.round(attempt1Ms),
-      retryEligible,
-      retryResult: "not_attempted",
-      retryStarted: retryEligible,
-      ...(opts.jobId ? { jobId: opts.jobId } : {}),
-    },
-    retryEligible
-      ? "download yt-dlp first attempt tiktok_rehydration; retrying once"
-      : "download yt-dlp first attempt non-retryable failure"
-  );
-
-  if (!retryEligible) {
-    return {
-      code: code1,
-      attempts: 1,
-      retryEligible: false,
-      retryResult: "not_attempted",
-    };
-  }
-
-  if (opts.clearPartials) {
-    await opts.clearPartials();
-  }
-
-  const attempt2Timer = startPerfTimer();
-  const code2 = (await opts.runAttempt()) ?? 1;
-  const attempt2Ms = attempt2Timer.elapsedMs();
-  const retryClassification = opts.classifyAfterAttempt();
-  const retryResult = code2 === 0 ? "success" : "failure";
-
-  logger.info(
-    {
-      downloadTikTokRetry: true,
-      platform,
-      context: "download_worker",
-      attempt: 2,
-      classification: retryClassification,
-      durationMs: Math.round(attempt2Ms),
-      retryEligible: true,
-      retryResult,
-      ...(opts.jobId ? { jobId: opts.jobId } : {}),
-    },
-    retryResult === "success"
-      ? "download yt-dlp tiktok_rehydration retry success"
-      : "download yt-dlp tiktok_rehydration retry failure"
-  );
 
   return {
-    // On retry failure, prefer attempt-2 exit code/stderr already in caller state.
-    // Caller terminal path classifies from lastStderr (attempt 2).
-    code: code2,
-    attempts: 2,
+    code: lastCode,
+    attempts: maxAttempts,
     retryEligible: true,
-    retryResult,
+    retryResult: "failure",
   };
 }

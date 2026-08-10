@@ -1,4 +1,8 @@
-import { isAnalyzeTikTokRehydrationRetryEligible } from "./ytdlpAnalyzeErrors";
+import {
+  isTikTokTransientExtractionFailure,
+  isTikTokTransientExtractionRetryEligible,
+  TIKTOK_TRANSIENT_EXTRACTION_MAX_ATTEMPTS,
+} from "./ytdlpAnalyzeErrors";
 import { hostnameIsTikTok } from "./urlSafety";
 import { logger } from "./logger";
 import { logAnalyzePerf, startPerfTimer } from "./analyzePerf";
@@ -13,7 +17,7 @@ export type AnalyzeMetadataFetchFn = (url: string) => Promise<YtdlpVideoInfo>;
 export type AnalyzeMetadataFetchSuccess = {
   ok: true;
   meta: YtdlpVideoInfo;
-  /** Total yt-dlp metadata calls made (1 or 2). */
+  /** Total yt-dlp metadata calls made (1–3). */
   attempts: number;
   retryEligible: boolean;
   retryResult: "success" | "not_attempted";
@@ -21,6 +25,7 @@ export type AnalyzeMetadataFetchSuccess = {
 
 export type AnalyzeMetadataFetchFailure = {
   ok: false;
+  /** Final attempt's metadata error (classification for terminal Analyze handling). */
   error: YtdlpMetadataError;
   attempts: number;
   retryEligible: boolean;
@@ -34,8 +39,9 @@ function platformLabel(urlHost: string): string {
 }
 
 /**
- * Analyze metadata fetch with at most one TikTok rehydration retry.
- * Immediate retry (no artificial delay). Max 2 attempts. Worker must not call this.
+ * Analyze metadata fetch with TikTok transient-family retries (Rank 4).
+ * Eligible classes: tiktok_rehydration | tiktok_webpage_unexpected.
+ * Immediate retries. Max 3 primary attempts. Worker must not call this.
  */
 export async function fetchMetadataJsonForAnalyze(
   url: string,
@@ -43,160 +49,123 @@ export async function fetchMetadataJsonForAnalyze(
   fetchFn: AnalyzeMetadataFetchFn = fetchMetadataJson
 ): Promise<AnalyzeMetadataFetchOutcome> {
   const platform = platformLabel(urlHost);
-  const attempt1Timer = startPerfTimer();
+  const maxAttempts = TIKTOK_TRANSIENT_EXTRACTION_MAX_ATTEMPTS;
+  let sawRetryEligible = false;
+  let lastError: YtdlpMetadataError | null = null;
 
-  try {
-    const meta = await fetchFn(url);
-    const durationMs = attempt1Timer.elapsedMs();
-    logAnalyzePerf({
-      stage: "analyze_ytdlp_metadata_attempt",
-      durationMs,
-      platform,
-      urlHost,
-      result: "success",
-      attempt: 1,
-      retryEligible: false,
-      retryResult: "not_attempted",
-    });
-    logger.info(
-      {
-        analyzeTikTokRetry: true,
-        platform,
-        stage: "analyze_ytdlp_metadata",
-        attempt: 1,
-        durationMs: Math.round(durationMs),
-        retryEligible: false,
-        retryResult: "not_attempted",
-      },
-      "analyze metadata first attempt success"
-    );
-    return {
-      ok: true,
-      meta,
-      attempts: 1,
-      retryEligible: false,
-      retryResult: "not_attempted",
-    };
-  } catch (err) {
-    const attempt1Ms = attempt1Timer.elapsedMs();
-    if (!(err instanceof YtdlpMetadataError)) {
-      throw err;
-    }
-
-    const retryEligible = isAnalyzeTikTokRehydrationRetryEligible({
-      urlHost,
-      classification: err.classification,
-      attempt: 1,
-    });
-
-    logAnalyzePerf({
-      stage: "analyze_ytdlp_metadata_attempt",
-      durationMs: attempt1Ms,
-      platform,
-      urlHost,
-      result: "failure",
-      classification: err.classification,
-      attempt: 1,
-      retryEligible,
-      retryResult: "not_attempted",
-    });
-    logger.info(
-      {
-        analyzeTikTokRetry: true,
-        platform,
-        stage: "analyze_ytdlp_metadata",
-        attempt: 1,
-        classifiedErrorType: err.classification,
-        durationMs: Math.round(attempt1Ms),
-        retryEligible,
-        retryResult: "not_attempted",
-      },
-      retryEligible
-        ? "analyze metadata first attempt tiktok_rehydration; retrying once"
-        : "analyze metadata first attempt non-retryable failure"
-    );
-
-    if (!retryEligible) {
-      return {
-        ok: false,
-        error: err,
-        attempts: 1,
-        retryEligible: false,
-        retryResult: "not_attempted",
-      };
-    }
-
-    const attempt2Timer = startPerfTimer();
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const timer = startPerfTimer();
     try {
       const meta = await fetchFn(url);
-      const attempt2Ms = attempt2Timer.elapsedMs();
+      const durationMs = timer.elapsedMs();
+      const retryResult = sawRetryEligible ? "success" : "not_attempted";
       logAnalyzePerf({
         stage: "analyze_ytdlp_metadata_attempt",
-        durationMs: attempt2Ms,
+        durationMs,
         platform,
         urlHost,
         result: "success",
-        classification: "tiktok_rehydration",
-        attempt: 2,
-        retryEligible: true,
-        retryResult: "success",
+        attempt,
+        maxAttempts,
+        transientFamily: false,
+        retryEligible: false,
+        retryResult,
+        retryStarted: false,
       });
       logger.info(
         {
           analyzeTikTokRetry: true,
           platform,
+          context: "analyze",
           stage: "analyze_ytdlp_metadata",
-          attempt: 2,
-          classifiedErrorType: "tiktok_rehydration",
-          durationMs: Math.round(attempt2Ms),
-          retryEligible: true,
-          retryResult: "success",
+          attempt,
+          maxAttempts,
+          transientFamily: false,
+          durationMs: Math.round(durationMs),
+          retryEligible: false,
+          retryStarted: false,
+          retryResult,
         },
-        "analyze metadata tiktok_rehydration retry success"
+        attempt === 1
+          ? "analyze metadata first attempt success"
+          : "analyze metadata TikTok transient retry success"
       );
       return {
         ok: true,
         meta,
-        attempts: 2,
-        retryEligible: true,
-        retryResult: "success",
+        attempts: attempt,
+        retryEligible: sawRetryEligible,
+        retryResult,
       };
-    } catch (retryErr) {
-      const attempt2Ms = attempt2Timer.elapsedMs();
-      const retryClassification =
-        retryErr instanceof YtdlpMetadataError ? retryErr.classification : "unexpected_metadata_error";
+    } catch (err) {
+      const durationMs = timer.elapsedMs();
+      if (!(err instanceof YtdlpMetadataError)) {
+        throw err;
+      }
+      lastError = err;
+      const transientFamily = isTikTokTransientExtractionFailure(err.classification);
+      const retryEligible = isTikTokTransientExtractionRetryEligible({
+        urlHost,
+        classification: err.classification,
+        attempt,
+        maxAttempts,
+      });
+
       logAnalyzePerf({
         stage: "analyze_ytdlp_metadata_attempt",
-        durationMs: attempt2Ms,
+        durationMs,
         platform,
         urlHost,
         result: "failure",
-        classification: retryClassification,
-        attempt: 2,
-        retryEligible: true,
-        retryResult: "failure",
+        classification: err.classification,
+        attempt,
+        maxAttempts,
+        transientFamily,
+        retryEligible,
+        retryResult: "not_attempted",
+        retryStarted: retryEligible,
       });
       logger.info(
         {
           analyzeTikTokRetry: true,
           platform,
+          context: "analyze",
           stage: "analyze_ytdlp_metadata",
-          attempt: 2,
-          classifiedErrorType: retryClassification,
-          durationMs: Math.round(attempt2Ms),
-          retryEligible: true,
-          retryResult: "failure",
+          attempt,
+          maxAttempts,
+          classifiedErrorType: err.classification,
+          transientFamily,
+          durationMs: Math.round(durationMs),
+          retryEligible,
+          retryStarted: retryEligible,
+          retryResult: "not_attempted",
         },
-        "analyze metadata tiktok_rehydration retry failure"
+        retryEligible
+          ? "analyze metadata TikTok transient failure; retrying"
+          : "analyze metadata non-retryable or final failure"
       );
-      // Preserve the original first-attempt failure for Analyze error handling.
-      return {
-        ok: false,
-        error: err,
-        attempts: 2,
-        retryEligible: true,
-        retryResult: "failure",
-      };
+
+      if (!retryEligible) {
+        return {
+          ok: false,
+          error: err,
+          attempts: attempt,
+          retryEligible: sawRetryEligible,
+          retryResult: sawRetryEligible ? "failure" : "not_attempted",
+        };
+      }
+
+      sawRetryEligible = true;
+      // Immediate next attempt (no artificial delay).
     }
   }
+
+  // Exhausted maxAttempts with transient failures only.
+  return {
+    ok: false,
+    error: lastError!,
+    attempts: maxAttempts,
+    retryEligible: true,
+    retryResult: "failure",
+  };
 }

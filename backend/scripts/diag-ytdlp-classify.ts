@@ -101,6 +101,33 @@ async function main(): Promise<void> {
     passed++;
   }
 
+  // TikTok webpage unexpected: host-gated promotion only.
+  {
+    const stderr = "ERROR: [TikTok] Unexpected response from webpage request";
+    assert.equal(
+      classifyYtDlpStderr(stderr, { urlHost: "www.tiktok.com" }),
+      "tiktok_webpage_unexpected",
+      "TikTok Unexpected webpage classification"
+    );
+    assert.equal(
+      classifyYtDlpStderr(stderr, { urlHost: "www.youtube.com" }),
+      "unknown",
+      "non-TikTok Unexpected stays unknown"
+    );
+    assert.equal(
+      classifyYtDlpStderr(stderr),
+      "unknown",
+      "Unexpected without urlHost stays unknown"
+    );
+    const mapped = mapYtdlpAnalyzeFailure(
+      "tiktok_webpage_unexpected",
+      "www.tiktok.com",
+      stderr
+    );
+    assert.equal(mapped, null, "TikTok webpage unexpected keeps generic Analyze mapping");
+    passed++;
+  }
+
   // Must not confuse unsupported URL with rehydration.
   {
     const classification = classifyYtDlpStderr("ERROR: Unsupported URL: https://example.com/x");
@@ -108,7 +135,7 @@ async function main(): Promise<void> {
     passed++;
   }
 
-  console.log(`diag:ytdlp-classify OK (${passed}/${cases.length + 2} cases)`);
+  console.log(`diag:ytdlp-classify OK (${passed}/${cases.length + 3} cases)`);
 }
 
 main().catch((err) => {

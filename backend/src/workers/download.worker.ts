@@ -314,7 +314,7 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
             urlHost,
             platformLabel: String(platformLabel),
             runAttempt: async () => (await runYtDlpOnce(prefixArgs(primaryBuilt.args))) ?? 1,
-            classifyAfterAttempt: () => classifyYtDlpStderr(lastStderr),
+            classifyAfterAttempt: () => classifyYtDlpStderr(lastStderr, { urlHost }),
             clearPartials: async () => {
               const outDir =
                 primaryBuilt.subdir === "videos" ? getVideoDir(deviceId) : getAudioDir(deviceId);
@@ -410,7 +410,7 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
               code,
               stderrClassification: facebookDirectFallback
                 ? "facebook_direct"
-                : classifyYtDlpStderr(lastStderr),
+                : classifyYtDlpStderr(lastStderr, { urlHost: safeHostFromUrlString(url) }),
             },
           },
         });
@@ -424,14 +424,14 @@ export function createDownloadWorker(prisma: PrismaClient): Worker {
             finalFormatString: finalFormatStr,
             stderrClassification: facebookDirectFallback
               ? "facebook_direct"
-              : classifyYtDlpStderr(lastStderr),
+              : classifyYtDlpStderr(lastStderr, { urlHost: safeHostFromUrlString(url) }),
             ...(facebookDirectFallback ? {} : { stderrTail: lastStderr.trim().slice(-2000) }),
           },
           "download failed"
         );
         const stderrClassification = facebookDirectFallback
           ? undefined
-          : classifyYtDlpStderr(lastStderr);
+          : classifyYtDlpStderr(lastStderr, { urlHost: safeHostFromUrlString(url) });
         const drmFailure = stderrClassification === "drm_protected";
         notifyDownloadWorkerFailed({
           jobId,

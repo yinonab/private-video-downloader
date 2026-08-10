@@ -17,6 +17,7 @@ import {
   ytdlpProxyContextFromUrl,
   ytDlpProxyOperationalFlags,
 } from "./ytdlpProxy";
+import { hostnameIsTikTok } from "./urlSafety";
 
 export interface YtdlpFormatRow {
   format_id?: string;
@@ -350,6 +351,7 @@ export type YtdlpStderrKind =
   | "format_unavailable"
   | "drm_protected"
   | "tiktok_rehydration"
+  | "tiktok_webpage_unexpected"
   | "unknown";
 
 /** Safe operational flags for analyze failure logs (no cookie values). */
@@ -416,8 +418,21 @@ export function stderrIndicatesYouTubeAuthChallenge(stderr: string): boolean {
   return false;
 }
 
-export function classifyYtDlpStderr(stderr: string): YtdlpStderrKind {
+export type ClassifyYtDlpStderrOptions = {
+  /** When set, TikTok-only signatures may promote to TikTok-specific classes. */
+  urlHost?: string;
+};
+
+export function stderrIndicatesUnexpectedWebpageResponse(stderr: string): boolean {
+  return /unexpected response from webpage request/i.test(stderr);
+}
+
+export function classifyYtDlpStderr(
+  stderr: string,
+  opts?: ClassifyYtDlpStderrOptions
+): YtdlpStderrKind {
   const s = stderr.toLowerCase();
+  const urlHost = opts?.urlHost?.trim() ?? "";
 
   if (stderrIndicatesDrmProtection(stderr)) {
     return "drm_protected";
@@ -469,9 +484,16 @@ export function classifyYtDlpStderr(stderr: string): YtdlpStderrKind {
   ) {
     return "not_available";
   }
-  // TikTok extractor intermittent failure — distinct from unsupported/photo/auth.
+  // TikTok-specific intermittent extractor failures.
   if (/unable to extract universal data for rehydration/i.test(s)) {
     return "tiktok_rehydration";
+  }
+  if (stderrIndicatesUnexpectedWebpageResponse(stderr)) {
+    // Do not promote on non-TikTok hosts — leave as unknown.
+    if (urlHost && hostnameIsTikTok(urlHost)) {
+      return "tiktok_webpage_unexpected";
+    }
+    return "unknown";
   }
   return "unknown";
 }
@@ -535,7 +557,7 @@ export async function fetchMetadataJson(
       return parseStdout(stdout);
     }
 
-    let classification = classifyYtDlpStderr(stderr ?? "");
+    let classification = classifyYtDlpStderr(stderr ?? "", { urlHost: transportContext.urlHost });
     const fmtMiss =
       classification === "format_unavailable" || stderrMeansUnavailableFormat(stderr ?? "");
 
@@ -563,7 +585,7 @@ export async function fetchMetadataJson(
       if (code === 0) {
         return parseStdout(stdout);
       }
-      classification = classifyYtDlpStderr(stderr ?? "");
+      classification = classifyYtDlpStderr(stderr ?? "", { urlHost: transportContext.urlHost });
       const stillFmt =
         classification === "format_unavailable" || stderrMeansUnavailableFormat(stderr ?? "");
       if (!stillFmt) {

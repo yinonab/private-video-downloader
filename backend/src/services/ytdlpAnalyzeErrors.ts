@@ -5,40 +5,65 @@ import {
   type YtdlpStderrKind,
 } from "./ytdlp";
 
+/** Max primary yt-dlp attempts for the approved TikTok transient extraction family. */
+export const TIKTOK_TRANSIENT_EXTRACTION_MAX_ATTEMPTS = 3;
+
 /**
- * Exactly one retry after a first-attempt TikTok rehydration failure.
- * Shared gate for Analyze (Rank 2) and download worker (Rank 3).
+ * Approved TikTok transient extraction failure classes (Rank 4).
+ * Only these may trigger in-process primary retries (Analyze + download worker).
  */
-export function isTikTokRehydrationRetryEligible(opts: {
+export function isTikTokTransientExtractionFailure(classification: YtdlpStderrKind): boolean {
+  return (
+    classification === "tiktok_rehydration" || classification === "tiktok_webpage_unexpected"
+  );
+}
+
+/**
+ * Shared gate: TikTok host + approved transient class + attempt still below max.
+ * `attempt` is the 1-based attempt that just failed; retry when `attempt < maxAttempts`.
+ */
+export function isTikTokTransientExtractionRetryEligible(opts: {
   urlHost: string;
   classification: YtdlpStderrKind;
   /** 1-based attempt that just failed */
   attempt: number;
+  maxAttempts?: number;
 }): boolean {
-  if (opts.attempt !== 1) return false;
-  if (opts.classification !== "tiktok_rehydration") return false;
+  const maxAttempts = opts.maxAttempts ?? TIKTOK_TRANSIENT_EXTRACTION_MAX_ATTEMPTS;
+  if (opts.attempt >= maxAttempts) return false;
+  if (!isTikTokTransientExtractionFailure(opts.classification)) return false;
   return hostnameIsTikTok(opts.urlHost);
 }
 
-/** @deprecated Prefer {@link isTikTokRehydrationRetryEligible} — Analyze Rank 2 alias. */
+/** @deprecated Prefer {@link isTikTokTransientExtractionRetryEligible}. */
+export function isTikTokRehydrationRetryEligible(opts: {
+  urlHost: string;
+  classification: YtdlpStderrKind;
+  attempt: number;
+  maxAttempts?: number;
+}): boolean {
+  return isTikTokTransientExtractionRetryEligible(opts);
+}
+
+/** @deprecated Prefer {@link isTikTokTransientExtractionRetryEligible}. */
 export function isAnalyzeTikTokRehydrationRetryEligible(opts: {
   urlHost: string;
   classification: YtdlpStderrKind;
   attempt: number;
+  maxAttempts?: number;
 }): boolean {
-  return isTikTokRehydrationRetryEligible(opts);
+  return isTikTokTransientExtractionRetryEligible(opts);
 }
 
-/**
- * Download-worker Rank 3: same eligibility as Analyze Rank 2 (TikTok host + rehydration + attempt 1).
- */
+/** @deprecated Prefer {@link isTikTokTransientExtractionRetryEligible}. */
 export function isWorkerTikTokRehydrationRetryEligible(opts: {
   urlHost: string;
   platformLabel?: string;
   classification: YtdlpStderrKind;
   attempt: number;
+  maxAttempts?: number;
 }): boolean {
-  return isTikTokRehydrationRetryEligible(opts);
+  return isTikTokTransientExtractionRetryEligible(opts);
 }
 
 export type YtdlpAnalyzeFailureMapping = {

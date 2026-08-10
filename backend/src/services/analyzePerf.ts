@@ -14,9 +14,12 @@ export type AnalyzePerfFields = {
   cacheHit?: boolean;
   result?: string;
   classification?: string;
-  /** 1-based yt-dlp metadata attempt (Analyze TikTok rehydration retry). */
+  /** 1-based yt-dlp metadata attempt (Analyze TikTok transient retry). */
   attempt?: number;
+  maxAttempts?: number;
+  transientFamily?: boolean;
   retryEligible?: boolean;
+  retryStarted?: boolean;
   /** success | failure | not_attempted */
   retryResult?: string;
 };
@@ -38,7 +41,10 @@ export function logAnalyzePerf(fields: AnalyzePerfFields): void {
     result,
     classification,
     attempt,
+    maxAttempts,
+    transientFamily,
     retryEligible,
+    retryStarted,
     retryResult,
   } = fields;
 
@@ -52,7 +58,10 @@ export function logAnalyzePerf(fields: AnalyzePerfFields): void {
   if (result) parts.push(`result=${result}`);
   if (classification) parts.push(`classification=${classification}`);
   if (attempt != null) parts.push(`attempt=${attempt}`);
+  if (maxAttempts != null) parts.push(`maxAttempts=${maxAttempts}`);
+  if (transientFamily != null) parts.push(`transientFamily=${transientFamily}`);
   if (retryEligible != null) parts.push(`retryEligible=${retryEligible}`);
+  if (retryStarted != null) parts.push(`retryStarted=${retryStarted}`);
   if (retryResult) parts.push(`retryResult=${retryResult}`);
 
   logger.info({ perfAnalyze: true, ...fields }, parts.join(" "));
