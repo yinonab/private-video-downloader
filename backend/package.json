@@ -21,6 +21,7 @@
     "diag:ytdlp-classify": "tsx scripts/diag-ytdlp-classify.ts",
     "diag:analyze-tiktok-retry": "tsx scripts/diag-analyze-tiktok-retry.ts",
     "diag:download-tiktok-retry": "tsx scripts/diag-download-tiktok-retry.ts",
+    "diag:tiktok-user-agent-args": "tsx scripts/diag-tiktok-user-agent-args.ts",
     "diag:youtube-matrix": "tsx scripts/diag-youtube-matrix.ts",
     "diag:youtube-pot": "tsx scripts/diag-youtube-pot.ts",
     "diag:youtube-proxy": "tsx scripts/diag-youtube-proxy.ts",

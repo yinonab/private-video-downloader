@@ -49,6 +49,44 @@ const YT_DLP = process.env.YT_DLP_PATH || "yt-dlp";
  */
 export const YTDLP_JS_RUNTIME_ARGS = ["--no-js-runtimes", "--js-runtimes", "node"] as const;
 
+/**
+ * Desktop Chrome UA for TikTok yt-dlp invocations only.
+ *
+ * TikTok's extractor requests pages with `impersonate=True` (curl_cffi). On our production
+ * egress that fingerprint currently receives a ~537-byte "Site Maintenance" page →
+ * `Unexpected response from webpage request`. Passing `--user-agent` disables impersonation
+ * (upstream yt-dlp behavior) and yields a normal page with `__UNIVERSAL_DATA_FOR_REHYDRATION__`
+ * from the same IP — proven 2026-08-11 on vt.tiktok.com short links + canonical URLs.
+ *
+ * Override with `YTDLP_TIKTOK_USER_AGENT` if needed; empty/unset uses this default.
+ */
+export const YTDLP_TIKTOK_USER_AGENT_DEFAULT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36";
+
+export function resolveYtDlpTikTokUserAgent(): string {
+  const fromEnv = (process.env.YTDLP_TIKTOK_USER_AGENT ?? "").trim();
+  return fromEnv || YTDLP_TIKTOK_USER_AGENT_DEFAULT;
+}
+
+/** Prepend `--user-agent` for TikTok hosts only. No-op for other platforms / if already set. */
+export function withYtDlpTikTokUserAgentArgs(args: string[], urlOrHost: string): string[] {
+  let host = (urlOrHost ?? "").trim().toLowerCase();
+  if (host.includes("://")) {
+    try {
+      host = new URL(host).hostname.toLowerCase();
+    } catch {
+      return [...args];
+    }
+  }
+  if (!hostnameIsTikTok(host)) {
+    return [...args];
+  }
+  if (args.includes("--user-agent")) {
+    return [...args];
+  }
+  return ["--user-agent", resolveYtDlpTikTokUserAgent(), ...args];
+}
+
 /** Skip re-reading / re-validating on hot paths; invalidate when mtime changes. */
 const MAX_COOKIES_FILE_BYTES = 512 * 1024;
 
@@ -524,15 +562,18 @@ export async function fetchMetadataJson(
     const env = ytDlpMetadataEnv();
     /** `--skip-download`: metadata-only; avoids failing format merges that only matter when downloading. */
     const metaCore = applyYtDlpYouTubeTransportArgs(
-      [
-        ...cookiesArgs,
-        ...YTDLP_JS_RUNTIME_ARGS,
-        "--no-config",
-        "--skip-download",
-        "--dump-json",
-        "--no-playlist",
-        "--no-warnings",
-      ],
+      withYtDlpTikTokUserAgentArgs(
+        [
+          ...cookiesArgs,
+          ...YTDLP_JS_RUNTIME_ARGS,
+          "--no-config",
+          "--skip-download",
+          "--dump-json",
+          "--no-playlist",
+          "--no-warnings",
+        ],
+        url
+      ),
       transportContext,
       withYtDlpPoTokenArgs
     );
@@ -684,21 +725,24 @@ export function buildDownloadArgs(opts: {
     return {
       subdir: "audio",
       pattern: path.join(baseOut, "audio", `${opts.jobId}.%(ext)s`),
-      args: [
-        ...YTDLP_JS_RUNTIME_ARGS,
-        "-f",
-        formatSelector,
-        "--extract-audio",
-        "--audio-format",
-        "mp3",
-        "--audio-quality",
-        "0",
-        "--no-playlist",
-        "--newline",
-        "-o",
-        out,
-        opts.url,
-      ],
+      args: withYtDlpTikTokUserAgentArgs(
+        [
+          ...YTDLP_JS_RUNTIME_ARGS,
+          "-f",
+          formatSelector,
+          "--extract-audio",
+          "--audio-format",
+          "mp3",
+          "--audio-quality",
+          "0",
+          "--no-playlist",
+          "--newline",
+          "-o",
+          out,
+          opts.url,
+        ],
+        opts.url
+      ),
     };
   }
 
@@ -708,20 +752,23 @@ export function buildDownloadArgs(opts: {
   return {
     subdir: "videos",
     pattern: path.join(baseOut, "videos", `${opts.jobId}.%(ext)s`),
-    args: [
-      ...YTDLP_JS_RUNTIME_ARGS,
-      "-f",
-      formatSelector,
-      "--merge-output-format",
-      "mp4",
-      "--no-playlist",
-      "--concurrent-fragments",
-      "4",
-      "--newline",
-      "-o",
-      out,
-      opts.url,
-    ],
+    args: withYtDlpTikTokUserAgentArgs(
+      [
+        ...YTDLP_JS_RUNTIME_ARGS,
+        "-f",
+        formatSelector,
+        "--merge-output-format",
+        "mp4",
+        "--no-playlist",
+        "--concurrent-fragments",
+        "4",
+        "--newline",
+        "-o",
+        out,
+        opts.url,
+      ],
+      opts.url
+    ),
   };
 }
 
