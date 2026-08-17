@@ -7,6 +7,14 @@ import { resolveTextDirection, tokenizeCaptionText, captionTokenDisplayText } fr
 
 type MeasureCtx = Pick<SKRSContext2D, "font" | "measureText">;
 
+/**
+ * Highlight-canvas inter-word gap: natural U+0020 advance for the active ctx.font.
+ * Single source of truth for measure + placement (ceil px; min 1).
+ */
+export function measureCaptionTokenGapPx(ctx: MeasureCtx): number {
+  return Math.max(1, Math.ceil(ctx.measureText(" ").width));
+}
+
 function measureToken(ctx: MeasureCtx, token: CaptionToken): { width: number; ascent: number; descent: number } {
   const m = ctx.measureText(captionTokenDisplayText(token));
   const ascent = m.actualBoundingBoxAscent ?? m.emHeightAscent ?? 24;
@@ -128,13 +136,15 @@ export function layoutCaptionBlock(
 ): CaptionLayoutResult {
   const direction = resolveTextDirection(input.text, input.direction);
   ctx.font = captionFontCss(fontFamilyLabel, input.fontSize, input.fontWeight);
+  // Authoritative gap from font space — ignore input.tokenGapPx (legacy field).
+  const tokenGapPx = measureCaptionTokenGapPx(ctx);
 
   const { tokens, lineTokenGroups } = tokenizeForcedLines(input.lines, input.maxLines);
 
   // Overflow diagnostics only — do not invent new break points.
   for (let i = 0; i < lineTokenGroups.length; i++) {
     const group = lineTokenGroups[i]!;
-    const w = measureLineWidthPx(ctx, group, input.tokenGapPx);
+    const w = measureLineWidthPx(ctx, group, tokenGapPx);
     if (w > input.maxLineWidthPx && process.env.LINKCLIP_CAPTION_WRAP_DEBUG === "true") {
       console.info(
         `caption layout overflow diag: line=${i} widthPx=${w} max=${input.maxLineWidthPx}`,
@@ -154,7 +164,7 @@ export function layoutCaptionBlock(
   const blockHeight =
     lineHeights.reduce((a, b) => a + b, 0) + Math.max(0, lineTokenGroups.length - 1) * input.lineGapPx;
 
-  const lineWidths = lineTokenGroups.map((group) => measureLineWidthPx(ctx, group, input.tokenGapPx));
+  const lineWidths = lineTokenGroups.map((group) => measureLineWidthPx(ctx, group, tokenGapPx));
   const blockWidth = Math.max(...lineWidths, 0);
 
   const blockTop = captionBlockTopBase(
@@ -173,7 +183,7 @@ export function layoutCaptionBlock(
     const lh = lineHeights[li] ?? input.fontSize;
     const lw = lineWidths[li] ?? 0;
     const originX = direction === "ltr" ? blockLeft : blockLeft + lw;
-    lines.push(layoutLine(ctx, group, direction, yCursor, lh, originX, input.tokenGapPx));
+    lines.push(layoutLine(ctx, group, direction, yCursor, lh, originX, tokenGapPx));
     yCursor += lh + input.lineGapPx;
   }
 
@@ -185,5 +195,6 @@ export function layoutCaptionBlock(
     blockHeight,
     blockLeft,
     blockTop,
+    tokenGapPx,
   };
 }

@@ -47,6 +47,8 @@ export type CaptionLayoutResult = {
   readonly blockHeight: number;
   readonly blockLeft: number;
   readonly blockTop: number;
+  /** Inter-token gap actually used (ceil of measured U+0020 advance). */
+  readonly tokenGapPx: number;
 };
 
 export type RenderPlateInput = {
@@ -73,6 +75,10 @@ export type RenderPlateInput = {
   readonly position: CaptionsPosition;
   readonly maxLineWidthPx: number;
   readonly lineGapPx: number;
+  /**
+   * Legacy / unused by layout: inter-token gap is derived from measured font-space
+   * advance inside `layoutCaptionBlock` (see `measureCaptionTokenGapPx`).
+   */
   readonly tokenGapPx: number;
   readonly boxPaddingXPx: number;
   readonly boxPaddingYPx: number;

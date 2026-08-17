@@ -73,7 +73,8 @@ function buildPlateInput(
     position: cfg.position,
     maxLineWidthPx: captionMaxLineWidthPx(cfg.fontSize, canvas),
     lineGapPx: 10,
-    tokenGapPx: 10,
+    // Gap is measured from font U+0020 in layoutCaptionBlock; value ignored.
+    tokenGapPx: 0,
     boxPaddingXPx: 8,
     boxPaddingYPx: 5,
     offsetY: cfg.offsetY,

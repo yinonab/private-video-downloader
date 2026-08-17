@@ -34,6 +34,7 @@ import {
   breakCaptionLinesForFontSize,
   scoreTwoLineCaption,
   chunkSegmentForHighlight,
+  measureCaptionTokenGapPx,
   type TimedOverlayPlate,
 } from "../src/services/captionHighlight";
 import { layoutCaptionBlock } from "../src/services/captionHighlight/layout";
@@ -920,10 +921,252 @@ async function assertCaptionOutlineBehavior(): Promise<void> {
   console.info("diag:caption-highlight ok caption-outline ass+canvas");
 }
 
+/** Adjacent-token gap from layout boxes (LTR: next.x - (x+w); RTL: x - (next.x+next.w)). */
+function placedTokenGapPx(
+  boxes: readonly { x: number; width: number }[],
+  direction: "rtl" | "ltr",
+  i: number,
+): number {
+  const a = boxes[i]!;
+  const b = boxes[i + 1]!;
+  if (direction === "ltr") return b.x - (a.x + a.width);
+  return a.x - (b.x + b.width);
+}
+
+/**
+ * Word-spacing polish: highlight token gap = ceil(measureText(" ")) for active font.
+ * ASS / Preview / balancing / plate padding unchanged.
+ */
+async function assertWordSpacingFromFontSpace(): Promise<void> {
+  const familyLabel = await ensureCaptionFont("heebo");
+  const portrait = { width: 1080, height: 1920 };
+  const ladder = ["medium", "large", "x_large", "xx_large", "xxx_large", "mega", "ultra"] as const;
+  const canvas = createCanvas(64, 64);
+  const ctx = canvas.getContext("2d");
+
+  const gaps: number[] = [];
+  const gapRows: { size: string; fontPx: number; gap: number; pct: number }[] = [];
+
+  for (const size of ladder) {
+    const fontPx = captionFontSizePx(size, portrait);
+    ctx.font = captionFontCss(familyLabel, fontPx, 700);
+    const expected = measureCaptionTokenGapPx(ctx);
+    assert.ok(expected >= 1, `${size} gap >= 1`);
+    assert.equal(expected, Math.ceil(ctx.measureText(" ").width), `${size} gap = ceil(space)`);
+    gaps.push(expected);
+    gapRows.push({
+      size,
+      fontPx,
+      gap: expected,
+      pct: Math.round((expected / fontPx) * 1000) / 10,
+    });
+  }
+
+  assert.ok(gaps[0]! >= 11 && gaps[0]! <= 14, `medium gap ~font space (got ${gaps[0]})`);
+  assert.ok(gaps[gaps.length - 1]! > 10, `ultra gap significantly above legacy 10 (got ${gaps[gaps.length - 1]})`);
+  assert.ok(gaps[gaps.length - 1]! >= 35, `ultra gap scales with font (got ${gaps[gaps.length - 1]})`);
+  for (let i = 0; i < gaps.length - 1; i++) {
+    assert.ok(gaps[i]! <= gaps[i + 1]!, `monotonic ${ladder[i]}=${gaps[i]} <= ${ladder[i + 1]}=${gaps[i + 1]}`);
+  }
+
+  const heText = "שלום עולם זה טוב";
+  const enText = "hello world from captions";
+  const balancedHe = "הממשלה של מדינת ישראל החליטה היום";
+  const fontPxXx = captionFontSizePx("xx_large", portrait);
+  const maxW = captionMaxLineWidthPx("xx_large", portrait);
+
+  for (const sample of [
+    { id: "he-rtl", text: heText, size: "medium" as const },
+    { id: "en-ltr", text: enText, size: "medium" as const },
+    { id: "he-balanced", text: balancedHe, size: "xx_large" as const },
+  ]) {
+    const fontPx = captionFontSizePx(sample.size, portrait);
+    ctx.font = captionFontCss(familyLabel, fontPx, 700);
+    const expectedGap = measureCaptionTokenGapPx(ctx);
+    const lines = forcedLinesForPlate(sample.text, sample.size);
+    const layout = layoutCaptionBlock(
+      ctx,
+      {
+        text: lines.join(" "),
+        lines,
+        direction: "auto",
+        fontSize: fontPx,
+        fontWeight: 700,
+        maxLines: 2,
+        canvasWidth: portrait.width,
+        canvasHeight: portrait.height,
+        position: "bottom",
+        maxLineWidthPx: captionMaxLineWidthPx(sample.size, portrait),
+        lineGapPx: 10,
+        tokenGapPx: 999, // ignored — must not affect SoT gap
+        canvas: portrait,
+      },
+      familyLabel,
+    );
+    assert.equal(layout.tokenGapPx, expectedGap, `${sample.id} layout.tokenGapPx`);
+    for (const line of layout.lines) {
+      assert.equal(line.baselineY, line.y + line.ascent, `${sample.id} baselineY`);
+      assert.ok(line.boxes.every((b) => b.y === line.y), `${sample.id} shared line top`);
+      for (let i = 0; i < line.boxes.length - 1; i++) {
+        assert.equal(
+          placedTokenGapPx(line.boxes, layout.direction, i),
+          expectedGap,
+          `${sample.id} placed gap[${i}]`,
+        );
+      }
+    }
+  }
+
+  // RTL vs LTR same magnitude for same font
+  ctx.font = captionFontCss(familyLabel, fontPxXx, 700);
+  const gapMag = measureCaptionTokenGapPx(ctx);
+  const heLines = forcedLinesForPlate(heText, "xx_large");
+  const enLines = forcedLinesForPlate(enText, "xx_large");
+  const rtlLayout = layoutCaptionBlock(
+    ctx,
+    {
+      text: heLines.join(" "),
+      lines: heLines,
+      direction: "rtl",
+      fontSize: fontPxXx,
+      fontWeight: 700,
+      maxLines: 2,
+      canvasWidth: 1080,
+      canvasHeight: 1920,
+      position: "bottom",
+      maxLineWidthPx: maxW,
+      lineGapPx: 10,
+      tokenGapPx: 0,
+      canvas: portrait,
+    },
+    familyLabel,
+  );
+  const ltrLayout = layoutCaptionBlock(
+    ctx,
+    {
+      text: enLines.join(" "),
+      lines: enLines,
+      direction: "ltr",
+      fontSize: fontPxXx,
+      fontWeight: 700,
+      maxLines: 2,
+      canvasWidth: 1080,
+      canvasHeight: 1920,
+      position: "bottom",
+      maxLineWidthPx: maxW,
+      lineGapPx: 10,
+      tokenGapPx: 0,
+      canvas: portrait,
+    },
+    familyLabel,
+  );
+  assert.equal(rtlLayout.tokenGapPx, gapMag);
+  assert.equal(ltrLayout.tokenGapPx, gapMag);
+  assert.equal(rtlLayout.direction, "rtl");
+  assert.equal(ltrLayout.direction, "ltr");
+
+  // Highlight mode / plate padding do not change token gap (layout before draw)
+  const modes: Array<{ id: string; drawBox: boolean; boxShape: "pill" | "rounded" | "rectangle" }> = [
+    { id: "color", drawBox: false, boxShape: "pill" },
+    { id: "box-pill", drawBox: true, boxShape: "pill" },
+    { id: "box-rounded", drawBox: true, boxShape: "rounded" },
+    { id: "box-rect", drawBox: true, boxShape: "rectangle" },
+  ];
+  const medFont = captionFontSizePx("medium", portrait);
+  const medLines = forcedLinesForPlate(heText, "medium");
+  ctx.font = captionFontCss(familyLabel, medFont, 700);
+  const medGap = measureCaptionTokenGapPx(ctx);
+  const baselines: number[] = [];
+  for (const mode of modes) {
+    const plate = await renderCaptionHighlightPlate({
+      text: medLines.join(" "),
+      lines: medLines,
+      activeWordIndex: 1,
+      direction: "rtl",
+      fontFamily: "heebo",
+      fontSize: medFont,
+      fontWeight: 700,
+      normalTextColor: "#FFFFFF",
+      activeTextColor: "#FFD966",
+      boxColor: "rgba(255,217,102,0.92)",
+      boxShape: mode.boxShape,
+      drawBox: mode.drawBox,
+      maxLines: 2,
+      canvasWidth: 1080,
+      canvasHeight: 1920,
+      position: "bottom",
+      maxLineWidthPx: captionMaxLineWidthPx("medium", portrait),
+      lineGapPx: 10,
+      tokenGapPx: 10,
+      boxPaddingXPx: 8,
+      boxPaddingYPx: 5,
+      outlineEnabled: mode.id === "color",
+      outlineColorCss: "#000000",
+      outlineWidthPx: 2,
+    });
+    assert.equal(plate.layout.tokenGapPx, medGap, `${mode.id} tokenGap unchanged`);
+    const line = plate.layout.lines[0]!;
+    baselines.push(line.baselineY);
+    assert.equal(line.baselineY, line.y + line.ascent, `${mode.id} baseline`);
+    for (let i = 0; i < line.boxes.length - 1; i++) {
+      assert.equal(placedTokenGapPx(line.boxes, plate.layout.direction, i), medGap, `${mode.id} gap`);
+    }
+    // Plate pad does not alter token box width (geometry independent of gap SoT)
+    assert.ok(line.boxes.every((b) => b.height === line.lineHeight));
+  }
+  assert.ok(
+    baselines.every((y) => y === baselines[0]),
+    "baselineY unchanged across highlight modes",
+  );
+
+  // Overflow report only — do not change breaks (wide gap at ultra may exceed max)
+  const overflowNotes: string[] = [];
+  for (const size of ladder) {
+    const fontPx = captionFontSizePx(size, portrait);
+    const maxLine = captionMaxLineWidthPx(size, portrait);
+    ctx.font = captionFontCss(familyLabel, fontPx, 700);
+    const lines = forcedLinesForPlate(balancedHe, size);
+    const layout = layoutCaptionBlock(
+      ctx,
+      {
+        text: lines.join(" "),
+        lines,
+        direction: "auto",
+        fontSize: fontPx,
+        fontWeight: 700,
+        maxLines: 2,
+        canvasWidth: 1080,
+        canvasHeight: 1920,
+        position: "bottom",
+        maxLineWidthPx: maxLine,
+        lineGapPx: 10,
+        tokenGapPx: 0,
+        canvas: portrait,
+      },
+      familyLabel,
+    );
+    for (let i = 0; i < layout.lines.length; i++) {
+      const lw = layout.lines[i]!.boxes.reduce((acc, b, idx, arr) => {
+        acc += b.width;
+        if (idx < arr.length - 1) acc += layout.tokenGapPx;
+        return acc;
+      }, 0);
+      if (lw > maxLine) {
+        overflowNotes.push(`${size} line${i} widthPx=${lw} max=${maxLine} gap=${layout.tokenGapPx}`);
+      }
+    }
+  }
+
+  console.info(
+    `diag:caption-highlight ok word-spacing font-space gaps=${JSON.stringify(gapRows)} overflowNotes=${overflowNotes.length ? overflowNotes.join("; ") : "none"}`,
+  );
+}
+
 async function main(): Promise<void> {
   assertLineBreakSourceOfTruth();
   assertKillSwitchStaticAss();
   await assertHebrewCaptionLayoutPolicy();
+  await assertWordSpacingFromFontSpace();
   assertFilterComplexLabels();
   assertColorPropagation();
   await assertRtlPunctuationBehavior();

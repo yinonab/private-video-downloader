@@ -104,9 +104,9 @@ Do **not** start these until explicitly approved. Backend/export composition (So
 
 - **Title:** Word spacing polish
 - **Description:** Review inter-word gaps / tokenGap for large sizes and RTL readability.
-- **Status:** ☐ Not started
-- **Notes:** Future polish only.
-- **Date updated:** 2026-08-05
+- **Status:** ✅ Verified by manual QA
+- **Notes:** Highlight export token spacing follows the natural measured font-space advance (`ceil(measureText(" "))`) instead of a fixed 10px gap. ASS/Preview/balancing unchanged. Manual QA passed for scale-aware spacing; no clipping, baseline, or plate regression observed.
+- **Date updated:** 2026-08-17
 
 ### Optical block centering
 
@@ -193,15 +193,14 @@ Copy a dated checklist subsection under the issue when marking **✅ Verified**.
 
 ## Suggested work order
 
-**Verified (do not reopen without regression):** Shared baseline → Optical vertical alignment → Backend/export line-break SoT → Caption block balancing.
+**Verified (do not reopen without regression):** Shared baseline → Optical vertical alignment → Backend/export line-break SoT → Caption block balancing → Word spacing polish.
 
 **Next (Typography Polish — wait for approval):**
-1. Preview parity (Phase B)  
-2. Word spacing polish  
-3. Optical block centering  
-4. Line-height review  
-5. Advanced semantic balancing  
-6. Typography fine tuning  
+1. Preview parity (Phase B)
+2. Optical block centering
+3. Line-height review
+4. Advanced semantic balancing
+5. Typography fine tuning
 
 Standing gate: Preview / Export visual parity (tracks Phase B).
 
@@ -224,3 +223,5 @@ Standing gate: Preview / Export visual parity (tracks Phase B).
 | 2026-08-04 | **Backend/export line-break Source of Truth** → ✅ Verified by manual QA. Caption block balancing remains 🔄 (composition). |
 | 2026-08-04 | **Caption block balancing** → ☑ Fixed (v1 score inside `captionLineBreak.ts`; not ✅ Verified; Preview Phase B pending). |
 | 2026-08-05 | **Caption block balancing** → ✅ Verified by manual QA. Added **Typography Polish** future roadmap (Preview Phase B, word spacing, optical block centering, line-height, advanced balancing, fine tuning). Wait for approval before next typography task. |
+| 2026-08-17 | **Word spacing polish** → ☑ Fixed (highlight `tokenGapPx` = ceil of measured font-space advance; ASS/Preview unchanged; manual QA pending). |
+| 2026-08-17 | **Word spacing polish** → ✅ Verified by manual QA (scale-aware font-space gap; no clipping/baseline/plate regression). |

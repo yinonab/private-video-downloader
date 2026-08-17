@@ -2,7 +2,7 @@
 
 | Metadata | |
 |----------|--|
-| **Last updated** | 2026-08-11 |
+| **Last updated** | 2026-08-17 |
 | **Status** | Android Quick Edit MVP implemented; in QA/polish. |
 | **Primary platform** | Android |
 | **Backend** | Production Docker Compose deployment (see `backend/docker-compose.prod.yml`, `backend/DEPLOY_HETZNER.md`) |
@@ -389,6 +389,8 @@ No `linkclip_ios_build_instructions.md` file exists **in this repository** (draf
 4. **`docs/CAPTION_TYPOGRAPHY_TRACKER.md`** — Single source of truth for **remaining caption typography polish** (baseline residuals, optical alignment, line balancing/width/spacing, Preview↔Export parity). Do not start the next typography issue until the current one is manually verified.
 
 **Caption typography checkpoint (2026-08-05):** Shared export `baselineY` + plate optical centering verified earlier. **Unified backend line-break Source of Truth** (`captionLineBreak.ts`): ASS, highlight timing, and highlight plate share one `breakCaptionLines`. **Caption block balancing** integrated in that SoT (valid two-line splits + score); manual QA passed — balanced two-liners improved, no baseline/plate/highlight/RTL/export regression. **Preview parity intentionally deferred to Phase B** (Flutter still softWrap). Remaining polish tracked under Typography Polish in `docs/CAPTION_TYPOGRAPHY_TRACKER.md` — wait for approval before next item.
+
+**Word spacing polish checkpoint (2026-08-17 — ✅ Verified by manual QA):** Highlight/canvas export now uses the natural measured font-space advance (`ceil(measureText(" "))`) instead of a fixed 10px gap. Manual QA passed; no clipping, baseline, or plate regression observed. ASS export, Flutter Preview, and Caption Block Balancing unchanged. Next typography task is Preview Parity (Phase B) — not started.
 
 **yt-dlp browser impersonation checkpoint (Rank 1, 2026-08-05 deploy / 2026-08-09 verified):** Production image now installs **`yt-dlp[default,curl-cffi]`**. Post-deploy checks: **`curl_cffi`** present, impersonation targets available, **`no impersonate target available` eliminated**, infra healthy, no YouTube Analyze regression. **Partial effectiveness only** — TikTok **`Unable to extract universal data for rehydration`** still occurs intermittently.
 
